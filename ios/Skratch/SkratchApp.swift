@@ -92,8 +92,7 @@ struct LoginView: View {
 
             // Skip for offline use
             Button("Continue without account") {
-                // Allow offline use with local data only
-                // This won't set isAuthenticated but will dismiss login
+                authManager.continueWithoutAccount()
             }
             .font(.footnote)
             .foregroundStyle(.secondary)

@@ -8,11 +8,17 @@ class AuthManager: NSObject {
 
     var isAuthenticated = false
     var isLoading = false
+    var isOfflineMode = false
     var user: APIClient.UserResponse?
     var error: String?
 
     private override init() {
         super.init()
+        // Check if user previously chose offline mode
+        isOfflineMode = UserDefaults.standard.bool(forKey: "offline_mode")
+        if isOfflineMode {
+            isAuthenticated = true
+        }
         Task {
             await loadStoredAuth()
         }
@@ -38,18 +44,38 @@ class AuthManager: NSObject {
 
         let controller = ASAuthorizationController(authorizationRequests: [request])
         controller.delegate = self
+        controller.presentationContextProvider = self
         controller.performRequests()
+    }
+
+    func continueWithoutAccount() {
+        isOfflineMode = true
+        isAuthenticated = true
+        UserDefaults.standard.set(true, forKey: "offline_mode")
     }
 
     func signOut() async {
         await APIClient.shared.clearTokens()
         isAuthenticated = false
+        isOfflineMode = false
         user = nil
+        UserDefaults.standard.removeObject(forKey: "offline_mode")
     }
 
     func refreshAuth() async throws {
         _ = try await APIClient.shared.refreshAccessToken()
         user = try await APIClient.shared.getCurrentUser()
+    }
+}
+
+extension AuthManager: ASAuthorizationControllerPresentationContextProviding {
+    nonisolated func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = scene.windows.first
+        else {
+            return ASPresentationAnchor()
+        }
+        return window
     }
 }
 
