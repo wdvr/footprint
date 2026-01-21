@@ -1,0 +1,52 @@
+name: Simple CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - feature/ci-cd-testing-setup
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Run tests
+      run: |
+        cd backend
+        python -m pytest tests/ -v
+
+  infrastructure-check:
+    name: Infrastructure Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check infrastructure files
+      run: |
+        echo "Checking infrastructure files exist..."
+        ls -la infrastructure/
+        echo "Infrastructure files verified"
