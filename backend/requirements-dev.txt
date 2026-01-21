@@ -1,0 +1,22 @@
+# Testing
+pytest==7.4.4
+pytest-asyncio==0.23.4
+pytest-cov==4.0.0
+pytest-mock==3.12.0
+moto==4.2.14  # Mock AWS services
+
+# Code Quality
+flake8==7.0.0
+black==24.1.1
+isort==5.13.2
+mypy==1.8.0
+
+# Security
+bandit==1.7.6
+safety==3.0.1
+
+# Development
+pre-commit==3.6.1
+
+# Local Testing
+localstack==3.0.2
