@@ -3,7 +3,7 @@
 import pytest
 from datetime import datetime
 from typing import Generator, Dict, Any
-from moto import mock_dynamodb, mock_s3, mock_cognito_idp
+from moto import mock_dynamodb, mock_s3
 import boto3
 
 from src.models.user import User, AuthProvider
@@ -14,7 +14,7 @@ from src.models.geographic import Country, USState, CanadianProvince, ContinentC
 @pytest.fixture
 def mock_aws():
     """Mock AWS services for testing."""
-    with mock_dynamodb(), mock_s3(), mock_cognito_idp():
+    with mock_dynamodb(), mock_s3():
         yield
 
 
