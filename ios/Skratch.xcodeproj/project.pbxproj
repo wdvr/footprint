@@ -10,9 +10,12 @@
 		39AABEB06866FCA9929F9BA3 /* SkratchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51D9B6658E4E4D0A374BDF41 /* SkratchApp.swift */; };
 		4929B813F2E108B24B8A95D2 /* SkratchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AEC5A63E47AF93428FFD61 /* SkratchTests.swift */; };
 		51DA867BFC2FA4306ADE3826 /* GeographicData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 739C79A196E7F43F2948B4BF /* GeographicData.swift */; };
+		86175EAF51658198276271FA /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B366DB5A8112F2A026734C2A /* AuthManager.swift */; };
 		8D80DF090525952444EA2BBA /* VisitedPlace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90B51E01ADAB2FB54EED8D1A /* VisitedPlace.swift */; };
+		946A0F83EB60F91C7ADB6347 /* SyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B59AF1458A22B2B2A8E2C54 /* SyncManager.swift */; };
 		C3F7F4C340B137E96052822E /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87B5ACE5DE8B894D416BB596 /* ContentView.swift */; };
 		DCACDA35D63CAF9BC69B1B90 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C6287D0D983350D6929466 /* Assets.xcassets */; };
+		F5D00A1BBCC1D3948F17FC58 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B7CACFB8C4E7DA2A39C2DB7 /* APIClient.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -26,6 +29,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0B59AF1458A22B2B2A8E2C54 /* SyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncManager.swift; sourceTree = "<group>"; };
+		3B7CACFB8C4E7DA2A39C2DB7 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		45DF996E69D2AEDA57D1A523 /* SkratchTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SkratchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		46AF8117A3AD000444417630 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		51D9B6658E4E4D0A374BDF41 /* SkratchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkratchApp.swift; sourceTree = "<group>"; };
@@ -33,6 +38,7 @@
 		87B5ACE5DE8B894D416BB596 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		90B51E01ADAB2FB54EED8D1A /* VisitedPlace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisitedPlace.swift; sourceTree = "<group>"; };
 		97C6287D0D983350D6929466 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B366DB5A8112F2A026734C2A /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		D8AEC5A63E47AF93428FFD61 /* SkratchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkratchTests.swift; sourceTree = "<group>"; };
 		FC06A4D652FB5BE661A00C37 /* Skratch.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Skratch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -80,8 +86,19 @@
 				51D9B6658E4E4D0A374BDF41 /* SkratchApp.swift */,
 				0953597575E4F715BEEDC2E7 /* Data */,
 				02D7B149CD571B9D768BA65B /* Models */,
+				E147C2176D514782791E8FD1 /* Services */,
 			);
 			path = Skratch;
+			sourceTree = "<group>";
+		};
+		E147C2176D514782791E8FD1 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				3B7CACFB8C4E7DA2A39C2DB7 /* APIClient.swift */,
+				B366DB5A8112F2A026734C2A /* AuthManager.swift */,
+				0B59AF1458A22B2B2A8E2C54 /* SyncManager.swift */,
+			);
+			path = Services;
 			sourceTree = "<group>";
 		};
 		F3E4DDE379698DE821233464 /* Products */ = {
@@ -186,9 +203,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F5D00A1BBCC1D3948F17FC58 /* APIClient.swift in Sources */,
+				86175EAF51658198276271FA /* AuthManager.swift in Sources */,
 				C3F7F4C340B137E96052822E /* ContentView.swift in Sources */,
 				51DA867BFC2FA4306ADE3826 /* GeographicData.swift in Sources */,
 				39AABEB06866FCA9929F9BA3 /* SkratchApp.swift in Sources */,
+				946A0F83EB60F91C7ADB6347 /* SyncManager.swift in Sources */,
 				8D80DF090525952444EA2BBA /* VisitedPlace.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

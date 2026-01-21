@@ -16,9 +16,14 @@ environment = config.get("environment") or "dev"
 app_name = config.get("app_name") or "skratch"
 aws_region = aws.config.region or "us-east-1"
 
+# Get AWS account ID for globally unique names
+aws_account_id = aws.get_caller_identity().account_id
+
 # Create resource name prefix
-def resource_name(resource_type: str) -> str:
+def resource_name(resource_type: str, include_account: bool = False) -> str:
     """Generate consistent resource names."""
+    if include_account:
+        return f"{app_name}-{resource_type}-{environment}-{aws_account_id}"
     return f"{app_name}-{resource_type}-{environment}"
 
 # Tags to apply to all resources
@@ -66,10 +71,10 @@ dynamodb_table = aws.dynamodb.Table(
 # S3 Buckets
 # =============================================================================
 
-# S3 bucket for geographic data storage
+# S3 bucket for geographic data storage (use account ID for globally unique name)
 geo_data_bucket = aws.s3.Bucket(
     resource_name("geo-data"),
-    bucket=resource_name("geo-data"),
+    bucket=resource_name("geo-data", include_account=True),
     tags=common_tags,
     opts=ResourceOptions(protect=environment == "prod")
 )
@@ -165,50 +170,61 @@ s3_policy = aws.iam.RolePolicy(
 # Lambda Function
 # =============================================================================
 
-# Create a simple handler for initial deployment
-lambda_code = """import json
+import os
+from pulumi import FileArchive
+
+# Check if deployment package exists, otherwise use placeholder
+lambda_package_path = os.path.join(os.path.dirname(__file__), "lambda_package.zip")
+
+if os.path.exists(lambda_package_path):
+    # Use the full FastAPI deployment package
+    lambda_code = FileArchive(lambda_package_path)
+    lambda_handler = "handler.handler"
+    pulumi.log.info("Using FastAPI deployment package")
+else:
+    # Fall back to placeholder for initial setup
+    pulumi.log.warn("Lambda package not found, using placeholder. Run deploy_lambda.py first.")
+    lambda_dir = os.path.join(os.path.dirname(__file__), "lambda_placeholder")
+    os.makedirs(lambda_dir, exist_ok=True)
+    lambda_file = os.path.join(lambda_dir, "handler.py")
+    placeholder_code = '''import json
 import os
 
 def handler(event, context):
     return {
-        'statusCode': 200,
-        'headers': {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-            'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
         },
-        'body': json.dumps({
-            'message': 'Skratch API is running',
-            'environment': os.environ.get('ENVIRONMENT', 'unknown'),
-            'version': '0.1.0'
+        "body": json.dumps({
+            "message": "Skratch API placeholder - deploy FastAPI package",
+            "environment": os.environ.get("ENVIRONMENT", "unknown"),
         })
     }
-"""
-
-# Write Lambda code to a file
-import os
-lambda_dir = os.path.join(os.path.dirname(__file__), "lambda_placeholder")
-os.makedirs(lambda_dir, exist_ok=True)
-lambda_file = os.path.join(lambda_dir, "handler.py")
-with open(lambda_file, "w") as f:
-    f.write(lambda_code)
+'''
+    with open(lambda_file, "w") as f:
+        f.write(placeholder_code)
+    lambda_code = AssetArchive({"handler.py": FileAsset(lambda_file)})
+    lambda_handler = "handler.handler"
 
 # Lambda function
 api_lambda = aws.lambda_.Function(
     resource_name("api"),
     name=resource_name("api"),
     role=lambda_role.arn,
-    handler="handler.handler",
+    handler=lambda_handler,
     runtime="python3.11",
-    code=AssetArchive({"handler.py": FileAsset(lambda_file)}),
+    code=lambda_code,
     timeout=30,
-    memory_size=256,
+    memory_size=512,  # Increased for FastAPI
     environment=aws.lambda_.FunctionEnvironmentArgs(
         variables={
             "ENVIRONMENT": environment,
             "DYNAMODB_TABLE": dynamodb_table.name,
             "GEO_DATA_BUCKET": geo_data_bucket.bucket,
+            "JWT_SECRET": config.get_secret("jwt_secret") or "dev-secret-change-in-production",
+            "APPLE_BUNDLE_ID": "com.skratch.app",
         }
     ),
     tags=common_tags,

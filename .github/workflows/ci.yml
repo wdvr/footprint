@@ -70,8 +70,7 @@ jobs:
         uv venv
         uv pip install -r requirements.txt
 
-    - name: Pulumi preview (dry run)
+    - name: Validate Python syntax
       run: |
         cd infrastructure
-        echo "Pulumi preview requires AWS credentials - skipping in CI for now"
-        echo "Infrastructure validation will be performed after secrets are configured"
+        uv run python -m py_compile __main__.py deploy_lambda.py

@@ -1,9 +1,15 @@
 # AWS Secrets and Credentials
 .env
+!.env.template
 *.pem
 *.key
 aws-exports.js
 amplify-export.json
+
+# Lambda build artifacts
+infrastructure/lambda_build/
+infrastructure/lambda_package.zip
+infrastructure/lambda_placeholder/
 
 # AWS CDK/Pulumi
 .pulumi/

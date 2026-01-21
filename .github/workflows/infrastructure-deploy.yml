@@ -1,0 +1,162 @@
+name: Infrastructure Deploy
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+          - staging
+          - prod
+
+env:
+  PULUMI_BACKEND_URL: s3://skratch-pulumi-state-954800154782?region=us-east-1
+
+jobs:
+  determine-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+      stack: ${{ steps.set-env.outputs.stack }}
+    steps:
+      - name: Determine environment
+        id: set-env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+            echo "stack=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+            echo "stack=prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "stack=staging" >> $GITHUB_OUTPUT
+          fi
+
+  build-lambda:
+    needs: determine-environment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python 3.11
+        run: uv python install 3.11
+
+      - name: Build Lambda package
+        run: |
+          cd infrastructure
+          uv venv
+          uv pip install -r requirements.txt
+          uv run python deploy_lambda.py
+
+      - name: Upload Lambda artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lambda-package
+          path: infrastructure/lambda_package.zip
+          retention-days: 1
+
+  deploy:
+    needs: [determine-environment, build-lambda]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.determine-environment.outputs.environment }}
+    concurrency:
+      group: deploy-${{ needs.determine-environment.outputs.environment }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Lambda artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: lambda-package
+          path: infrastructure/
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python 3.11
+        run: uv python install 3.11
+
+      - name: Install Pulumi CLI
+        uses: pulumi/actions@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Install Python dependencies
+        run: |
+          cd infrastructure
+          uv venv
+          uv pip install -r requirements.txt
+
+      - name: Pulumi login
+        run: |
+          pulumi login ${{ env.PULUMI_BACKEND_URL }}
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+      - name: Select/create stack
+        run: |
+          cd infrastructure
+          pulumi stack select ${{ needs.determine-environment.outputs.stack }} || pulumi stack init ${{ needs.determine-environment.outputs.stack }}
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+      - name: Set stack config
+        run: |
+          cd infrastructure
+          pulumi config set aws:region ${{ secrets.AWS_REGION }}
+          pulumi config set environment ${{ needs.determine-environment.outputs.environment }}
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+      - name: Pulumi preview
+        run: |
+          cd infrastructure
+          pulumi preview
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+      - name: Pulumi deploy
+        run: |
+          cd infrastructure
+          pulumi up --yes
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+      - name: Get outputs
+        id: outputs
+        run: |
+          cd infrastructure
+          echo "api_url=$(pulumi stack output api_url)" >> $GITHUB_OUTPUT
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+      - name: Print deployment info
+        run: |
+          echo "Deployed to ${{ needs.determine-environment.outputs.environment }}"
+          echo "API URL: ${{ steps.outputs.outputs.api_url }}"
