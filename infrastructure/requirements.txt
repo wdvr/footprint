@@ -1,0 +1,7 @@
+# Pulumi and AWS providers
+pulumi>=3.100.0,<4.0.0
+pulumi-aws>=6.0.0,<7.0.0
+pulumi-awsx>=2.0.0,<3.0.0
+
+# AWS SDK for Python (for custom resources if needed)
+boto3>=1.34.0,<2.0.0
