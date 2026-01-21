@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		11111111111111111111AAA1 /* APIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22222222222222222222AAA1 /* APIClientTests.swift */; };
 		11111111111111111111AAA2 /* SyncManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22222222222222222222AAA2 /* SyncManagerTests.swift */; };
+		BBBB111111111111111TEST1 /* GeoJSONParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB222222222222222TEST1 /* GeoJSONParserTests.swift */; };
+		BBBB111111111111111TEST2 /* GeographicDataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBB222222222222222TEST2 /* GeographicDataTests.swift */; };
 		39AABEB06866FCA9929F9BA3 /* SkratchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51D9B6658E4E4D0A374BDF41 /* SkratchApp.swift */; };
 		4929B813F2E108B24B8A95D2 /* SkratchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AEC5A63E47AF93428FFD61 /* SkratchTests.swift */; };
 		51DA867BFC2FA4306ADE3826 /* GeographicData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 739C79A196E7F43F2948B4BF /* GeographicData.swift */; };
@@ -38,6 +40,8 @@
 		0B59AF1458A22B2B2A8E2C54 /* SyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncManager.swift; sourceTree = "<group>"; };
 		22222222222222222222AAA1 /* APIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientTests.swift; sourceTree = "<group>"; };
 		22222222222222222222AAA2 /* SyncManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncManagerTests.swift; sourceTree = "<group>"; };
+		BBBB222222222222222TEST1 /* GeoJSONParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoJSONParserTests.swift; sourceTree = "<group>"; };
+		BBBB222222222222222TEST2 /* GeographicDataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeographicDataTests.swift; sourceTree = "<group>"; };
 		3B7CACFB8C4E7DA2A39C2DB7 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		45DF996E69D2AEDA57D1A523 /* SkratchTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SkratchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		46AF8117A3AD000444417630 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -109,6 +113,8 @@
 			isa = PBXGroup;
 			children = (
 				22222222222222222222AAA1 /* APIClientTests.swift */,
+				BBBB222222222222222TEST2 /* GeographicDataTests.swift */,
+				BBBB222222222222222TEST1 /* GeoJSONParserTests.swift */,
 				D8AEC5A63E47AF93428FFD61 /* SkratchTests.swift */,
 				22222222222222222222AAA2 /* SyncManagerTests.swift */,
 			);
@@ -270,6 +276,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				11111111111111111111AAA1 /* APIClientTests.swift in Sources */,
+				BBBB111111111111111TEST2 /* GeographicDataTests.swift in Sources */,
+				BBBB111111111111111TEST1 /* GeoJSONParserTests.swift in Sources */,
 				4929B813F2E108B24B8A95D2 /* SkratchTests.swift in Sources */,
 				11111111111111111111AAA2 /* SyncManagerTests.swift in Sources */,
 			);
