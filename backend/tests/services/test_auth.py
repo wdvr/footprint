@@ -191,6 +191,7 @@ class TestAppleTokenVerification:
     async def test_verify_apple_token_jwt_error(self):
         """Test verifying Apple token with JWT error."""
         from jose import JWTError
+
         from src.services.auth import AuthService
         auth = AuthService()
 

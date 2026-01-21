@@ -1,7 +1,6 @@
 """Tests for DynamoDB service."""
 
 import os
-from unittest.mock import patch
 
 import boto3
 import pytest
@@ -65,6 +64,7 @@ def db_service(dynamodb_table):
         # Import after mocking so it uses the mocked table
         # Need to reload the module to pick up the mocked table
         import importlib
+
         import src.services.dynamodb as db_module
         importlib.reload(db_module)
         yield db_module.DynamoDBService()
