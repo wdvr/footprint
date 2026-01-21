@@ -1,0 +1,173 @@
+# AWS Secrets and Credentials
+.env
+*.pem
+*.key
+aws-exports.js
+amplify-export.json
+
+# AWS CDK/Pulumi
+.pulumi/
+*.pulumi.json
+pulumi.*.yaml
+cdk.out/
+.cdk.staging/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.ENV/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Xcode
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# iOS Build products
+build/
+DerivedData/
+
+# Xcode Automatic backup files
+*~.nib/
+*.swp
+*~
+*.dat
+*.dep
+
+# iOS Bundle artifacts
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# CocoaPods
+Pods/
+*.xcworkspace
+Podfile.lock
+
+# Swift Package Manager
+.swiftpm/
+Package.resolved
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# App Store Connect API
+AuthKey_*.p8
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Node.js (if using for any tooling)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDEs and editors
+.vscode/
+*.sublime-workspace
+*.sublime-project
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Geographic data (large files)
+data/raw/
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.geojson
+*.topojson
+
+# Compiled geographic data
+data/processed/
+data/optimized/
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+test-results/
+coverage/
+
+# Local configuration
+config.local.*
+settings.local.*
+*.local
+
+# Documentation builds
+docs/_build/
+site/
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# OS-specific files
+Thumbs.db
+Desktop.ini
