@@ -9,8 +9,8 @@ from src.api.routes import auth, places, sync
 
 # Application metadata
 app = FastAPI(
-    title="Skratch API",
-    description="API for Skratch travel tracking application",
+    title="Footprint API",
+    description="API for Footprint travel tracking application",
     version="0.1.0",
     docs_url="/docs" if os.environ.get("ENVIRONMENT") != "prod" else None,
     redoc_url="/redoc" if os.environ.get("ENVIRONMENT") != "prod" else None,
@@ -36,7 +36,7 @@ app.include_router(sync.router)
 async def root():
     """Root endpoint - health check."""
     return {
-        "message": "Skratch API is running",
+        "message": "Footprint API is running",
         "environment": os.environ.get("ENVIRONMENT", "unknown"),
         "version": "0.1.0",
     }
@@ -45,4 +45,4 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "service": "skratch-api"}
+    return {"status": "healthy", "service": "footprint-api"}

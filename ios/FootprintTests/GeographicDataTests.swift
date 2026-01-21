@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import Skratch
+@testable import Footprint
 
 final class GeographicDataTests: XCTestCase {
 

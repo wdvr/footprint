@@ -1,7 +1,7 @@
 [project]
-name = "skratch-backend"
+name = "footprint-backend"
 version = "0.1.0"
-description = "Backend API for Skratch travel tracker"
+description = "Backend API for Footprint travel tracker"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

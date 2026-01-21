@@ -1,6 +1,6 @@
-name: skratch-infrastructure
+name: footprint-infrastructure
 runtime: python
-description: Skratch travel tracker AWS infrastructure
+description: Footprint travel tracker AWS infrastructure
 
 config:
   aws:region: us-east-1

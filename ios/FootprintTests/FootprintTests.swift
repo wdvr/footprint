@@ -1,7 +1,7 @@
 import XCTest
-@testable import Skratch
+@testable import Footprint
 
-final class SkratchTests: XCTestCase {
+final class FootprintTests: XCTestCase {
     func testVisitedPlaceCreation() {
         let place = VisitedPlace(
             regionType: .country,

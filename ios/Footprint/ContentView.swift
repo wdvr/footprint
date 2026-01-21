@@ -282,7 +282,7 @@ struct WorldMapView: View {
                     .padding()
                 }
             }
-            .navigationTitle("Skratch")
+            .navigationTitle("Footprint")
         }
     }
 }

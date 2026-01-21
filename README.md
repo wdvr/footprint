@@ -1,8 +1,8 @@
-# Skratch Travel Tracker
+# Footprint Travel Tracker
 
 A beautiful iOS app for tracking your travels on an interactive world map. Mark countries, US states, and Canadian provinces you've visited, see your progress statistics, and share your travel achievements.
 
-## ✨ Features
+## Features
 
 - **Interactive World Map**: Intuitive tap-to-select interface using native MapKit
 - **Comprehensive Coverage**: Track visits to 195 countries, 50 US states + DC, and 13 Canadian provinces/territories
@@ -11,7 +11,7 @@ A beautiful iOS app for tracking your travels on an interactive world map. Mark 
 - **Beautiful Statistics**: See your travel progress with elegant visualizations
 - **Data Export**: Share your travel map and generate statistics
 
-## 🛠 Tech Stack
+## Tech Stack
 
 ### Frontend
 - **iOS**: Swift 6 + SwiftUI
@@ -25,7 +25,7 @@ A beautiful iOS app for tracking your travels on an interactive world map. Mark 
 - **IaC**: Pulumi for infrastructure management
 - **Storage**: S3 for geographic data and exports
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Xcode 26 or later
@@ -37,8 +37,8 @@ A beautiful iOS app for tracking your travels on an interactive world map. Mark 
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/wdvr/skratch.git
-   cd skratch
+   git clone https://github.com/wdvr/footprint.git
+   cd footprint
    ```
 
 2. **Setup environment variables**
@@ -61,17 +61,17 @@ A beautiful iOS app for tracking your travels on an interactive world map. Mark 
 
 5. **Open iOS project**
    ```bash
-   open ios/Skratch.xcodeproj
+   open ios/Footprint.xcodeproj
    ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
-skratch/
+footprint/
 ├── ios/              # SwiftUI iOS application
-│   ├── Skratch/      # Main app target
-│   ├── SkratchTests/ # Unit tests
-│   └── SkratchUITests/ # UI tests
+│   ├── Footprint/      # Main app target
+│   ├── FootprintTests/ # Unit tests
+│   └── FootprintUITests/ # UI tests
 ├── backend/          # Python Lambda functions
 │   ├── src/          # Source code
 │   ├── tests/        # Backend tests
@@ -83,7 +83,7 @@ skratch/
 └── docs/            # Additional documentation
 ```
 
-## 🗺 Geographic Data
+## Geographic Data
 
 The app includes comprehensive geographic data:
 - **Countries**: All 195 UN member states with accurate boundaries
@@ -92,7 +92,7 @@ The app includes comprehensive geographic data:
 
 Data sources are optimized for mobile performance while maintaining geographic accuracy.
 
-## 🧪 Testing
+## Testing
 
 Run the test suites:
 
@@ -103,10 +103,10 @@ python -m pytest tests/ -v --cov=src
 
 # iOS tests
 cd ios
-xcodebuild test -scheme Skratch -destination 'platform=iOS Simulator,name=iPhone 15'
+xcodebuild test -scheme Footprint -destination 'platform=iOS Simulator,name=iPhone 15'
 ```
 
-## 📱 App Architecture
+## App Architecture
 
 - **MVVM Pattern**: Clear separation of concerns with SwiftUI
 - **Offline-First**: Local-first architecture with background sync
@@ -114,14 +114,14 @@ xcodebuild test -scheme Skratch -destination 'platform=iOS Simulator,name=iPhone
 - **Geographic Engine**: Efficient point-in-polygon calculations
 - **Conflict Resolution**: Smart merging for simultaneous edits
 
-## 🔒 Privacy & Security
+## Privacy & Security
 
 - **Minimal Data Collection**: Only travel progress is stored
 - **User Ownership**: Full data export and deletion capabilities
 - **Apple Sign In**: No email collection, enhanced privacy
 - **Secure Sync**: End-to-end encryption for cloud synchronization
 
-## 📈 Development Workflow
+## Development Workflow
 
 We follow a strict pull request workflow:
 - All changes require PR review
@@ -129,9 +129,9 @@ We follow a strict pull request workflow:
 - Frequent commits with clear messages
 - No direct pushes to main branch
 
-See `claude.md` for detailed development guidelines and `progress.md` for current task status.
+See `CLAUDE.md` for detailed development guidelines and `PROGRESS.md` for current task status.
 
-## 🚀 Deployment
+## Deployment
 
 The app uses AWS infrastructure for scalable, reliable backend services:
 - **API Gateway**: RESTful API endpoints
@@ -140,14 +140,14 @@ The app uses AWS infrastructure for scalable, reliable backend services:
 - **S3**: Geographic data and user exports
 - **CloudWatch**: Monitoring and logging
 
-## 📄 License
+## License
 
 Private repository - All rights reserved.
 
-## 🤝 Contributing
+## Contributing
 
-This is a private project. See `claude.md` for development guidelines if you have access.
+This is a private project. See `CLAUDE.md` for development guidelines if you have access.
 
 ---
 
-**Built with ❤️ for travel enthusiasts**
+**Built with love for travel enthusiasts**

@@ -1,4 +1,4 @@
-# Skratch Travel Tracker - Progress & Tasks
+# Footprint Travel Tracker - Progress & Tasks
 
 ## Project Status: MVP DEVELOPMENT
 **Last Updated**: 2026-01-20
@@ -8,13 +8,13 @@
 ### Phase 1: Project Foundation ✅ COMPLETED
 | Task | Status | Notes |
 |------|---------|-------|
-| Initialize git repository | ✅ COMPLETED | GitHub repo at wdvr/skratch |
-| Create claude.md with instructions | ✅ COMPLETED | Includes iOS tooling research |
-| Create progress.md (this file) | ✅ COMPLETED | Task tracking system |
+| Initialize git repository | ✅ COMPLETED | GitHub repo at wdvr/footprint |
+| Create CLAUDE.md with instructions | ✅ COMPLETED | Includes iOS tooling research |
+| Create PROGRESS.md (this file) | ✅ COMPLETED | Task tracking system |
 | Create README.md | ✅ COMPLETED | Project overview |
 | Create .env template | ✅ COMPLETED | AWS credentials template |
 | Create .gitignore | ✅ COMPLETED | Swift, Python, AWS secrets |
-| Setup GitHub private repository | ✅ COMPLETED | wdvr/skratch |
+| Setup GitHub private repository | ✅ COMPLETED | wdvr/footprint |
 | Setup pre-commit hooks | ✅ COMPLETED | Ruff linting/formatting |
 
 ### Phase 2: Architecture & Research ✅ COMPLETED
@@ -58,7 +58,7 @@
 ### Phase 6: iOS App Foundation ✅ COMPLETED
 | Task | Status | Notes |
 |------|---------|-------|
-| Create Xcode project | ✅ COMPLETED | ios/Skratch |
+| Create Xcode project | ✅ COMPLETED | ios/Footprint |
 | Setup project structure | ✅ COMPLETED | MVVM architecture |
 | Implement Sign in with Apple UI | 🟡 BLOCKED | Requires paid Apple Developer ($99/yr) |
 | Create networking layer | ✅ COMPLETED | APIClient with async/await |
@@ -162,7 +162,7 @@ pre-commit run --all-files
 cd backend && pytest
 
 # iOS tests
-xcodebuild test -project ios/Skratch.xcodeproj -scheme Skratch -destination 'platform=iOS Simulator,name=iPhone 16'
+xcodebuild test -project ios/Footprint.xcodeproj -scheme Footprint -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
 ## Key Metrics & Success Criteria
@@ -175,4 +175,4 @@ xcodebuild test -project ios/Skratch.xcodeproj -scheme Skratch -destination 'pla
 - Swift 6 strict concurrency requires `nonisolated(unsafe)` for test mocks
 - Moto library excellent for DynamoDB testing
 - Pre-commit hooks catch issues before CI (saves time)
-- XcodeGen useful for managing multiple iOS projects (Skratch + Snow)
+- XcodeGen useful for managing multiple iOS projects (Footprint + Snow)

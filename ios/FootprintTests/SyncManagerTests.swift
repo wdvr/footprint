@@ -1,6 +1,6 @@
 import XCTest
 import SwiftData
-@testable import Skratch
+@testable import Footprint
 
 @MainActor
 final class SyncManagerTests: XCTestCase {

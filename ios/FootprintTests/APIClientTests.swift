@@ -1,5 +1,5 @@
 import XCTest
-@testable import Skratch
+@testable import Footprint
 
 /// Mock URLProtocol for testing network requests
 class MockURLProtocol: URLProtocol {
@@ -55,7 +55,7 @@ final class APIClientTests: XCTestCase {
 
     func testHealthCheckSuccess() async throws {
         let responseData = """
-        {"status": "healthy", "service": "skratch-api"}
+        {"status": "healthy", "service": "footprint-api"}
         """.data(using: .utf8)!
 
         MockURLProtocol.requestHandler = { request in
@@ -181,7 +181,7 @@ final class APIClientTests: XCTestCase {
 
     func testHealthResponseDecoding() throws {
         let json = """
-        {"status": "healthy", "service": "skratch-api"}
+        {"status": "healthy", "service": "footprint-api"}
         """.data(using: .utf8)!
 
         let decoder = JSONDecoder()
@@ -189,7 +189,7 @@ final class APIClientTests: XCTestCase {
         let response = try decoder.decode(APIClient.HealthResponse.self, from: json)
 
         XCTAssertEqual(response.status, "healthy")
-        XCTAssertEqual(response.service, "skratch-api")
+        XCTAssertEqual(response.service, "footprint-api")
     }
 
     func testStatsResponseDecoding() throws {

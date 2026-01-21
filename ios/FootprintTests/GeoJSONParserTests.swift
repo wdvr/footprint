@@ -2,7 +2,7 @@ import CoreLocation
 import MapKit
 import XCTest
 
-@testable import Skratch
+@testable import Footprint
 
 final class GeoJSONParserTests: XCTestCase {
 

@@ -1,4 +1,4 @@
-# Claude Working Instructions - Skratch Travel Tracker
+# Claude Working Instructions - Footprint Travel Tracker
 
 ## Project Overview
 This is a travel tracking application that allows users to mark countries, US states, and Canadian provinces they have visited on an interactive world map. The app focuses on simple, intuitive tracking with offline sync capabilities and beautiful data visualization.
@@ -133,7 +133,7 @@ cd infrastructure
 pulumi preview --diff
 
 # iOS testing (from Xcode or command line)
-xcodebuild test -scheme Skratch -destination 'platform=iOS Simulator,name=iPhone 15'
+xcodebuild test -scheme Footprint -destination 'platform=iOS Simulator,name=iPhone 15'
 ```
 
 ### Initial Geographic Regions
@@ -143,15 +143,15 @@ xcodebuild test -scheme Skratch -destination 'platform=iOS Simulator,name=iPhone
 
 ### Project Structure
 ```
-skratch/
+footprint/
 ├── ios/              # SwiftUI iOS app
 ├── backend/          # Python Lambda functions
 ├── infrastructure/   # Pulumi AWS setup
 ├── data/            # Geographic boundary files
 ├── .env             # Environment variables
 ├── README.md        # Project overview
-├── claude.md        # This file
-└── progress.md      # Task tracking and status
+├── CLAUDE.md        # This file
+└── PROGRESS.md      # Task tracking and status
 ```
 
 ## Key Features to Implement
@@ -178,7 +178,7 @@ skratch/
 - [ ] AWS cost optimization for geographic applications
 
 ## Development Phases
-See `progress.md` for detailed task breakdown and current status.
+See `PROGRESS.md` for detailed task breakdown and current status.
 
 ---
 

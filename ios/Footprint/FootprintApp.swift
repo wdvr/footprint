@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 @main
-struct SkratchApp: App {
+struct FootprintApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             VisitedPlace.self,
@@ -57,7 +57,7 @@ struct LoginView: View {
                     .font(.system(size: 80))
                     .foregroundStyle(.tint)
 
-                Text("Skratch")
+                Text("Footprint")
                     .font(.largeTitle)
                     .fontWeight(.bold)
 
