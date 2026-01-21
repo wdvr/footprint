@@ -295,10 +295,15 @@ struct CountryListView: View {
 
     @State private var searchText = ""
     @State private var expandedCountries: Set<String> = []
+    @State private var collapsedContinents: Set<String> = []
     @State private var isRefreshing = false
 
     private var visitedCodes: Set<String> {
         Set(visitedPlaces.map { "\($0.regionType):\($0.regionCode)" })
+    }
+
+    private var isSearching: Bool {
+        !searchText.isEmpty
     }
 
     private var filteredCountries: [Country] {
@@ -311,19 +316,79 @@ struct CountryListView: View {
         }
     }
 
+    private func visitedCountInContinent(_ continent: Continent) -> Int {
+        GeographicData.countries
+            .filter { $0.continent == continent.rawValue }
+            .filter { isVisited(country: $0.id) }
+            .count
+    }
+
+    private func totalCountInContinent(_ continent: Continent) -> Int {
+        GeographicData.countries
+            .filter { $0.continent == continent.rawValue }
+            .count
+    }
+
     var body: some View {
         NavigationStack {
             List {
-                ForEach(filteredCountries) { country in
-                    CountryRow(
-                        country: country,
-                        isVisited: isVisited(country: country.id),
-                        isExpanded: expandedCountries.contains(country.id),
-                        visitedStates: visitedStatesFor(country: country.id),
-                        onToggleCountry: { toggleCountry(country) },
-                        onToggleExpand: { toggleExpand(country.id) },
-                        onToggleState: { state in toggleState(state, country: country) }
-                    )
+                if isSearching {
+                    // Flat list when searching
+                    ForEach(filteredCountries.sorted { $0.name < $1.name }) { country in
+                        CountryRow(
+                            country: country,
+                            isVisited: isVisited(country: country.id),
+                            isExpanded: expandedCountries.contains(country.id),
+                            visitedStates: visitedStatesFor(country: country.id),
+                            onToggleCountry: { toggleCountry(country) },
+                            onToggleExpand: { toggleExpand(country.id) },
+                            onToggleState: { state in toggleState(state, country: country) }
+                        )
+                    }
+                } else {
+                    // Grouped by continent with collapsible sections
+                    ForEach(GeographicData.countriesByContinent, id: \.continent.id) { group in
+                        Section {
+                            if !collapsedContinents.contains(group.continent.id) {
+                                ForEach(group.countries) { country in
+                                    CountryRow(
+                                        country: country,
+                                        isVisited: isVisited(country: country.id),
+                                        isExpanded: expandedCountries.contains(country.id),
+                                        visitedStates: visitedStatesFor(country: country.id),
+                                        onToggleCountry: { toggleCountry(country) },
+                                        onToggleExpand: { toggleExpand(country.id) },
+                                        onToggleState: { state in toggleState(state, country: country) }
+                                    )
+                                }
+                            }
+                        } header: {
+                            Button {
+                                withAnimation {
+                                    if collapsedContinents.contains(group.continent.id) {
+                                        collapsedContinents.remove(group.continent.id)
+                                    } else {
+                                        collapsedContinents.insert(group.continent.id)
+                                    }
+                                }
+                            } label: {
+                                HStack {
+                                    Text(group.continent.emoji)
+                                    Text(group.continent.rawValue)
+                                        .font(.headline)
+                                    Spacer()
+                                    Text("\(visitedCountInContinent(group.continent))/\(totalCountInContinent(group.continent))")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                    Image(systemName: collapsedContinents.contains(group.continent.id) ? "chevron.right" : "chevron.down")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
                 }
             }
             .listStyle(.plain)
