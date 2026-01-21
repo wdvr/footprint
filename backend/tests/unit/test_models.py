@@ -1,13 +1,11 @@
 """Test cases for Pydantic models."""
 
-import pytest
-from datetime import datetime
-from typing import Any, Dict
+from datetime import UTC, datetime
 
-from src.models.user import User, UserCreate, UserUpdate, AuthProvider, UserStats
-from src.models.visited_place import VisitedPlace, VisitedPlaceCreate, RegionType
-from src.models.geographic import Country, USState, CanadianProvince, ContinentCode
-from src.models.sync import SyncOperation, SyncOperationType, ConflictResolutionStrategy
+from src.models.geographic import CanadianProvince, ContinentCode, Country, USState
+from src.models.sync import ConflictResolutionStrategy, SyncOperation, SyncOperationType
+from src.models.user import AuthProvider, User, UserCreate, UserStats, UserUpdate
+from src.models.visited_place import RegionType, VisitedPlace, VisitedPlaceCreate
 
 
 class TestUserModels:
@@ -20,7 +18,7 @@ class TestUserModels:
             auth_provider=AuthProvider.APPLE,
             auth_provider_id="apple-user-456",
             email="test@example.com",
-            display_name="Test User"
+            display_name="Test User",
         )
 
         assert user.user_id == "test-user-123"
@@ -34,7 +32,7 @@ class TestUserModels:
         user_create = UserCreate(
             auth_provider=AuthProvider.EMAIL,
             auth_provider_id="email-user-789",
-            email="create@example.com"
+            email="create@example.com",
         )
 
         assert user_create.auth_provider == AuthProvider.EMAIL
@@ -43,8 +41,7 @@ class TestUserModels:
     def test_user_update_model(self):
         """Test UserUpdate model validation."""
         user_update = UserUpdate(
-            display_name="Updated Name",
-            privacy_settings={"share_stats": False}
+            display_name="Updated Name", privacy_settings={"share_stats": False}
         )
 
         assert user_update.display_name == "Updated Name"
@@ -60,7 +57,7 @@ class TestUserModels:
             canadian_provinces_visited=5,
             canadian_provinces_percentage=38.46,
             total_regions_visited=80,
-            total_regions_percentage=30.89
+            total_regions_percentage=30.89,
         )
 
         assert stats.countries_visited == 50
@@ -77,7 +74,7 @@ class TestVisitedPlaceModels:
             user_id="test-user-123",
             region_type=RegionType.COUNTRY,
             region_code="US",
-            region_name="United States"
+            region_name="United States",
         )
 
         assert place.user_id == "test-user-123"
@@ -92,7 +89,7 @@ class TestVisitedPlaceModels:
             region_type=RegionType.US_STATE,
             region_code="CA",
             region_name="California",
-            notes="Amazing trip to San Francisco!"
+            notes="Amazing trip to San Francisco!",
         )
 
         assert place_create.region_type == RegionType.US_STATE
@@ -107,7 +104,7 @@ class TestVisitedPlaceModels:
             region_type=RegionType.CANADIAN_PROVINCE,
             region_code="BC",
             region_name="British Columbia",
-            visited_date=visit_date
+            visited_date=visit_date,
         )
 
         assert place.visited_date == visit_date
@@ -133,7 +130,7 @@ class TestGeographicModels:
             bbox_east=-66.885444,
             bbox_west=170.5957,
             center_lat=39.8283,
-            center_lon=-98.5795
+            center_lon=-98.5795,
         )
 
         assert country.iso_alpha_2 == "US"
@@ -155,7 +152,7 @@ class TestGeographicModels:
             bbox_east=-114.131211,
             bbox_west=-124.409591,
             center_lat=36.116203,
-            center_lon=-119.681564
+            center_lon=-119.681564,
         )
 
         assert state.abbreviation == "CA"
@@ -176,7 +173,7 @@ class TestGeographicModels:
             bbox_east=-114.0,
             bbox_west=-139.0,
             center_lat=54.0,
-            center_lon=-125.0
+            center_lon=-125.0,
         )
 
         assert province.abbreviation == "BC"
@@ -197,7 +194,7 @@ class TestSyncModels:
             entity_id="place-789",
             entity_data={"region_code": "FR", "region_name": "France"},
             client_version=1,
-            client_timestamp=datetime.utcnow()
+            client_timestamp=datetime.now(UTC),
         )
 
         assert operation.operation_id == "op-123"
@@ -217,10 +214,10 @@ class TestSyncModels:
             entity_data={"notes": "Updated notes from client"},
             client_version=2,
             server_version=3,
-            client_timestamp=datetime.utcnow(),
+            client_timestamp=datetime.now(UTC),
             has_conflict=True,
             conflict_details={"field": "notes", "reason": "version_mismatch"},
-            resolution_strategy=ConflictResolutionStrategy.CLIENT_WINS
+            resolution_strategy=ConflictResolutionStrategy.CLIENT_WINS,
         )
 
         assert operation.has_conflict is True
