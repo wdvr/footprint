@@ -142,6 +142,7 @@ data/raw/
 *.prj
 *.cpg
 *.geojson
+!ios/*/Resources/GeoData/*.geojson
 *.topojson
 
 # Compiled geographic data
