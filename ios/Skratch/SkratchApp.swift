@@ -5,7 +5,6 @@ import SwiftData
 struct SkratchApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            User.self,
             VisitedPlace.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
