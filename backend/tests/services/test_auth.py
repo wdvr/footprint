@@ -14,6 +14,7 @@ class TestTokenCreation:
     def test_create_access_token(self):
         """Test creating an access token."""
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         token = auth.create_access_token("user-123")
@@ -28,6 +29,7 @@ class TestTokenCreation:
     def test_create_refresh_token(self):
         """Test creating a refresh token."""
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         token = auth.create_refresh_token("user-456")
@@ -40,6 +42,7 @@ class TestTokenCreation:
     def test_access_token_expires(self):
         """Test access token has correct expiration."""
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         token = auth.create_access_token("user-789")
@@ -58,6 +61,7 @@ class TestTokenVerification:
     def test_verify_access_token_valid(self):
         """Test verifying a valid access token."""
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         token = auth.create_access_token("verify-user")
@@ -68,6 +72,7 @@ class TestTokenVerification:
     def test_verify_access_token_invalid(self):
         """Test verifying an invalid token."""
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         result = auth.verify_access_token("invalid-token")
@@ -77,6 +82,7 @@ class TestTokenVerification:
     def test_verify_access_token_wrong_type(self):
         """Test verifying a refresh token as access token fails."""
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         refresh_token = auth.create_refresh_token("user-123")
@@ -87,6 +93,7 @@ class TestTokenVerification:
     def test_verify_refresh_token_valid(self):
         """Test verifying a valid refresh token."""
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         token = auth.create_refresh_token("refresh-user")
@@ -97,6 +104,7 @@ class TestTokenVerification:
     def test_verify_refresh_token_invalid(self):
         """Test verifying an invalid refresh token."""
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         result = auth.verify_refresh_token("invalid-token")
@@ -106,6 +114,7 @@ class TestTokenVerification:
     def test_verify_refresh_token_wrong_type(self):
         """Test verifying an access token as refresh token fails."""
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         access_token = auth.create_access_token("user-123")
@@ -116,6 +125,7 @@ class TestTokenVerification:
     def test_verify_expired_token(self):
         """Test verifying an expired token."""
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         # Create token that's already expired
@@ -140,6 +150,7 @@ class TestAppleTokenVerification:
     async def test_verify_apple_token_success(self):
         """Test verifying a valid Apple token."""
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         # Mock the _get_apple_public_keys method
@@ -175,6 +186,7 @@ class TestAppleTokenVerification:
     async def test_verify_apple_token_no_matching_key(self):
         """Test verifying Apple token with no matching key."""
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         mock_key = {"kid": "different-key-id"}
@@ -193,6 +205,7 @@ class TestAppleTokenVerification:
         from jose import JWTError
 
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         mock_key = {"kid": "test-key-id"}
@@ -214,6 +227,7 @@ class TestAuthenticateApple:
     async def test_authenticate_apple_new_user(self):
         """Test Apple authentication creates new user."""
         from src.services.auth import AppleTokenPayload, AuthService
+
         auth = AuthService()
 
         # Mock verify_apple_token
@@ -246,6 +260,7 @@ class TestAuthenticateApple:
     async def test_authenticate_apple_existing_user(self):
         """Test Apple authentication returns existing user."""
         from src.services.auth import AppleTokenPayload, AuthService
+
         auth = AuthService()
 
         mock_payload = AppleTokenPayload(
@@ -274,6 +289,7 @@ class TestAuthenticateApple:
     async def test_authenticate_apple_invalid_token(self):
         """Test Apple authentication with invalid token."""
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         auth.verify_apple_token = AsyncMock(return_value=None)
@@ -289,6 +305,7 @@ class TestRefreshTokens:
     def test_refresh_tokens_success(self):
         """Test successful token refresh."""
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         refresh_token = auth.create_refresh_token("refresh-user-123")
@@ -308,6 +325,7 @@ class TestRefreshTokens:
     def test_refresh_tokens_invalid_token(self):
         """Test refresh with invalid token."""
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         result = auth.refresh_tokens("invalid-refresh-token")
@@ -317,6 +335,7 @@ class TestRefreshTokens:
     def test_refresh_tokens_user_not_found(self):
         """Test refresh when user no longer exists."""
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         refresh_token = auth.create_refresh_token("deleted-user")
@@ -336,6 +355,7 @@ class TestAppleKeyCaching:
     async def test_keys_are_cached(self):
         """Test that Apple keys are cached."""
         from src.services.auth import AuthService
+
         auth = AuthService()
 
         mock_response = MagicMock()

@@ -380,8 +380,16 @@ class TestBatchCreate:
             headers={"Authorization": "Bearer test-token"},
             json={
                 "places": [
-                    {"region_type": "country", "region_code": "DE", "region_name": "Germany"},
-                    {"region_type": "country", "region_code": "IT", "region_name": "Italy"},
+                    {
+                        "region_type": "country",
+                        "region_code": "DE",
+                        "region_name": "Germany",
+                    },
+                    {
+                        "region_type": "country",
+                        "region_code": "IT",
+                        "region_name": "Italy",
+                    },
                 ]
             },
         )

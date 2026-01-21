@@ -215,7 +215,9 @@ class TestGetCurrentUser:
 class TestDeleteAccount:
     """Tests for DELETE /auth/me endpoint."""
 
-    def test_delete_account_not_implemented(self, client, mock_auth_service, mock_db_service):
+    def test_delete_account_not_implemented(
+        self, client, mock_auth_service, mock_db_service
+    ):
         """Test account deletion returns 501."""
         mock_auth_service.verify_access_token.return_value = "user-123"
         mock_db_service.get_user.return_value = {

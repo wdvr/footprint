@@ -1,0 +1,36 @@
+# Pre-commit hooks for code quality
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Ruff - Fast Python linter and formatter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+        types_or: [python, pyi]
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^ios/
+      - id: end-of-file-fixer
+        exclude: ^ios/
+      - id: check-yaml
+        args: [--unsafe]
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # Pyright type checking (optional, can be slow)
+  # - repo: https://github.com/RobertCraiworthy/pyright-python
+  #   rev: v1.1.390
+  #   hooks:
+  #     - id: pyright
+  #       additional_dependencies: []
