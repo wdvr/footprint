@@ -5,10 +5,12 @@ This Pulumi program defines the AWS infrastructure for the Skratch travel tracki
 including DynamoDB tables, S3 buckets, Lambda functions, and API Gateway configuration.
 """
 
-import pulumi
-from pulumi import Config, export, ResourceOptions, Output, AssetArchive, FileAsset
-import pulumi_aws as aws
 import json
+import os
+
+import pulumi
+import pulumi_aws as aws
+from pulumi import AssetArchive, Config, FileArchive, FileAsset, ResourceOptions, export
 
 # Get configuration
 config = Config()
@@ -19,6 +21,7 @@ aws_region = aws.config.region or "us-east-1"
 # Get AWS account ID for globally unique names
 aws_account_id = aws.get_caller_identity().account_id
 
+
 # Create resource name prefix
 def resource_name(resource_type: str, include_account: bool = False) -> str:
     """Generate consistent resource names."""
@@ -26,11 +29,12 @@ def resource_name(resource_type: str, include_account: bool = False) -> str:
         return f"{app_name}-{resource_type}-{environment}-{aws_account_id}"
     return f"{app_name}-{resource_type}-{environment}"
 
+
 # Tags to apply to all resources
 common_tags = {
     "Environment": environment,
     "Application": app_name,
-    "ManagedBy": "Pulumi"
+    "ManagedBy": "Pulumi",
 }
 
 # =============================================================================
@@ -76,7 +80,7 @@ geo_data_bucket = aws.s3.Bucket(
     resource_name("geo-data"),
     bucket=resource_name("geo-data", include_account=True),
     tags=common_tags,
-    opts=ResourceOptions(protect=environment == "prod")
+    opts=ResourceOptions(protect=environment == "prod"),
 )
 
 # Block public access to the geo data bucket
@@ -111,14 +115,18 @@ geo_data_bucket_cors = aws.s3.BucketCorsConfigurationV2(
 lambda_role = aws.iam.Role(
     resource_name("lambda-role"),
     name=resource_name("lambda-role"),
-    assume_role_policy=json.dumps({
-        "Version": "2012-10-17",
-        "Statement": [{
-            "Effect": "Allow",
-            "Principal": {"Service": "lambda.amazonaws.com"},
-            "Action": "sts:AssumeRole"
-        }]
-    }),
+    assume_role_policy=json.dumps(
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": "lambda.amazonaws.com"},
+                    "Action": "sts:AssumeRole",
+                }
+            ],
+        }
+    ),
     tags=common_tags,
 )
 
@@ -133,45 +141,54 @@ lambda_basic_execution = aws.iam.RolePolicyAttachment(
 dynamodb_policy = aws.iam.RolePolicy(
     resource_name("lambda-dynamodb-policy"),
     role=lambda_role.id,
-    policy=dynamodb_table.arn.apply(lambda arn: json.dumps({
-        "Version": "2012-10-17",
-        "Statement": [{
-            "Effect": "Allow",
-            "Action": [
-                "dynamodb:GetItem",
-                "dynamodb:PutItem",
-                "dynamodb:UpdateItem",
-                "dynamodb:DeleteItem",
-                "dynamodb:Query",
-                "dynamodb:Scan",
-                "dynamodb:BatchGetItem",
-                "dynamodb:BatchWriteItem",
-            ],
-            "Resource": [arn, f"{arn}/index/*"]
-        }]
-    })),
+    policy=dynamodb_table.arn.apply(
+        lambda arn: json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "dynamodb:GetItem",
+                            "dynamodb:PutItem",
+                            "dynamodb:UpdateItem",
+                            "dynamodb:DeleteItem",
+                            "dynamodb:Query",
+                            "dynamodb:Scan",
+                            "dynamodb:BatchGetItem",
+                            "dynamodb:BatchWriteItem",
+                        ],
+                        "Resource": [arn, f"{arn}/index/*"],
+                    }
+                ],
+            }
+        )
+    ),
 )
 
 # S3 access policy for Lambda
 s3_policy = aws.iam.RolePolicy(
     resource_name("lambda-s3-policy"),
     role=lambda_role.id,
-    policy=geo_data_bucket.arn.apply(lambda arn: json.dumps({
-        "Version": "2012-10-17",
-        "Statement": [{
-            "Effect": "Allow",
-            "Action": ["s3:GetObject", "s3:ListBucket"],
-            "Resource": [arn, f"{arn}/*"]
-        }]
-    })),
+    policy=geo_data_bucket.arn.apply(
+        lambda arn: json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:GetObject", "s3:ListBucket"],
+                        "Resource": [arn, f"{arn}/*"],
+                    }
+                ],
+            }
+        )
+    ),
 )
 
 # =============================================================================
 # Lambda Function
 # =============================================================================
-
-import os
-from pulumi import FileArchive
 
 # Check if deployment package exists, otherwise use placeholder
 lambda_package_path = os.path.join(os.path.dirname(__file__), "lambda_package.zip")
@@ -183,11 +200,13 @@ if os.path.exists(lambda_package_path):
     pulumi.log.info("Using FastAPI deployment package")
 else:
     # Fall back to placeholder for initial setup
-    pulumi.log.warn("Lambda package not found, using placeholder. Run deploy_lambda.py first.")
+    pulumi.log.warn(
+        "Lambda package not found, using placeholder. Run deploy_lambda.py first."
+    )
     lambda_dir = os.path.join(os.path.dirname(__file__), "lambda_placeholder")
     os.makedirs(lambda_dir, exist_ok=True)
     lambda_file = os.path.join(lambda_dir, "handler.py")
-    placeholder_code = '''import json
+    placeholder_code = """import json
 import os
 
 def handler(event, context):
@@ -202,7 +221,7 @@ def handler(event, context):
             "environment": os.environ.get("ENVIRONMENT", "unknown"),
         })
     }
-'''
+"""
     with open(lambda_file, "w") as f:
         f.write(placeholder_code)
     lambda_code = AssetArchive({"handler.py": FileAsset(lambda_file)})
@@ -223,7 +242,8 @@ api_lambda = aws.lambda_.Function(
             "ENVIRONMENT": environment,
             "DYNAMODB_TABLE": dynamodb_table.name,
             "GEO_DATA_BUCKET": geo_data_bucket.bucket,
-            "JWT_SECRET": config.get_secret("jwt_secret") or "dev-secret-change-in-production",
+            "JWT_SECRET": config.get_secret("jwt_secret")
+            or "dev-secret-change-in-production",
             "APPLE_BUNDLE_ID": "com.skratch.app",
         }
     ),
@@ -302,4 +322,4 @@ export("app_name", app_name)
 # Output deployment information
 pulumi.log.info(f"Deploying Skratch infrastructure for environment: {environment}")
 pulumi.log.info(f"DynamoDB Table: {resource_name('table')}")
-pulumi.log.info(f"API Gateway will be available at the exported api_url")
+pulumi.log.info("API Gateway will be available at the exported api_url")

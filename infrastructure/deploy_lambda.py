@@ -43,13 +43,20 @@ def install_dependencies_docker():
     # Use Amazon Linux 2 with Python for compatible binaries
     # Force x86_64 platform for Lambda compatibility
     docker_cmd = [
-        "docker", "run", "--rm",
-        "--platform", "linux/amd64",
-        "-v", f"{BUILD_DIR}:/build",
-        "-v", f"{PACKAGE_DIR}:/package",
-        "--entrypoint", "",
+        "docker",
+        "run",
+        "--rm",
+        "--platform",
+        "linux/amd64",
+        "-v",
+        f"{BUILD_DIR}:/build",
+        "-v",
+        f"{PACKAGE_DIR}:/package",
+        "--entrypoint",
+        "",
         "public.ecr.aws/lambda/python:3.11",
-        "/bin/bash", "-c",
+        "/bin/bash",
+        "-c",
         "pip install -r /build/requirements.txt -t /package --upgrade",
     ]
 
@@ -66,12 +73,20 @@ def install_dependencies_pip():
     # Install with Linux platform targeting
     subprocess.run(
         [
-            sys.executable, "-m", "pip", "install",
-            "-r", str(req_file),
-            "-t", str(PACKAGE_DIR),
-            "--platform", "manylinux2014_x86_64",
-            "--implementation", "cp",
-            "--python-version", "3.11",
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "-r",
+            str(req_file),
+            "-t",
+            str(PACKAGE_DIR),
+            "--platform",
+            "manylinux2014_x86_64",
+            "--implementation",
+            "cp",
+            "--python-version",
+            "3.11",
             "--only-binary=:all:",
             "--upgrade",
             "--quiet",

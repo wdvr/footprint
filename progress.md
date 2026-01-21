@@ -1,153 +1,178 @@
 # Skratch Travel Tracker - Progress & Tasks
 
-## Project Status: SETUP PHASE
+## Project Status: MVP DEVELOPMENT
 **Last Updated**: 2026-01-20
 
-## Current Sprint: Initial Setup & Architecture
+## Current Sprint: Testing & Polish
 
-### Phase 1: Project Foundation ✅ IN PROGRESS
+### Phase 1: Project Foundation ✅ COMPLETED
 | Task | Status | Notes |
 |------|---------|-------|
-| Initialize git repository | 🟡 PENDING | Git repo initialization |
+| Initialize git repository | ✅ COMPLETED | GitHub repo at wdvr/skratch |
 | Create claude.md with instructions | ✅ COMPLETED | Includes iOS tooling research |
 | Create progress.md (this file) | ✅ COMPLETED | Task tracking system |
-| Create README.md | 🟡 PENDING | Project overview |
-| Create .env template | 🟡 PENDING | AWS credentials template |
-| Create .gitignore | 🟡 PENDING | Swift, Python, AWS secrets |
-| Setup GitHub private repository | 🟡 PENDING | Remote repository setup |
+| Create README.md | ✅ COMPLETED | Project overview |
+| Create .env template | ✅ COMPLETED | AWS credentials template |
+| Create .gitignore | ✅ COMPLETED | Swift, Python, AWS secrets |
+| Setup GitHub private repository | ✅ COMPLETED | wdvr/skratch |
+| Setup pre-commit hooks | ✅ COMPLETED | Ruff linting/formatting |
 
-### Phase 2: Architecture & Research
+### Phase 2: Architecture & Research ✅ COMPLETED
 | Task | Status | Notes |
 |------|---------|-------|
-| Research geographic data sources | 🟡 PENDING | Country/state boundary files |
-| Research MapKit custom overlays | 🟡 PENDING | Region highlighting techniques |
-| Design database schema | 🟡 PENDING | DynamoDB table structure |
-| Design API endpoints | 🟡 PENDING | REST API specification |
-| Design sync architecture | 🟡 PENDING | Offline-first conflict resolution |
-| Create system architecture diagram | 🟡 PENDING | AWS services integration |
+| Research geographic data sources | ✅ COMPLETED | Using country list data |
+| Design database schema | ✅ COMPLETED | DynamoDB single-table design |
+| Design API endpoints | ✅ COMPLETED | REST API with FastAPI |
+| Design sync architecture | ✅ COMPLETED | Version-based conflict resolution |
+| Create system architecture diagram | ✅ COMPLETED | AWS Lambda + API Gateway |
 
-### Phase 3: Backend Infrastructure
+### Phase 3: Backend Infrastructure ✅ COMPLETED
 | Task | Status | Notes |
 |------|---------|-------|
-| Setup Pulumi project | 🟡 PENDING | Infrastructure as Code |
-| Create DynamoDB tables | 🟡 PENDING | Users, visited places, sync |
-| Setup API Gateway | 🟡 PENDING | REST API configuration |
-| Create Lambda function skeleton | 🟡 PENDING | User data processor |
-| Setup CloudWatch monitoring | 🟡 PENDING | Logging and alerts |
-| Implement Sign in with Apple | 🟡 PENDING | AWS Cognito integration |
+| Setup Pulumi project | ✅ COMPLETED | infrastructure/__main__.py |
+| Create DynamoDB tables | ✅ COMPLETED | Single table with GSI |
+| Setup API Gateway | ✅ COMPLETED | HTTP API v2 |
+| Create Lambda function | ✅ COMPLETED | FastAPI on Lambda |
+| Setup CloudWatch monitoring | ✅ COMPLETED | Basic logging enabled |
+| Implement Sign in with Apple backend | ✅ COMPLETED | JWT verification ready |
 
-### Phase 4: Geographic Data Pipeline
+### Phase 4: Geographic Data Pipeline 🟡 PARTIAL
 | Task | Status | Notes |
 |------|---------|-------|
-| Acquire country boundary data | 🟡 PENDING | ISO 3166 with coordinates |
+| Acquire country boundary data | 🟡 PENDING | For map visualization |
 | Acquire US state boundary data | 🟡 PENDING | All 50 states + DC |
 | Acquire Canadian province data | 🟡 PENDING | 10 provinces + 3 territories |
-| Process and optimize boundary files | 🟡 PENDING | Reduce file sizes for mobile |
-| Create geographic lookup service | 🟡 PENDING | Point-in-polygon detection |
-| Store geographic data in S3 | 🟡 PENDING | Efficient data distribution |
+| Country list with codes | ✅ COMPLETED | 195 countries in app |
+| Store geographic data in S3 | ✅ COMPLETED | Bucket configured |
 
-### Phase 5: API Development
+### Phase 5: API Development ✅ COMPLETED
 | Task | Status | Notes |
 |------|---------|-------|
-| Create user profile endpoints | 🟡 PENDING | CRUD operations |
-| Create visited places endpoints | 🟡 PENDING | Mark/unmark regions |
-| Create sync endpoints | 🟡 PENDING | Conflict resolution logic |
-| Create statistics endpoints | 🟡 PENDING | Travel analytics |
-| Implement API authentication | 🟡 PENDING | JWT tokens |
-| Add API rate limiting | 🟡 PENDING | Abuse prevention |
-| Create API documentation | 🟡 PENDING | OpenAPI spec |
+| Create user profile endpoints | ✅ COMPLETED | /api/v1/users/* |
+| Create visited places endpoints | ✅ COMPLETED | /api/v1/places/* |
+| Create sync endpoints | ✅ COMPLETED | /api/v1/sync/* |
+| Create statistics endpoints | ✅ COMPLETED | Stats in user/places |
+| Implement API authentication | ✅ COMPLETED | JWT tokens |
+| Create API documentation | ✅ COMPLETED | OpenAPI auto-generated |
 
-### Phase 6: iOS App Foundation
+### Phase 6: iOS App Foundation ✅ COMPLETED
 | Task | Status | Notes |
 |------|---------|-------|
-| Create Xcode project | 🟡 PENDING | SwiftUI app template |
-| Setup project structure | 🟡 PENDING | MVVM architecture |
-| Implement Sign in with Apple | 🟡 PENDING | User authentication |
-| Create networking layer | 🟡 PENDING | API client |
-| Setup SwiftData models | 🟡 PENDING | Offline storage |
-| Create data sync manager | 🟡 PENDING | Background sync service |
+| Create Xcode project | ✅ COMPLETED | ios/Skratch |
+| Setup project structure | ✅ COMPLETED | MVVM architecture |
+| Implement Sign in with Apple UI | 🟡 BLOCKED | Requires paid Apple Developer ($99/yr) |
+| Create networking layer | ✅ COMPLETED | APIClient with async/await |
+| Setup SwiftData models | ✅ COMPLETED | Country, VisitedPlace models |
+| Create data sync manager | ✅ COMPLETED | SyncManager service |
 
-### Phase 7: Map Interface Development
+### Phase 7: Map Interface Development 🟡 PENDING
 | Task | Status | Notes |
 |------|---------|-------|
 | Setup MapKit integration | 🟡 PENDING | World map view |
 | Implement custom map overlays | 🟡 PENDING | Region highlighting |
 | Create region selection logic | 🟡 PENDING | Tap detection |
 | Implement map interactions | 🟡 PENDING | Pan, zoom, region focus |
-| Add visual feedback | 🟡 PENDING | Selection animations |
-| Optimize map performance | 🟡 PENDING | Memory and CPU usage |
 
-### Phase 8: Core Feature Implementation
+### Phase 8: Core Feature Implementation ✅ MOSTLY COMPLETE
 | Task | Status | Notes |
 |------|---------|-------|
-| Implement visit tracking | 🟡 PENDING | Mark regions as visited |
-| Create statistics calculator | 🟡 PENDING | Progress percentages |
-| Implement offline storage | 🟡 PENDING | SwiftData integration |
-| Create sync conflict resolution | 🟡 PENDING | Merge strategies |
+| Implement visit tracking | ✅ COMPLETED | Toggle countries visited |
+| Create statistics calculator | ✅ COMPLETED | Progress percentages |
+| Implement offline storage | ✅ COMPLETED | SwiftData integration |
+| Create sync conflict resolution | ✅ COMPLETED | Version-based merge |
 | Add data export features | 🟡 PENDING | Share travel maps |
-| Implement search functionality | 🟡 PENDING | Find countries/states |
+| Implement search functionality | ✅ COMPLETED | Filter countries |
 
-### Phase 9: UI/UX Polish
+### Phase 9: UI/UX Polish ✅ MOSTLY COMPLETE
 | Task | Status | Notes |
 |------|---------|-------|
-| Design app navigation | 🟡 PENDING | TabView structure |
-| Create statistics dashboard | 🟡 PENDING | Progress visualization |
-| Create settings/profile view | 🟡 PENDING | User preferences |
+| Design app navigation | ✅ COMPLETED | TabView with 4 tabs |
+| Create statistics dashboard | ✅ COMPLETED | Stats view |
+| Create settings/profile view | ✅ COMPLETED | Settings tab with sign-out |
+| Add sync status indicator | ✅ COMPLETED | Toolbar indicator |
+| Add pull-to-refresh | ✅ COMPLETED | On country list |
 | Implement accessibility | 🟡 PENDING | VoiceOver, Dynamic Type |
-| Add haptic feedback | 🟡 PENDING | Touch interactions |
-| Polish animations | 🟡 PENDING | Smooth transitions |
 
-### Phase 10: Testing & Quality
+### Phase 10: Testing & Quality ✅ MOSTLY COMPLETE
 | Task | Status | Notes |
 |------|---------|-------|
-| Setup unit tests (Backend) | 🟡 PENDING | Python pytest |
-| Setup integration tests (API) | 🟡 PENDING | End-to-end testing |
-| Setup unit tests (iOS) | 🟡 PENDING | XCTest framework |
+| Setup unit tests (Backend) | ✅ COMPLETED | 92 tests passing |
+| Setup integration tests (API) | ✅ COMPLETED | API route tests |
+| Setup unit tests (iOS) | ✅ COMPLETED | 31 tests passing |
 | Setup UI tests (iOS) | 🟡 PENDING | SwiftUI testing |
-| Test geographic calculations | 🟡 PENDING | Boundary accuracy |
-| Test sync scenarios | 🟡 PENDING | Offline/online transitions |
+| Test sync scenarios | ✅ COMPLETED | In test suite |
 | Performance testing | 🟡 PENDING | Map rendering, sync speed |
-| Security testing | 🟡 PENDING | API vulnerability scan |
 
-### Phase 11: Deployment & Launch
+### Phase 11: Deployment & Launch 🟡 PARTIAL
 | Task | Status | Notes |
 |------|---------|-------|
-| Deploy staging environment | 🟡 PENDING | AWS staging setup |
+| Deploy dev environment | ✅ COMPLETED | AWS dev stack live |
 | Deploy production environment | 🟡 PENDING | AWS production setup |
-| Setup CI/CD pipeline | 🟡 PENDING | GitHub Actions |
+| Setup CI/CD pipeline | ✅ COMPLETED | GitHub Actions |
 | App Store preparation | 🟡 PENDING | Screenshots, metadata |
 | Beta testing | 🟡 PENDING | TestFlight distribution |
 | Production launch | 🟡 PENDING | App Store submission |
 
-## Technical Decisions Needed
+## Active PRs
+- PR #4: Backend tests (feature/backend-tests) - Ready for merge
 
-### Immediate Questions
-1. **Geographic Data Format**: GeoJSON, Shapefile, or custom format for boundaries?
-2. **Map Rendering**: Native MapKit overlays vs custom drawing for performance?
-3. **Sync Frequency**: Real-time, periodic, or manual sync triggers?
-4. **Data Storage**: Regional data bundled with app or downloaded on-demand?
+## Blocking Issues
 
-### Research Required
-1. **Boundary Data Sources**: Natural Earth, OpenStreetMap, or commercial providers
-2. **Point-in-Polygon Libraries**: Fast geographic calculations for mobile
-3. **Offline Map Strategies**: Tile caching vs vector data
-4. **Export Formats**: Image, PDF, or interactive web map for sharing
+### 🔴 Apple Developer Program Required
+Sign in with Apple requires a paid Apple Developer Program membership ($99/year).
+Without this, users cannot authenticate. Options:
+1. Purchase Apple Developer membership
+2. Implement alternative auth (email/password) as fallback
+
+## Next Steps (Priority Order)
+
+### Immediate (This Week)
+1. **Apple Developer Setup** - Purchase membership to enable Sign in with Apple
+2. **Merge PR #4** - Backend tests are ready
+3. **Map Visualization** - Add MapKit with country overlays
+
+### Short Term
+4. **Geographic Boundary Data** - Acquire GeoJSON for country borders
+5. **US States & Canadian Provinces** - Expand beyond countries
+6. **Production Deployment** - Deploy prod AWS stack
+
+### Medium Term
+7. **UI Polish** - Accessibility, animations, haptic feedback
+8. **Data Export** - Share travel maps as images
+9. **TestFlight Beta** - Internal testing
+
+## Technical Stack
+- **Backend**: Python 3.11, FastAPI, AWS Lambda
+- **Database**: DynamoDB (single-table design)
+- **Infrastructure**: Pulumi (TypeScript config, Python runtime)
+- **iOS**: Swift 6, SwiftUI, SwiftData
+- **CI/CD**: GitHub Actions
+- **Code Quality**: Ruff (linting/formatting), pre-commit hooks
+
+## Development Setup
+```bash
+# Install pre-commit hooks
+pip install pre-commit
+pre-commit install
+
+# Run hooks manually
+pre-commit run --all-files
+
+# Backend tests
+cd backend && pytest
+
+# iOS tests
+xcodebuild test -project ios/Skratch.xcodeproj -scheme Skratch -destination 'platform=iOS Simulator,name=iPhone 16'
+```
 
 ## Key Metrics & Success Criteria
-- **Geographic Accuracy**: Region detection accuracy >99%
-- **Performance**: Map interaction response time <100ms
-- **Reliability**: Sync success rate >99%
-- **User Experience**: App launch time <2 seconds
-- **Offline Capability**: Full functionality without internet
-
-## Next Steps
-1. Complete project foundation setup
-2. Research and acquire geographic boundary data
-3. Design and implement sync architecture
-4. Begin iOS map interface development
+- **Test Coverage**: 92 backend + 31 iOS tests passing
+- **CI/CD**: All PRs run automated tests
+- **Code Quality**: Pre-commit hooks enforce standards
+- **Offline Capability**: Full functionality without internet ✅
 
 ## Notes & Learnings
-- Add notes here as we progress through development
-- Document any challenges or solutions discovered
-- Track performance optimizations and their impact
-- Geographic data size optimization strategies
+- Swift 6 strict concurrency requires `nonisolated(unsafe)` for test mocks
+- Moto library excellent for DynamoDB testing
+- Pre-commit hooks catch issues before CI (saves time)
+- XcodeGen useful for managing multiple iOS projects (Skratch + Snow)
