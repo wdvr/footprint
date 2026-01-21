@@ -1,20 +1,21 @@
 """Pytest configuration and fixtures."""
 
-import pytest
 from datetime import datetime
-from typing import Generator, Dict, Any
-from moto import mock_dynamodb, mock_s3, mock_cognito_idp
-import boto3
+from typing import Any
 
-from src.models.user import User, AuthProvider
-from src.models.visited_place import VisitedPlace, RegionType
-from src.models.geographic import Country, USState, CanadianProvince, ContinentCode
+import boto3
+import pytest
+from moto import mock_aws
+
+from src.models.geographic import ContinentCode, Country, USState
+from src.models.user import AuthProvider, User
+from src.models.visited_place import RegionType, VisitedPlace
 
 
 @pytest.fixture
-def mock_aws():
+def mock_aws_services():
     """Mock AWS services for testing."""
-    with mock_dynamodb(), mock_s3(), mock_cognito_idp():
+    with mock_aws():
         yield
 
 
@@ -31,7 +32,7 @@ def sample_user() -> User:
         us_states_visited=10,
         canadian_provinces_visited=2,
         created_at=datetime(2024, 1, 15, 10, 0, 0),
-        updated_at=datetime(2024, 1, 20, 15, 30, 0)
+        updated_at=datetime(2024, 1, 20, 15, 30, 0),
     )
 
 
@@ -45,7 +46,7 @@ def sample_visited_places() -> list[VisitedPlace]:
             region_code="US",
             region_name="United States",
             visited_date=datetime(2023, 6, 15),
-            notes="Amazing road trip across the country"
+            notes="Amazing road trip across the country",
         ),
         VisitedPlace(
             user_id="test-user-123",
@@ -53,7 +54,7 @@ def sample_visited_places() -> list[VisitedPlace]:
             region_code="CA",
             region_name="California",
             visited_date=datetime(2023, 7, 4),
-            notes="San Francisco and Los Angeles"
+            notes="San Francisco and Los Angeles",
         ),
         VisitedPlace(
             user_id="test-user-123",
@@ -61,8 +62,8 @@ def sample_visited_places() -> list[VisitedPlace]:
             region_code="BC",
             region_name="British Columbia",
             visited_date=datetime(2024, 1, 10),
-            notes="Beautiful Vancouver and Whistler"
-        )
+            notes="Beautiful Vancouver and Whistler",
+        ),
     ]
 
 
@@ -86,7 +87,7 @@ def sample_countries() -> list[Country]:
             bbox_east=-66.885444,
             bbox_west=170.5957,
             center_lat=39.8283,
-            center_lon=-98.5795
+            center_lon=-98.5795,
         ),
         Country(
             code="CA",
@@ -104,8 +105,8 @@ def sample_countries() -> list[Country]:
             bbox_east=-52.63637,
             bbox_west=-141.003,
             center_lat=56.130366,
-            center_lon=-106.346771
-        )
+            center_lon=-106.346771,
+        ),
     ]
 
 
@@ -127,7 +128,7 @@ def sample_us_states() -> list[USState]:
             bbox_east=-114.131211,
             bbox_west=-124.409591,
             center_lat=36.116203,
-            center_lon=-119.681564
+            center_lon=-119.681564,
         ),
         USState(
             code="NY",
@@ -143,50 +144,50 @@ def sample_us_states() -> list[USState]:
             bbox_east=-71.777491,
             bbox_west=-79.762152,
             center_lat=42.165726,
-            center_lon=-74.948051
-        )
+            center_lon=-74.948051,
+        ),
     ]
 
 
 @pytest.fixture
-def dynamodb_table_config() -> Dict[str, Any]:
+def dynamodb_table_config() -> dict[str, Any]:
     """DynamoDB table configuration for testing."""
     return {
-        'TableName': 'test-table',
-        'KeySchema': [
-            {'AttributeName': 'pk', 'KeyType': 'HASH'},
-            {'AttributeName': 'sk', 'KeyType': 'RANGE'}
+        "TableName": "test-table",
+        "KeySchema": [
+            {"AttributeName": "pk", "KeyType": "HASH"},
+            {"AttributeName": "sk", "KeyType": "RANGE"},
         ],
-        'AttributeDefinitions': [
-            {'AttributeName': 'pk', 'AttributeType': 'S'},
-            {'AttributeName': 'sk', 'AttributeType': 'S'}
+        "AttributeDefinitions": [
+            {"AttributeName": "pk", "AttributeType": "S"},
+            {"AttributeName": "sk", "AttributeType": "S"},
         ],
-        'BillingMode': 'PAY_PER_REQUEST'
+        "BillingMode": "PAY_PER_REQUEST",
     }
 
 
 @pytest.fixture
-def dynamodb_client(mock_aws):
+def dynamodb_client(mock_aws_services):
     """Create a mocked DynamoDB client."""
-    return boto3.client('dynamodb', region_name='us-east-1')
+    return boto3.client("dynamodb", region_name="us-east-1")
 
 
 @pytest.fixture
-def dynamodb_resource(mock_aws):
+def dynamodb_resource(mock_aws_services):
     """Create a mocked DynamoDB resource."""
-    return boto3.resource('dynamodb', region_name='us-east-1')
+    return boto3.resource("dynamodb", region_name="us-east-1")
 
 
 @pytest.fixture
-def s3_client(mock_aws):
+def s3_client(mock_aws_services):
     """Create a mocked S3 client."""
-    return boto3.client('s3', region_name='us-east-1')
+    return boto3.client("s3", region_name="us-east-1")
 
 
 @pytest.fixture
 def test_bucket_name() -> str:
     """Test S3 bucket name."""
-    return 'test-skratch-bucket'
+    return "test-skratch-bucket"
 
 
 # Test data constants

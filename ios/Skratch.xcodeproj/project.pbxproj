@@ -3,170 +3,243 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		E10A00001234567890ABCDEF /* SkratchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E10A00001234567890ABCDEE /* SkratchApp.swift */; };
-		E10A00001234567890ABCDF0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E10A00001234567890ABCDEF /* ContentView.swift */; };
-		E10A00001234567890ABCDF1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E10A00001234567890ABCDF0 /* Assets.xcassets */; };
-		E10A00001234567890ABCDF2 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E10A00001234567890ABCDF1 /* Preview Assets.xcassets */; };
+		39AABEB06866FCA9929F9BA3 /* SkratchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51D9B6658E4E4D0A374BDF41 /* SkratchApp.swift */; };
+		4929B813F2E108B24B8A95D2 /* SkratchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AEC5A63E47AF93428FFD61 /* SkratchTests.swift */; };
+		51DA867BFC2FA4306ADE3826 /* GeographicData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 739C79A196E7F43F2948B4BF /* GeographicData.swift */; };
+		86175EAF51658198276271FA /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B366DB5A8112F2A026734C2A /* AuthManager.swift */; };
+		8D80DF090525952444EA2BBA /* VisitedPlace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90B51E01ADAB2FB54EED8D1A /* VisitedPlace.swift */; };
+		946A0F83EB60F91C7ADB6347 /* SyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B59AF1458A22B2B2A8E2C54 /* SyncManager.swift */; };
+		C3F7F4C340B137E96052822E /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87B5ACE5DE8B894D416BB596 /* ContentView.swift */; };
+		DCACDA35D63CAF9BC69B1B90 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C6287D0D983350D6929466 /* Assets.xcassets */; };
+		F5D00A1BBCC1D3948F17FC58 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B7CACFB8C4E7DA2A39C2DB7 /* APIClient.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		B8652F0FD9D0F2B4D9B4CFD6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AEDB070D13B07EE43823CDAB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CF0A4CBEC952E3D7DAC1FBC2;
+			remoteInfo = Skratch;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
-		E10A00001234567890ABCDEB /* Skratch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Skratch.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		E10A00001234567890ABCDEE /* SkratchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkratchApp.swift; sourceTree = "<group>"; };
-		E10A00001234567890ABCDEF /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		E10A00001234567890ABCDF0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		E10A00001234567890ABCDF1 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		E10A00001234567890ABCDF3 /* SkratchTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SkratchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		E10A00001234567890ABCDF7 /* SkratchUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SkratchUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		0B59AF1458A22B2B2A8E2C54 /* SyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncManager.swift; sourceTree = "<group>"; };
+		3B7CACFB8C4E7DA2A39C2DB7 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		45DF996E69D2AEDA57D1A523 /* SkratchTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SkratchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		46AF8117A3AD000444417630 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		51D9B6658E4E4D0A374BDF41 /* SkratchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkratchApp.swift; sourceTree = "<group>"; };
+		739C79A196E7F43F2948B4BF /* GeographicData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeographicData.swift; sourceTree = "<group>"; };
+		87B5ACE5DE8B894D416BB596 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		90B51E01ADAB2FB54EED8D1A /* VisitedPlace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisitedPlace.swift; sourceTree = "<group>"; };
+		97C6287D0D983350D6929466 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B366DB5A8112F2A026734C2A /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
+		D8AEC5A63E47AF93428FFD61 /* SkratchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkratchTests.swift; sourceTree = "<group>"; };
+		FC06A4D652FB5BE661A00C37 /* Skratch.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Skratch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFrameworksBuildPhase section */
-		E10A00001234567890ABCDE8 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		E10A00001234567890ABCDF0 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		E10A00001234567890ABCDF4 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
 /* Begin PBXGroup section */
-		E10A00001234567890ABCDE2 = {
+		02D7B149CD571B9D768BA65B /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				E10A00001234567890ABCDED /* Skratch */,
-				E10A00001234567890ABCDF4 /* SkratchTests */,
-				E10A00001234567890ABCDF8 /* SkratchUITests */,
-				E10A00001234567890ABCDEC /* Products */,
+				90B51E01ADAB2FB54EED8D1A /* VisitedPlace.swift */,
 			);
+			path = Models;
 			sourceTree = "<group>";
 		};
-		E10A00001234567890ABCDEC /* Products */ = {
+		0953597575E4F715BEEDC2E7 /* Data */ = {
 			isa = PBXGroup;
 			children = (
-				E10A00001234567890ABCDEB /* Skratch.app */,
-				E10A00001234567890ABCDF3 /* SkratchTests.xctest */,
-				E10A00001234567890ABCDF7 /* SkratchUITests.xctest */,
+				739C79A196E7F43F2948B4BF /* GeographicData.swift */,
 			);
-			name = Products;
+			path = Data;
 			sourceTree = "<group>";
 		};
-		E10A00001234567890ABCDED /* Skratch */ = {
+		4D326C45408C3E3B3B89D17B /* SkratchTests */ = {
 			isa = PBXGroup;
 			children = (
-				E10A00001234567890ABCDEE /* SkratchApp.swift */,
-				E10A00001234567890ABCDEF /* ContentView.swift */,
-				E10A00001234567890ABCDF0 /* Assets.xcassets */,
-				E10A00001234567890ABCDF2 /* Preview Content */,
-			);
-			path = Skratch;
-			sourceTree = "<group>";
-		};
-		E10A00001234567890ABCDF2 /* Preview Content */ = {
-			isa = PBXGroup;
-			children = (
-				E10A00001234567890ABCDF1 /* Preview Assets.xcassets */,
-			);
-			path = "Preview Content";
-			sourceTree = "<group>";
-		};
-		E10A00001234567890ABCDF4 /* SkratchTests */ = {
-			isa = PBXGroup;
-			children = (
+				D8AEC5A63E47AF93428FFD61 /* SkratchTests.swift */,
 			);
 			path = SkratchTests;
 			sourceTree = "<group>";
 		};
-		E10A00001234567890ABCDF8 /* SkratchUITests */ = {
+		D501BF9C31104A51C73CDF3A = {
 			isa = PBXGroup;
 			children = (
+				D5C7635697C019E50267197C /* Skratch */,
+				4D326C45408C3E3B3B89D17B /* SkratchTests */,
+				F3E4DDE379698DE821233464 /* Products */,
 			);
-			path = SkratchUITests;
+			sourceTree = "<group>";
+		};
+		D5C7635697C019E50267197C /* Skratch */ = {
+			isa = PBXGroup;
+			children = (
+				97C6287D0D983350D6929466 /* Assets.xcassets */,
+				87B5ACE5DE8B894D416BB596 /* ContentView.swift */,
+				46AF8117A3AD000444417630 /* Info.plist */,
+				51D9B6658E4E4D0A374BDF41 /* SkratchApp.swift */,
+				0953597575E4F715BEEDC2E7 /* Data */,
+				02D7B149CD571B9D768BA65B /* Models */,
+				E147C2176D514782791E8FD1 /* Services */,
+			);
+			path = Skratch;
+			sourceTree = "<group>";
+		};
+		E147C2176D514782791E8FD1 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				3B7CACFB8C4E7DA2A39C2DB7 /* APIClient.swift */,
+				B366DB5A8112F2A026734C2A /* AuthManager.swift */,
+				0B59AF1458A22B2B2A8E2C54 /* SyncManager.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		F3E4DDE379698DE821233464 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				FC06A4D652FB5BE661A00C37 /* Skratch.app */,
+				45DF996E69D2AEDA57D1A523 /* SkratchTests.xctest */,
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		E10A00001234567890ABCDEA /* Skratch */ = {
+		4E655B3B91D7A403C99AEBD4 /* SkratchTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = E10A00001234567890ABCDFE /* Build configuration list for PBXNativeTarget "Skratch" */;
+			buildConfigurationList = C131C68E251FBB6CC80E6302 /* Build configuration list for PBXNativeTarget "SkratchTests" */;
 			buildPhases = (
-				E10A00001234567890ABCDE7 /* Sources */,
-				E10A00001234567890ABCDE8 /* Frameworks */,
-				E10A00001234567890ABCDE9 /* Resources */,
+				2DA93212E245292C3C99A0EB /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				ADB66AEBF1A83459A953E0F0 /* PBXTargetDependency */,
+			);
+			name = SkratchTests;
+			packageProductDependencies = (
+			);
+			productName = SkratchTests;
+			productReference = 45DF996E69D2AEDA57D1A523 /* SkratchTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		CF0A4CBEC952E3D7DAC1FBC2 /* Skratch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 39FB00DDB39DB46AB7B3D2C1 /* Build configuration list for PBXNativeTarget "Skratch" */;
+			buildPhases = (
+				0AFCC928A007368A8A572B63 /* Sources */,
+				F67A9E1C5F98AAFB1BF4D7A3 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			name = Skratch;
+			packageProductDependencies = (
+			);
 			productName = Skratch;
-			productReference = E10A00001234567890ABCDEB /* Skratch.app */;
+			productReference = FC06A4D652FB5BE661A00C37 /* Skratch.app */;
 			productType = "com.apple.product-type.application";
-		};
-		E10A00001234567890ABCDF2 /* SkratchTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = E10A00001234567890ABCE01 /* Build configuration list for PBXNativeTarget "SkratchTests" */;
-			buildPhases = (
-				E10A00001234567890ABCDEF /* Sources */,
-				E10A00001234567890ABCDF0 /* Frameworks */,
-				E10A00001234567890ABCDF1 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				E10A00001234567890ABCDF5 /* PBXTargetDependency */,
-			);
-			name = SkratchTests;
-			productName = SkratchTests;
-			productReference = E10A00001234567890ABCDF3 /* SkratchTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
-		E10A00001234567890ABCDF6 /* SkratchUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = E10A00001234567890ABCE04 /* Build configuration list for PBXNativeTarget "SkratchUITests" */;
-			buildPhases = (
-				E10A00001234567890ABCDF3 /* Sources */,
-				E10A00001234567890ABCDF4 /* Frameworks */,
-				E10A00001234567890ABCDF5 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				E10A00001234567890ABCDF9 /* PBXTargetDependency */,
-			);
-			name = SkratchUITests;
-			productName = SkratchUITests;
-			productReference = E10A00001234567890ABCDF7 /* SkratchUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
 
+/* Begin PBXProject section */
+		AEDB070D13B07EE43823CDAB /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					4E655B3B91D7A403C99AEBD4 = {
+						DevelopmentTeam = "";
+					};
+					CF0A4CBEC952E3D7DAC1FBC2 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 9A2F5FD73199B26E095EFD6D /* Build configuration list for PBXProject "Skratch" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = D501BF9C31104A51C73CDF3A;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				CF0A4CBEC952E3D7DAC1FBC2 /* Skratch */,
+				4E655B3B91D7A403C99AEBD4 /* SkratchTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		F67A9E1C5F98AAFB1BF4D7A3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DCACDA35D63CAF9BC69B1B90 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0AFCC928A007368A8A572B63 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F5D00A1BBCC1D3948F17FC58 /* APIClient.swift in Sources */,
+				86175EAF51658198276271FA /* AuthManager.swift in Sources */,
+				C3F7F4C340B137E96052822E /* ContentView.swift in Sources */,
+				51DA867BFC2FA4306ADE3826 /* GeographicData.swift in Sources */,
+				39AABEB06866FCA9929F9BA3 /* SkratchApp.swift in Sources */,
+				946A0F83EB60F91C7ADB6347 /* SyncManager.swift in Sources */,
+				8D80DF090525952444EA2BBA /* VisitedPlace.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2DA93212E245292C3C99A0EB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4929B813F2E108B24B8A95D2 /* SkratchTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		ADB66AEBF1A83459A953E0F0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CF0A4CBEC952E3D7DAC1FBC2 /* Skratch */;
+			targetProxy = B8652F0FD9D0F2B4D9B4CFD6 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
-		E10A00001234567890ABCDFC /* Debug */ = {
+		017785F6B0CDB04604B54AB2 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
@@ -194,15 +267,16 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
 					"$(inherited)",
+					"DEBUG=1",
 				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
@@ -211,23 +285,25 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
-		E10A00001234567890ABCDFD /* Release */ = {
+		0640C117A758C9A05142D285 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
@@ -255,9 +331,10 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
@@ -266,26 +343,41 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
-				VALIDATE_PRODUCT = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};
-		E10A00001234567890ABCDFF /* Debug */ = {
+		C27E37B8B4D911A33843435A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.skratch.SkratchTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Skratch.app/Skratch";
+			};
+			name = Debug;
+		};
+		C9571EF798E4E693EC0C0CE0 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"Skratch/Preview Content\"";
-				DEVELOPMENT_TEAM = "";
-				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Skratch/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -295,27 +387,85 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.skratch.app;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 6.0;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		DF96054166F9E705DCB5E27F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Skratch/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.skratch.app;
+				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
+		F6D852326DD1E0F27AE7E23E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.skratch.SkratchTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Skratch.app/Skratch";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		E10A00001234567890ABCDFE /* Build configuration list for PBXNativeTarget "Skratch" */ = {
+		39FB00DDB39DB46AB7B3D2C1 /* Build configuration list for PBXNativeTarget "Skratch" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				E10A00001234567890ABCDFF /* Debug */,
+				DF96054166F9E705DCB5E27F /* Debug */,
+				C9571EF798E4E693EC0C0CE0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
+		};
+		9A2F5FD73199B26E095EFD6D /* Build configuration list for PBXProject "Skratch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				017785F6B0CDB04604B54AB2 /* Debug */,
+				0640C117A758C9A05142D285 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C131C68E251FBB6CC80E6302 /* Build configuration list for PBXNativeTarget "SkratchTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C27E37B8B4D911A33843435A /* Debug */,
+				F6D852326DD1E0F27AE7E23E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = E10A00001234567890ABCDE3 /* Project object */;
+	rootObject = AEDB070D13B07EE43823CDAB /* Project object */;
 }

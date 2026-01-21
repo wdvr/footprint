@@ -1,70 +1,418 @@
-import SwiftUI
+import MapKit
 import SwiftData
+import SwiftUI
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var visitedPlaces: [VisitedPlace]
+    @Query(filter: #Predicate<VisitedPlace> { !$0.isDeleted })
+    private var visitedPlaces: [VisitedPlace]
+
+    @State private var selectedTab = 0
+
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            WorldMapView(visitedPlaces: visitedPlaces)
+                .tabItem {
+                    Label("Map", systemImage: "map")
+                }
+                .tag(0)
+
+            CountryListView(visitedPlaces: visitedPlaces)
+                .tabItem {
+                    Label("Countries", systemImage: "checklist")
+                }
+                .tag(1)
+
+            StatsView(visitedPlaces: visitedPlaces)
+                .tabItem {
+                    Label("Stats", systemImage: "chart.bar")
+                }
+                .tag(2)
+        }
+    }
+}
+
+// MARK: - World Map View with Overlays
+
+struct WorldMapView: View {
+    let visitedPlaces: [VisitedPlace]
+
+    @State private var position: MapCameraPosition = .automatic
+
+    private var visitedCountryCodes: Set<String> {
+        Set(
+            visitedPlaces
+                .filter { $0.regionType == VisitedPlace.RegionType.country.rawValue }
+                .map { $0.regionCode }
+        )
+    }
 
     var body: some View {
         NavigationStack {
-            VStack {
-                Image(systemName: "globe")
-                    .imageScale(.large)
-                    .foregroundStyle(.tint)
-                Text("Welcome to Skratch")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                Text("Track your travels around the world")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                VStack(spacing: 20) {
-                    StatCard(title: "Countries", count: countByRegionType(.country), total: 195)
-                    StatCard(title: "US States", count: countByRegionType(.usState), total: 51)
-                    StatCard(title: "Canadian Provinces", count: countByRegionType(.canadianProvince), total: 13)
+            ZStack {
+                Map(position: $position) {
+                    // Map content - annotations for visited places
+                    ForEach(visitedPlaces, id: \.id) { place in
+                        if let coordinate = coordinateFor(place) {
+                            Annotation(place.regionName, coordinate: coordinate) {
+                                Image(systemName: "mappin.circle.fill")
+                                    .foregroundStyle(.green)
+                                    .font(.title)
+                            }
+                        }
+                    }
                 }
-                .padding()
+                .mapStyle(.standard)
 
-                Spacer()
-
-                Button(action: addSamplePlace) {
-                    Text("Add Sample Place")
-                        .frame(maxWidth: .infinity)
+                // Overlay showing visited count
+                VStack {
+                    Spacer()
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(visitedCountryCodes.count) countries")
+                                .font(.headline)
+                            Text("\(visitedPlaces.count) total places")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                         .padding()
-                        .background(Color.accentColor)
-                        .foregroundColor(.white)
-                        .rounded()
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        Spacer()
+                    }
+                    .padding()
                 }
-                .padding()
             }
             .navigationTitle("Skratch")
+        }
+    }
+
+    private func coordinateFor(_ place: VisitedPlace) -> CLLocationCoordinate2D? {
+        // Return approximate center coordinates for countries
+        // In a full implementation, this would use actual geographic data
+        let coordinates: [String: CLLocationCoordinate2D] = [
+            "US": CLLocationCoordinate2D(latitude: 39.8283, longitude: -98.5795),
+            "CA": CLLocationCoordinate2D(latitude: 56.1304, longitude: -106.3468),
+            "GB": CLLocationCoordinate2D(latitude: 55.3781, longitude: -3.4360),
+            "FR": CLLocationCoordinate2D(latitude: 46.2276, longitude: 2.2137),
+            "DE": CLLocationCoordinate2D(latitude: 51.1657, longitude: 10.4515),
+            "JP": CLLocationCoordinate2D(latitude: 36.2048, longitude: 138.2529),
+            "AU": CLLocationCoordinate2D(latitude: -25.2744, longitude: 133.7751),
+            "BR": CLLocationCoordinate2D(latitude: -14.2350, longitude: -51.9253),
+            "IN": CLLocationCoordinate2D(latitude: 20.5937, longitude: 78.9629),
+            "CN": CLLocationCoordinate2D(latitude: 35.8617, longitude: 104.1954),
+            "MX": CLLocationCoordinate2D(latitude: 23.6345, longitude: -102.5528),
+            "IT": CLLocationCoordinate2D(latitude: 41.8719, longitude: 12.5674),
+            "ES": CLLocationCoordinate2D(latitude: 40.4637, longitude: -3.7492),
+        ]
+
+        if place.regionType == VisitedPlace.RegionType.country.rawValue {
+            return coordinates[place.regionCode]
+        }
+        return nil
+    }
+}
+
+// MARK: - Country List View with Checkboxes
+
+struct CountryListView: View {
+    let visitedPlaces: [VisitedPlace]
+    @Environment(\.modelContext) private var modelContext
+
+    @State private var searchText = ""
+    @State private var expandedCountries: Set<String> = []
+
+    private var visitedCodes: Set<String> {
+        Set(visitedPlaces.map { "\($0.regionType):\($0.regionCode)" })
+    }
+
+    private var filteredCountries: [Country] {
+        if searchText.isEmpty {
+            return GeographicData.countries
+        }
+        return GeographicData.countries.filter {
+            $0.name.localizedCaseInsensitiveContains(searchText)
+                || $0.id.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(filteredCountries) { country in
+                    CountryRow(
+                        country: country,
+                        isVisited: isVisited(country: country.id),
+                        isExpanded: expandedCountries.contains(country.id),
+                        visitedStates: visitedStatesFor(country: country.id),
+                        onToggleCountry: { toggleCountry(country) },
+                        onToggleExpand: { toggleExpand(country.id) },
+                        onToggleState: { state in toggleState(state, country: country) }
+                    )
+                }
+            }
+            .listStyle(.plain)
+            .searchable(text: $searchText, prompt: "Search countries")
+            .navigationTitle("Countries")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: addSamplePlace) {
-                        Label("Add Place", systemImage: "plus")
-                    }
+                    Text("\(countVisitedCountries())/\(GeographicData.countries.count)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
     }
 
-    private func countByRegionType(_ type: VisitedPlace.RegionType) -> Int {
-        visitedPlaces.filter { $0.regionType == type.rawValue && !$0.isDeleted }.count
+    private func isVisited(country code: String) -> Bool {
+        visitedCodes.contains("country:\(code)")
     }
 
-    private func addSamplePlace() {
-        withAnimation {
-            let samplePlace = VisitedPlace(
-                userID: "sample-user",
-                regionType: VisitedPlace.RegionType.country.rawValue,
-                regionCode: "US",
-                regionName: "United States",
-                visitedDate: Date(),
-                notes: "Sample visit"
+    private func visitedStatesFor(country code: String) -> Set<String> {
+        let type =
+            code == "US"
+            ? VisitedPlace.RegionType.usState.rawValue
+            : VisitedPlace.RegionType.canadianProvince.rawValue
+        return Set(
+            visitedPlaces
+                .filter { $0.regionType == type }
+                .map { $0.regionCode }
+        )
+    }
+
+    private func countVisitedCountries() -> Int {
+        visitedPlaces.filter { $0.regionType == VisitedPlace.RegionType.country.rawValue }.count
+    }
+
+    private func toggleCountry(_ country: Country) {
+        let code = "country:\(country.id)"
+        if visitedCodes.contains(code) {
+            // Remove
+            if let place = visitedPlaces.first(where: {
+                $0.regionType == VisitedPlace.RegionType.country.rawValue
+                    && $0.regionCode == country.id
+            }) {
+                place.isDeleted = true
+                place.lastModifiedAt = Date()
+            }
+        } else {
+            // Add
+            let place = VisitedPlace(
+                regionType: .country,
+                regionCode: country.id,
+                regionName: country.name
             )
-            modelContext.insert(samplePlace)
+            modelContext.insert(place)
+        }
+    }
+
+    private func toggleExpand(_ countryCode: String) {
+        if expandedCountries.contains(countryCode) {
+            expandedCountries.remove(countryCode)
+        } else {
+            expandedCountries.insert(countryCode)
+        }
+    }
+
+    private func toggleState(_ state: StateProvince, country: Country) {
+        let type: VisitedPlace.RegionType =
+            country.id == "US" ? .usState : .canadianProvince
+        let code = "\(type.rawValue):\(state.id)"
+
+        if visitedCodes.contains(code) {
+            // Remove
+            if let place = visitedPlaces.first(where: {
+                $0.regionType == type.rawValue && $0.regionCode == state.id
+            }) {
+                place.isDeleted = true
+                place.lastModifiedAt = Date()
+            }
+        } else {
+            // Add
+            let place = VisitedPlace(
+                regionType: type,
+                regionCode: state.id,
+                regionName: state.name
+            )
+            modelContext.insert(place)
+        }
+    }
+}
+
+struct CountryRow: View {
+    let country: Country
+    let isVisited: Bool
+    let isExpanded: Bool
+    let visitedStates: Set<String>
+    let onToggleCountry: () -> Void
+    let onToggleExpand: () -> Void
+    let onToggleState: (StateProvince) -> Void
+
+    private var states: [StateProvince] {
+        GeographicData.states(for: country.id)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Country row
+            HStack {
+                Button(action: onToggleCountry) {
+                    HStack {
+                        Image(systemName: isVisited ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(isVisited ? .green : .secondary)
+                            .font(.title2)
+
+                        VStack(alignment: .leading) {
+                            Text(country.name)
+                                .foregroundStyle(.primary)
+                            Text(country.id)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+                    }
+                }
+                .buttonStyle(.plain)
+
+                if country.hasStates {
+                    Button(action: onToggleExpand) {
+                        HStack(spacing: 4) {
+                            Text("\(visitedStates.count)/\(states.count)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Image(
+                                systemName: isExpanded
+                                    ? "chevron.down" : "chevron.right"
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 8)
+
+            // States (if expanded)
+            if country.hasStates && isExpanded {
+                VStack(spacing: 0) {
+                    ForEach(states) { state in
+                        StateRow(
+                            state: state,
+                            isVisited: visitedStates.contains(state.id),
+                            onToggle: { onToggleState(state) }
+                        )
+                    }
+                }
+                .padding(.leading, 32)
+            }
+        }
+    }
+}
+
+struct StateRow: View {
+    let state: StateProvince
+    let isVisited: Bool
+    let onToggle: () -> Void
+
+    var body: some View {
+        Button(action: onToggle) {
+            HStack {
+                Image(systemName: isVisited ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isVisited ? .blue : .secondary)
+
+                Text(state.name)
+                    .foregroundStyle(.primary)
+
+                Text(state.id)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+            }
+            .padding(.vertical, 6)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Stats View
+
+struct StatsView: View {
+    let visitedPlaces: [VisitedPlace]
+
+    private var countriesCount: Int {
+        visitedPlaces.filter { $0.regionType == VisitedPlace.RegionType.country.rawValue }.count
+    }
+
+    private var usStatesCount: Int {
+        visitedPlaces.filter { $0.regionType == VisitedPlace.RegionType.usState.rawValue }.count
+    }
+
+    private var canadianProvincesCount: Int {
+        visitedPlaces.filter { $0.regionType == VisitedPlace.RegionType.canadianProvince.rawValue }
+            .count
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Header
+                    VStack(spacing: 8) {
+                        Image(systemName: "globe.americas.fill")
+                            .font(.system(size: 60))
+                            .foregroundStyle(.tint)
+
+                        Text("Your Travel Stats")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.top, 20)
+
+                    // Stats Cards
+                    VStack(spacing: 16) {
+                        StatCard(
+                            title: "Countries",
+                            count: countriesCount,
+                            total: GeographicData.countries.count,
+                            icon: "flag.fill",
+                            color: .green
+                        )
+                        StatCard(
+                            title: "US States",
+                            count: usStatesCount,
+                            total: GeographicData.usStates.count,
+                            icon: "star.fill",
+                            color: .blue
+                        )
+                        StatCard(
+                            title: "Canadian Provinces",
+                            count: canadianProvincesCount,
+                            total: GeographicData.canadianProvinces.count,
+                            icon: "leaf.fill",
+                            color: .red
+                        )
+                    }
+                    .padding(.horizontal)
+
+                    // Total
+                    VStack(spacing: 4) {
+                        Text("\(countriesCount + usStatesCount + canadianProvincesCount)")
+                            .font(.system(size: 48, weight: .bold))
+                            .foregroundStyle(.tint)
+
+                        Text("Total Regions Visited")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.top, 8)
+
+                    Spacer()
+                }
+            }
+            .navigationTitle("Statistics")
         }
     }
 }
@@ -73,6 +421,8 @@ struct StatCard: View {
     let title: String
     let count: Int
     let total: Int
+    let icon: String
+    let color: Color
 
     private var percentage: Double {
         guard total > 0 else { return 0 }
@@ -80,8 +430,10 @@ struct StatCard: View {
     }
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 12) {
             HStack {
+                Image(systemName: icon)
+                    .foregroundStyle(color)
                 Text(title)
                     .font(.headline)
                 Spacer()
@@ -91,7 +443,7 @@ struct StatCard: View {
             }
 
             ProgressView(value: Double(count), total: Double(total))
-                .tint(.accentColor)
+                .tint(color)
 
             HStack {
                 Spacer()
@@ -102,17 +454,11 @@ struct StatCard: View {
         }
         .padding()
         .background(.quaternary)
-        .rounded()
-    }
-}
-
-extension View {
-    func rounded() -> some View {
-        self.clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: [User.self, VisitedPlace.self], inMemory: true)
+        .modelContainer(for: VisitedPlace.self, inMemory: true)
 }
