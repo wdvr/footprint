@@ -1,4 +1,4 @@
-"""Data models for Skratch travel tracker."""
+"""Data models for Footprint travel tracker."""
 
 from .geographic import CanadianProvince, Country, GeographicRegion, USState
 from .sync import ConflictResolution, SyncBatch, SyncOperation

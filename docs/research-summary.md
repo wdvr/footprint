@@ -1,8 +1,8 @@
-# Skratch Travel Tracker - Architecture Research Summary
+# Footprint Travel Tracker - Architecture Research Summary
 
 ## Executive Summary
 
-Comprehensive technical research completed for Skratch travel tracking platform, covering all critical architectural decisions from geographic data processing to offline-first sync implementation. All recommendations are production-tested, cost-optimized, and designed for scale.
+Comprehensive technical research completed for Footprint travel tracking platform, covering all critical architectural decisions from geographic data processing to offline-first sync implementation. All recommendations are production-tested, cost-optimized, and designed for scale.
 
 ## 🎯 Key Architectural Decisions
 

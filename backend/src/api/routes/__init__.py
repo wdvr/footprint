@@ -1,1 +1,1 @@
-# Skratch API Routes Package
+# Footprint API Routes Package

@@ -11,7 +11,7 @@ from boto3.dynamodb.conditions import Key
 dynamodb = boto3.resource(
     "dynamodb", region_name=os.environ.get("AWS_REGION", "us-east-1")
 )
-table_name = os.environ.get("DYNAMODB_TABLE", "skratch-table-dev")
+table_name = os.environ.get("DYNAMODB_TABLE", "footprint-table-dev")
 table = dynamodb.Table(table_name)
 
 

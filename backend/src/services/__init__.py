@@ -1,1 +1,1 @@
-# Skratch Services Package
+# Footprint Services Package

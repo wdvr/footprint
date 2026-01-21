@@ -89,7 +89,7 @@ class AuthService:
                 identity_token,
                 apple_key,
                 algorithms=["RS256"],
-                audience=os.environ.get("APPLE_BUNDLE_ID", "com.skratch.app"),
+                audience=os.environ.get("APPLE_BUNDLE_ID", "com.footprint.app"),
                 issuer=self.APPLE_ISSUER,
             )
 

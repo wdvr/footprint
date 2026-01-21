@@ -1,1 +1,1 @@
-# Test package for Skratch backend
+# Test package for Footprint backend

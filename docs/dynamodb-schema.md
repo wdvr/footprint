@@ -1,4 +1,4 @@
-# DynamoDB Schema Architecture for Skratch Travel Tracker
+# DynamoDB Schema Architecture for Footprint Travel Tracker
 
 ## Schema Design Philosophy
 
@@ -6,7 +6,7 @@
 
 ## Table Structure
 
-### Primary Table: `skratch-data-{environment}`
+### Primary Table: `footprint-data-{environment}`
 
 **Partition Key (PK)**: String
 **Sort Key (SK)**: String

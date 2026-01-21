@@ -22,7 +22,7 @@ class TestRootEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert "message" in data
-        assert "Skratch API" in data["message"]
+        assert "Footprint API" in data["message"]
         assert "version" in data
 
     def test_root_contains_environment(self, client):
@@ -44,7 +44,7 @@ class TestHealthEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
-        assert data["service"] == "skratch-api"
+        assert data["service"] == "footprint-api"
 
 
 class TestCORS:
@@ -86,7 +86,7 @@ class TestOpenAPI:
         data = response.json()
         assert "openapi" in data
         assert "info" in data
-        assert data["info"]["title"] == "Skratch API"
+        assert data["info"]["title"] == "Footprint API"
 
     def test_docs_available(self, client):
         """Test Swagger docs are available."""

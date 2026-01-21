@@ -1,10 +1,10 @@
-# Skratch Travel Tracker REST API Specification
+# Footprint Travel Tracker REST API Specification
 
 ## API Design Philosophy
 
 **Offline-first, mobile-optimized REST API** designed for efficient sync operations, minimal data transfer, and robust conflict resolution. All endpoints support batch operations and optimistic locking for seamless offline-to-online synchronization.
 
-**Base URL**: `https://api.skratch.travel/v1`
+**Base URL**: `https://api.footprint.travel/v1`
 **Authentication**: Bearer tokens (JWT) from Apple Sign In or email authentication
 **Content-Type**: `application/json`
 **Rate Limiting**: 60 requests/minute per user, 10 burst
@@ -327,8 +327,8 @@ Get all country reference data.
         "lon": -98.5795
       },
       "boundary_urls": {
-        "detailed": "https://s3.amazonaws.com/skratch-geo/countries/US_detailed.geojson",
-        "simplified": "https://s3.amazonaws.com/skratch-geo/countries/US_simple.geojson"
+        "detailed": "https://s3.amazonaws.com/footprint-geo/countries/US_detailed.geojson",
+        "simplified": "https://s3.amazonaws.com/footprint-geo/countries/US_simple.geojson"
       }
     }
   ],
@@ -476,7 +476,7 @@ Get export status and download URL.
 {
   "export_id": "export_123456",
   "status": "completed",
-  "download_url": "https://s3.amazonaws.com/skratch-exports/user123/export_123456.geojson",
+  "download_url": "https://s3.amazonaws.com/footprint-exports/user123/export_123456.geojson",
   "expires_at": "2024-01-21T15:40:00Z",
   "file_size_bytes": 15420
 }

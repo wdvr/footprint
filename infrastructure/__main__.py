@@ -1,7 +1,7 @@
 """
-Skratch Travel Tracker AWS Infrastructure
+Footprint Travel Tracker AWS Infrastructure
 
-This Pulumi program defines the AWS infrastructure for the Skratch travel tracking application,
+This Pulumi program defines the AWS infrastructure for the Footprint travel tracking application,
 including DynamoDB tables, S3 buckets, Lambda functions, and API Gateway configuration.
 """
 
@@ -15,7 +15,7 @@ from pulumi import AssetArchive, Config, FileArchive, FileAsset, ResourceOptions
 # Get configuration
 config = Config()
 environment = config.get("environment") or "dev"
-app_name = config.get("app_name") or "skratch"
+app_name = config.get("app_name") or "footprint"
 aws_region = aws.config.region or "us-east-1"
 
 # Get AWS account ID for globally unique names
@@ -217,7 +217,7 @@ def handler(event, context):
             "Access-Control-Allow-Origin": "*",
         },
         "body": json.dumps({
-            "message": "Skratch API placeholder - deploy FastAPI package",
+            "message": "Footprint API placeholder - deploy FastAPI package",
             "environment": os.environ.get("ENVIRONMENT", "unknown"),
         })
     }
@@ -244,7 +244,7 @@ api_lambda = aws.lambda_.Function(
             "GEO_DATA_BUCKET": geo_data_bucket.bucket,
             "JWT_SECRET": config.get_secret("jwt_secret")
             or "dev-secret-change-in-production",
-            "APPLE_BUNDLE_ID": "com.skratch.app",
+            "APPLE_BUNDLE_ID": "com.footprint.app",
         }
     ),
     tags=common_tags,
@@ -320,6 +320,6 @@ export("environment", environment)
 export("app_name", app_name)
 
 # Output deployment information
-pulumi.log.info(f"Deploying Skratch infrastructure for environment: {environment}")
+pulumi.log.info(f"Deploying Footprint infrastructure for environment: {environment}")
 pulumi.log.info(f"DynamoDB Table: {resource_name('table')}")
 pulumi.log.info("API Gateway will be available at the exported api_url")

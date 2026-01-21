@@ -187,7 +187,7 @@ def s3_client(mock_aws_services):
 @pytest.fixture
 def test_bucket_name() -> str:
     """Test S3 bucket name."""
-    return "test-skratch-bucket"
+    return "test-footprint-bucket"
 
 
 # Test data constants

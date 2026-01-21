@@ -170,7 +170,7 @@ class TestAppleTokenVerification:
             mock_jwt.decode.return_value = {
                 "iss": "https://appleid.apple.com",
                 "sub": "apple-user-123",
-                "aud": "com.skratch.app",
+                "aud": "com.footprint.app",
                 "iat": int(time.time()),
                 "exp": int(time.time()) + 3600,
                 "email": "user@privaterelay.appleid.com",
@@ -234,7 +234,7 @@ class TestAuthenticateApple:
         mock_payload = AppleTokenPayload(
             iss="https://appleid.apple.com",
             sub="new-apple-user",
-            aud="com.skratch.app",
+            aud="com.footprint.app",
             iat=int(time.time()),
             exp=int(time.time()) + 3600,
             email="newuser@example.com",
@@ -266,7 +266,7 @@ class TestAuthenticateApple:
         mock_payload = AppleTokenPayload(
             iss="https://appleid.apple.com",
             sub="existing-apple-user",
-            aud="com.skratch.app",
+            aud="com.footprint.app",
             iat=int(time.time()),
             exp=int(time.time()) + 3600,
         )

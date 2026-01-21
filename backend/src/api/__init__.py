@@ -1,1 +1,1 @@
-# Skratch API Package
+# Footprint API Package

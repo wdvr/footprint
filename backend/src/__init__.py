@@ -1,1 +1,1 @@
-# Skratch Backend Package
+# Footprint Backend Package

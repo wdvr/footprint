@@ -23,7 +23,7 @@ def dynamodb_table(aws_credentials):
     with mock_aws():
         dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
         table = dynamodb.create_table(
-            TableName="skratch-table-dev",
+            TableName="footprint-table-dev",
             KeySchema=[
                 {"AttributeName": "pk", "KeyType": "HASH"},
                 {"AttributeName": "sk", "KeyType": "RANGE"},

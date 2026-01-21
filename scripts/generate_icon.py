@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate app icon for Skratch travel tracker app."""
+"""Generate app icon for Footprint travel tracker app."""
 
 from pathlib import Path
 
@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw
 
 
 def create_app_icon(size: int = 1024) -> Image.Image:
-    """Create the Skratch app icon.
+    """Create the Footprint app icon.
 
     Design: A stylized globe with scratch marks representing visited places.
     Colors: Deep teal/ocean blue for water, green for land hints, gold accents.
@@ -134,7 +134,7 @@ def main():
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
     icon_dir = (
-        project_root / "ios" / "Skratch" / "Assets.xcassets" / "AppIcon.appiconset"
+        project_root / "ios" / "Footprint" / "Assets.xcassets" / "AppIcon.appiconset"
     )
 
     # Create 1024x1024 icon

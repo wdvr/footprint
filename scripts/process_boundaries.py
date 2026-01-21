@@ -25,7 +25,7 @@ NATURAL_EARTH_URL = (
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 DATA_DIR = PROJECT_ROOT / "data" / "boundaries"
-IOS_DATA_DIR = PROJECT_ROOT / "ios" / "Skratch" / "Resources" / "GeoData"
+IOS_DATA_DIR = PROJECT_ROOT / "ios" / "Footprint" / "Resources" / "GeoData"
 
 
 def download_natural_earth() -> bytes:
@@ -161,7 +161,7 @@ let countriesWithBoundaries: [CountryInfo] = [
 def main():
     """Main function to download and process boundary data."""
     print("=" * 60)
-    print("Skratch Boundary Data Processor")
+    print("Footprint Boundary Data Processor")
     print("=" * 60)
 
     try:
@@ -188,7 +188,7 @@ def main():
     save_geojson(processed, IOS_DATA_DIR / "countries.geojson")
 
     swift_path = (
-        PROJECT_ROOT / "ios" / "Skratch" / "Generated" / "CountryBoundaries.swift"
+        PROJECT_ROOT / "ios" / "Footprint" / "Generated" / "CountryBoundaries.swift"
     )
     create_swift_country_mapping(processed, swift_path)
 

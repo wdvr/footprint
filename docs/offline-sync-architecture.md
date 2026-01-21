@@ -1,4 +1,4 @@
-# Offline-First Sync Architecture for Skratch Travel Tracker
+# Offline-First Sync Architecture for Footprint Travel Tracker
 
 ## Architecture Philosophy
 
@@ -290,7 +290,7 @@ class BackgroundSyncManager {
     private let syncManager: SyncManager
 
     func scheduleBackgroundSync() {
-        let request = BGAppRefreshTaskRequest(identifier: "com.skratch.sync")
+        let request = BGAppRefreshTaskRequest(identifier: "com.footprint.sync")
         request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60) // 15 minutes
 
         try? BGTaskScheduler.shared.submit(request)
