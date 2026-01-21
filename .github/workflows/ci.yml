@@ -1,8 +1,10 @@
 name: CI/CD Pipeline
 
+# Workflow for comprehensive testing and validation
+
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, 'feature/*' ]
   pull_request:
     branches: [ main, develop ]
 
