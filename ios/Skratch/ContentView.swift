@@ -28,8 +28,214 @@ struct ContentView: View {
                     Label("Stats", systemImage: "chart.bar")
                 }
                 .tag(2)
+
+            SettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gear")
+                }
+                .tag(3)
         }
     }
+}
+
+// MARK: - Settings View
+
+struct SettingsView: View {
+    @State private var showingSignOutAlert = false
+    @State private var showingDeleteAccountAlert = false
+
+    var body: some View {
+        NavigationStack {
+            List {
+                // Account Section
+                Section("Account") {
+                    if Task { await APIClient.shared.isAuthenticated } != nil {
+                        HStack {
+                            Image(systemName: "person.circle.fill")
+                                .font(.title)
+                                .foregroundStyle(.tint)
+                            VStack(alignment: .leading) {
+                                Text("Signed In")
+                                    .font(.headline)
+                                Text("Apple ID")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+
+                    Button(role: .destructive) {
+                        showingSignOutAlert = true
+                    } label: {
+                        Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                }
+
+                // Sync Section
+                Section("Sync") {
+                    SyncStatusRow()
+
+                    Button {
+                        Task {
+                            await SyncManager.shared.forceFullSync()
+                        }
+                    } label: {
+                        Label("Force Full Sync", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                }
+
+                // App Info Section
+                Section("About") {
+                    HStack {
+                        Text("Version")
+                        Spacer()
+                        Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    HStack {
+                        Text("Build")
+                        Spacer()
+                        Text(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                // Danger Zone
+                Section {
+                    Button(role: .destructive) {
+                        showingDeleteAccountAlert = true
+                    } label: {
+                        Label("Delete Account", systemImage: "trash")
+                    }
+                } footer: {
+                    Text("This will permanently delete your account and all data. This action cannot be undone.")
+                }
+            }
+            .navigationTitle("Settings")
+            .alert("Sign Out", isPresented: $showingSignOutAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Sign Out", role: .destructive) {
+                    signOut()
+                }
+            } message: {
+                Text("Are you sure you want to sign out? Your local data will be preserved.")
+            }
+            .alert("Delete Account", isPresented: $showingDeleteAccountAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete", role: .destructive) {
+                    deleteAccount()
+                }
+            } message: {
+                Text("This will permanently delete your account and all associated data. This action cannot be undone.")
+            }
+        }
+    }
+
+    private func signOut() {
+        Task {
+            await APIClient.shared.clearTokens()
+            // Post notification to reset app state if needed
+            NotificationCenter.default.post(name: .userDidSignOut, object: nil)
+        }
+    }
+
+    private func deleteAccount() {
+        // TODO: Implement account deletion through API
+        // For now, just sign out
+        signOut()
+    }
+}
+
+// MARK: - Sync Status Row
+
+struct SyncStatusRow: View {
+    @State private var syncManager = SyncManager.shared
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    if syncManager.isSyncing {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("Syncing...")
+                    } else if let error = syncManager.error {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Text("Sync Error")
+                    } else {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                        Text("Synced")
+                    }
+                }
+                .font(.subheadline)
+
+                if let lastSync = syncManager.lastSyncAt {
+                    Text("Last: \(lastSync.formatted(date: .abbreviated, time: .shortened))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Never synced")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let error = syncManager.error {
+                    Text(error)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                }
+            }
+
+            Spacer()
+
+            if !syncManager.isSyncing {
+                Button {
+                    Task {
+                        await syncManager.sync()
+                    }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Sync Indicator (compact for toolbar)
+
+struct SyncIndicator: View {
+    @State private var syncManager = SyncManager.shared
+
+    var body: some View {
+        Group {
+            if syncManager.isSyncing {
+                ProgressView()
+                    .scaleEffect(0.7)
+            } else if syncManager.error != nil {
+                Image(systemName: "exclamationmark.icloud.fill")
+                    .foregroundStyle(.orange)
+                    .font(.caption)
+            } else if syncManager.lastSyncAt != nil {
+                Image(systemName: "checkmark.icloud.fill")
+                    .foregroundStyle(.green)
+                    .font(.caption)
+            } else {
+                Image(systemName: "icloud.slash")
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+            }
+        }
+    }
+}
+
+// MARK: - Notification Names
+
+extension Notification.Name {
+    static let userDidSignOut = Notification.Name("userDidSignOut")
 }
 
 // MARK: - World Map View with Overlays
@@ -121,6 +327,7 @@ struct CountryListView: View {
 
     @State private var searchText = ""
     @State private var expandedCountries: Set<String> = []
+    @State private var isRefreshing = false
 
     private var visitedCodes: Set<String> {
         Set(visitedPlaces.map { "\($0.regionType):\($0.regionCode)" })
@@ -153,15 +360,27 @@ struct CountryListView: View {
             }
             .listStyle(.plain)
             .searchable(text: $searchText, prompt: "Search countries")
+            .refreshable {
+                await refreshData()
+            }
             .navigationTitle("Countries")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Text("\(countVisitedCountries())/\(GeographicData.countries.count)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        SyncIndicator()
+                        Text("\(countVisitedCountries())/\(GeographicData.countries.count)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }
+    }
+
+    private func refreshData() async {
+        isRefreshing = true
+        await SyncManager.shared.sync()
+        isRefreshing = false
     }
 
     private func isVisited(country code: String) -> Bool {
