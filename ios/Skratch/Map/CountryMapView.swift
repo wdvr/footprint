@@ -52,6 +52,7 @@ struct CountryMapView: UIViewRepresentable {
             // Load boundaries on background thread
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 let boundaries = GeoJSONParser.parseCountries()
+                print("CountryMapView: Parsed \(boundaries.count) boundaries")
 
                 DispatchQueue.main.async {
                     guard let self = self else { return }
@@ -63,8 +64,9 @@ struct CountryMapView: UIViewRepresentable {
                         let overlay = boundary.overlay
                         overlay.title = boundary.id
                         overlay.subtitle = boundary.name
-                        mapView.addOverlay(overlay, level: .aboveLabels)
+                        mapView.addOverlay(overlay, level: .aboveRoads)
                     }
+                    print("CountryMapView: Added \(mapView.overlays.count) overlays to map")
                 }
             }
         }
@@ -75,7 +77,7 @@ struct CountryMapView: UIViewRepresentable {
             for overlay in mapView.overlays {
                 if let multiPolygon = overlay as? MKMultiPolygon {
                     mapView.removeOverlay(multiPolygon)
-                    mapView.addOverlay(multiPolygon, level: .aboveLabels)
+                    mapView.addOverlay(multiPolygon, level: .aboveRoads)
                 }
             }
         }

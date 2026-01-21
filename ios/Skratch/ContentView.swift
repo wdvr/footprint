@@ -295,7 +295,8 @@ struct CountryListView: View {
 
     @State private var searchText = ""
     @State private var expandedCountries: Set<String> = []
-    @State private var collapsedContinents: Set<String> = []
+    // Start with all continents collapsed
+    @State private var collapsedContinents: Set<String> = Set(Continent.allCases.map { $0.id })
     @State private var isRefreshing = false
 
     private var visitedCodes: Set<String> {
@@ -506,7 +507,7 @@ struct CountryRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Country row
+            // Country row - entire row is tappable
             HStack {
                 Button(action: onToggleCountry) {
                     HStack {
@@ -523,23 +524,29 @@ struct CountryRow: View {
                         }
 
                         Spacer()
-                    }
-                }
-                .buttonStyle(.plain)
 
-                if country.hasStates {
-                    Button(action: onToggleExpand) {
-                        HStack(spacing: 4) {
+                        if country.hasStates {
+                            // States indicator (tapping this area still toggles country)
                             Text("\(visitedStates.count)/\(states.count)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            Image(
-                                systemName: isExpanded
-                                    ? "chevron.down" : "chevron.right"
-                            )
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
                         }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                // Expand/collapse button for states (separate tap target)
+                if country.hasStates {
+                    Button(action: onToggleExpand) {
+                        Image(
+                            systemName: isExpanded
+                                ? "chevron.down" : "chevron.right"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 30, height: 30)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
@@ -583,6 +590,7 @@ struct StateRow: View {
 
                 Spacer()
             }
+            .contentShape(Rectangle())
             .padding(.vertical, 6)
         }
         .buttonStyle(.plain)

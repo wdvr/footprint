@@ -19,18 +19,26 @@ struct GeoJSONParser {
 
     /// Parse GeoJSON data from the app bundle
     static func parseCountries() -> [CountryBoundary] {
-        guard let url = Bundle.main.url(
+        // Try with subdirectory first (folder reference), then without (group)
+        let url = Bundle.main.url(
             forResource: "countries",
             withExtension: "geojson",
             subdirectory: "GeoData"
-        ) else {
+        ) ?? Bundle.main.url(
+            forResource: "countries",
+            withExtension: "geojson"
+        )
+
+        guard let url else {
             print("GeoJSON file not found in bundle")
             return []
         }
 
         do {
             let data = try Data(contentsOf: url)
-            return try parseGeoJSON(data)
+            let boundaries = try parseGeoJSON(data)
+            print("Loaded \(boundaries.count) country boundaries")
+            return boundaries
         } catch {
             print("Error parsing GeoJSON: \(error)")
             return []
