@@ -238,12 +238,12 @@ extension Notification.Name {
     static let userDidSignOut = Notification.Name("userDidSignOut")
 }
 
-// MARK: - World Map View with Overlays
+// MARK: - World Map View with Country Boundaries
 
 struct WorldMapView: View {
     let visitedPlaces: [VisitedPlace]
 
-    @State private var position: MapCameraPosition = .automatic
+    @State private var selectedCountry: String?
 
     private var visitedCountryCodes: Set<String> {
         Set(
@@ -256,19 +256,12 @@ struct WorldMapView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Map(position: $position) {
-                    // Map content - annotations for visited places
-                    ForEach(visitedPlaces, id: \.id) { place in
-                        if let coordinate = coordinateFor(place) {
-                            Annotation(place.regionName, coordinate: coordinate) {
-                                Image(systemName: "mappin.circle.fill")
-                                    .foregroundStyle(.green)
-                                    .font(.title)
-                            }
-                        }
-                    }
-                }
-                .mapStyle(.standard)
+                // Use the new CountryMapView with boundary overlays
+                CountryMapView(
+                    visitedCountryCodes: visitedCountryCodes,
+                    selectedCountry: $selectedCountry
+                )
+                .ignoresSafeArea(edges: .bottom)
 
                 // Overlay showing visited count
                 VStack {
@@ -291,31 +284,6 @@ struct WorldMapView: View {
             }
             .navigationTitle("Skratch")
         }
-    }
-
-    private func coordinateFor(_ place: VisitedPlace) -> CLLocationCoordinate2D? {
-        // Return approximate center coordinates for countries
-        // In a full implementation, this would use actual geographic data
-        let coordinates: [String: CLLocationCoordinate2D] = [
-            "US": CLLocationCoordinate2D(latitude: 39.8283, longitude: -98.5795),
-            "CA": CLLocationCoordinate2D(latitude: 56.1304, longitude: -106.3468),
-            "GB": CLLocationCoordinate2D(latitude: 55.3781, longitude: -3.4360),
-            "FR": CLLocationCoordinate2D(latitude: 46.2276, longitude: 2.2137),
-            "DE": CLLocationCoordinate2D(latitude: 51.1657, longitude: 10.4515),
-            "JP": CLLocationCoordinate2D(latitude: 36.2048, longitude: 138.2529),
-            "AU": CLLocationCoordinate2D(latitude: -25.2744, longitude: 133.7751),
-            "BR": CLLocationCoordinate2D(latitude: -14.2350, longitude: -51.9253),
-            "IN": CLLocationCoordinate2D(latitude: 20.5937, longitude: 78.9629),
-            "CN": CLLocationCoordinate2D(latitude: 35.8617, longitude: 104.1954),
-            "MX": CLLocationCoordinate2D(latitude: 23.6345, longitude: -102.5528),
-            "IT": CLLocationCoordinate2D(latitude: 41.8719, longitude: 12.5674),
-            "ES": CLLocationCoordinate2D(latitude: 40.4637, longitude: -3.7492),
-        ]
-
-        if place.regionType == VisitedPlace.RegionType.country.rawValue {
-            return coordinates[place.regionCode]
-        }
-        return nil
     }
 }
 
