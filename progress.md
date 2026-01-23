@@ -171,6 +171,24 @@ xcodebuild test -project ios/Footprint.xcodeproj -scheme Footprint -destination 
 - **Code Quality**: Pre-commit hooks enforce standards
 - **Offline Capability**: Full functionality without internet ✅
 
+## Future Features Roadmap
+
+### Geographic Expansion
+- [ ] **States for other countries** - Add state/province boundaries for more countries (Australia, Mexico, etc.)
+- [ ] **Cities & Landmarks** - Track visited cities and famous landmarks
+
+### Live Features
+- [ ] **Live location tracking** - Request location permission and show current position on map
+- [ ] **Friend lists & sharing** - Connect with friends and share/compare travel lists
+
+### Platform Expansion
+- [ ] **iOS Widget** - Home screen widget showing travel stats
+- [ ] **macOS app** - Native Mac app (Universal purchase)
+
+### Data Integration
+- [ ] **Feature requests & feedback** - In-app feedback that saves to DynamoDB for async review
+- [ ] **Gmail/Calendar import** - Read travel confirmations from email/calendar, suggest locations to add with confirmation UI
+
 ## Notes & Learnings
 - Swift 6 strict concurrency requires `nonisolated(unsafe)` for test mocks
 - Moto library excellent for DynamoDB testing

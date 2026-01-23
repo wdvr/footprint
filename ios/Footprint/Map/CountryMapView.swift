@@ -208,14 +208,26 @@ struct CountryMapView: UIViewRepresentable {
                     let isVisited = visitedStateCodes.contains(code)
 
                     if isVisited {
-                        // Visited states: green to match visited countries
+                        // Visited states: green
                         renderer.fillColor = UIColor.systemGreen.withAlphaComponent(0.4)
                         renderer.strokeColor = UIColor.systemGreen.withAlphaComponent(0.8)
                         renderer.lineWidth = 1.0
                     } else {
-                        // Unvisited states: subtle light red tint
+                        // Unvisited states: subtle light red
                         renderer.fillColor = UIColor.systemRed.withAlphaComponent(0.15)
-                        renderer.strokeColor = UIColor.systemRed.withAlphaComponent(0.3)
+                        renderer.strokeColor = UIColor.systemRed.withAlphaComponent(0.4)
+                        renderer.lineWidth = 0.5
+                    }
+                } else if code == "US" || code == "CA" {
+                    // Don't fill US/Canada - let state overlays show through to base map
+                    // But keep green outline to show country is visited
+                    let isVisited = visitedCountryCodes.contains(code)
+                    renderer.fillColor = .clear
+                    if isVisited {
+                        renderer.strokeColor = UIColor.systemGreen
+                        renderer.lineWidth = 3.0
+                    } else {
+                        renderer.strokeColor = UIColor.systemGray.withAlphaComponent(0.3)
                         renderer.lineWidth = 0.5
                     }
                 } else {
