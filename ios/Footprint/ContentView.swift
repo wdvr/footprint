@@ -200,8 +200,11 @@ struct SyncStatusRow: View {
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
+                .accessibilityLabel("Sync now")
+                .accessibilityHint("Double tap to synchronize your travel data")
             }
         }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -242,13 +245,53 @@ extension Notification.Name {
 
 struct WorldMapView: View {
     let visitedPlaces: [VisitedPlace]
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var selectedCountry: String?
+    @State private var showingCountryPopup = false
+    @State private var showingStateMap = false
+    @State private var stateMapCountry: String?
+    @State private var showListView = false
 
     private var visitedCountryCodes: Set<String> {
         Set(
             visitedPlaces
-                .filter { $0.regionType == VisitedPlace.RegionType.country.rawValue }
+                .filter { $0.regionType == VisitedPlace.RegionType.country.rawValue && !$0.isDeleted }
+                .map { $0.regionCode }
+        )
+    }
+
+    private var visitedStateCodes: Set<String> {
+        var codes: Set<String> = []
+        for place in visitedPlaces where !place.isDeleted {
+            if place.regionType == VisitedPlace.RegionType.usState.rawValue {
+                codes.insert("US-\(place.regionCode)")
+            } else if place.regionType == VisitedPlace.RegionType.canadianProvince.rawValue {
+                codes.insert("CA-\(place.regionCode)")
+            }
+        }
+        return codes
+    }
+
+    private var selectedCountryInfo: Country? {
+        guard let code = selectedCountry else { return nil }
+        return GeographicData.countries.first { $0.id == code }
+    }
+
+    private var isSelectedCountryVisited: Bool {
+        guard let code = selectedCountry else { return false }
+        return visitedCountryCodes.contains(code)
+    }
+
+    private func visitedStateCodes(for countryCode: String) -> Set<String> {
+        let regionType: String = countryCode == "US"
+            ? VisitedPlace.RegionType.usState.rawValue
+            : VisitedPlace.RegionType.canadianProvince.rawValue
+        return Set(
+            visitedPlaces
+                .filter { $0.regionType == regionType }
                 .map { $0.regionCode }
         )
     }
@@ -256,34 +299,640 @@ struct WorldMapView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Use the new CountryMapView with boundary overlays
-                CountryMapView(
-                    visitedCountryCodes: visitedCountryCodes,
-                    selectedCountry: $selectedCountry
-                )
-                .ignoresSafeArea(edges: .bottom)
+                // Show list view for VoiceOver users or when toggled
+                if showListView || voiceOverEnabled {
+                    AccessibleMapSummary(visitedPlaces: visitedPlaces)
+                } else {
+                    // Use the new CountryMapView with boundary overlays
+                    CountryMapView(
+                        visitedCountryCodes: visitedCountryCodes,
+                        visitedStateCodes: visitedStateCodes,
+                        selectedCountry: $selectedCountry,
+                        onCountryTapped: { countryCode in
+                            selectedCountry = countryCode
+                        }
+                    )
+                    .ignoresSafeArea(edges: .bottom)
+                    .onChange(of: selectedCountry) { _, newValue in
+                        if newValue != nil {
+                            showingCountryPopup = true
+                        }
+                    }
 
-                // Overlay showing visited count
-                VStack {
-                    Spacer()
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("\(visitedCountryCodes.count) countries")
-                                .font(.headline)
-                            Text("\(visitedPlaces.count) total places")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                    // Overlay showing visited count
+                    VStack {
+                        Spacer()
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("\(visitedCountryCodes.count) countries")
+                                    .font(.headline)
+                                Text("\(visitedPlaces.count) total places")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding()
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            Spacer()
                         }
                         .padding()
-                        .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        Spacer()
                     }
-                    .padding()
                 }
             }
             .navigationTitle("Footprint")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        conditionalWithAnimation(.easeInOut, reduceMotion: reduceMotion) {
+                            showListView.toggle()
+                        }
+                    } label: {
+                        Image(systemName: showListView ? "map" : "list.bullet")
+                    }
+                    .accessibilityLabel(showListView ? "Show map" : "Show list")
+                    .accessibilityHint("Double tap to switch to \(showListView ? "map" : "list") view")
+                }
+            }
+            .sheet(isPresented: $showingCountryPopup) {
+                if let country = selectedCountryInfo {
+                    CountryInfoPopup(
+                        country: country,
+                        isVisited: isSelectedCountryVisited,
+                        onToggle: {
+                            toggleCountryVisited(country)
+                        },
+                        onDismiss: {
+                            showingCountryPopup = false
+                            selectedCountry = nil
+                        },
+                        onViewStates: country.hasStates ? {
+                            stateMapCountry = country.id
+                            showingStateMap = true
+                        } : nil
+                    )
+                    .presentationDetents([.height(country.hasStates ? 280 : 200)])
+                    .presentationDragIndicator(.visible)
+                } else if let code = selectedCountry {
+                    // Territory or region not in our country list (e.g., French Guiana, Greenland)
+                    let territoryName = TerritoryMapping.territoryName(for: code)
+                    let isTerritoryVisited = visitedPlaces.contains {
+                        $0.regionType == VisitedPlace.RegionType.country.rawValue
+                            && $0.regionCode == code
+                            && !$0.isDeleted
+                    }
+
+                    TerritoryInfoPopup(
+                        regionCode: code,
+                        territoryName: territoryName,
+                        isVisited: isTerritoryVisited,
+                        onToggle: {
+                            toggleTerritoryVisited(code: code, name: territoryName)
+                        },
+                        onDismiss: {
+                            showingCountryPopup = false
+                            selectedCountry = nil
+                        }
+                    )
+                    .presentationDetents([.height(200)])
+                    .presentationDragIndicator(.visible)
+                }
+            }
+            .fullScreenCover(isPresented: $showingStateMap) {
+                if let countryCode = stateMapCountry {
+                    StateMapSheet(
+                        countryCode: countryCode,
+                        visitedPlaces: visitedPlaces,
+                        onDismiss: {
+                            showingStateMap = false
+                            stateMapCountry = nil
+                        }
+                    )
+                }
+            }
         }
+    }
+
+    private func toggleCountryVisited(_ country: Country) {
+        if isSelectedCountryVisited {
+            // Remove from visited
+            if let place = visitedPlaces.first(where: {
+                $0.regionType == VisitedPlace.RegionType.country.rawValue
+                    && $0.regionCode == country.id
+            }) {
+                place.isDeleted = true
+                place.lastModifiedAt = Date()
+            }
+        } else {
+            // Add to visited
+            let place = VisitedPlace(
+                regionType: .country,
+                regionCode: country.id,
+                regionName: country.name
+            )
+            modelContext.insert(place)
+        }
+    }
+
+    private func toggleTerritoryVisited(code: String, name: String) {
+        let existingPlace = visitedPlaces.first {
+            $0.regionType == VisitedPlace.RegionType.country.rawValue
+                && $0.regionCode == code
+                && !$0.isDeleted
+        }
+
+        if let place = existingPlace {
+            // Remove from visited
+            place.isDeleted = true
+            place.lastModifiedAt = Date()
+        } else {
+            // Add to visited
+            let place = VisitedPlace(
+                regionType: .country,
+                regionCode: code,
+                regionName: name
+            )
+            modelContext.insert(place)
+        }
+    }
+}
+
+// MARK: - Country Info Popup
+
+struct CountryInfoPopup: View {
+    let country: Country
+    let isVisited: Bool
+    let onToggle: () -> Void
+    let onDismiss: () -> Void
+    var onViewStates: (() -> Void)?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            // Header
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(country.name)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    Text("\(country.continent) • \(country.id)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            // Toggle Button
+            Button(action: {
+                onToggle()
+                onDismiss()
+            }) {
+                HStack {
+                    Image(systemName: isVisited ? "checkmark.circle.fill" : "circle")
+                        .font(.title2)
+                    Text(isVisited ? "Visited" : "Mark as Visited")
+                        .font(.headline)
+                    Spacer()
+                }
+                .padding()
+                .background(isVisited ? Color.green.opacity(0.2) : Color.secondary.opacity(0.1))
+                .foregroundStyle(isVisited ? .green : .primary)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+
+            // View States/Provinces button for US and Canada
+            if country.hasStates, let onViewStates = onViewStates {
+                Button(action: {
+                    onDismiss()
+                    onViewStates()
+                }) {
+                    HStack {
+                        Image(systemName: "map")
+                            .font(.title2)
+                        Text(country.id == "US" ? "View States" : "View Provinces")
+                            .font(.headline)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                    }
+                    .padding()
+                    .background(Color.blue.opacity(0.1))
+                    .foregroundStyle(.blue)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+            }
+
+            Spacer()
+        }
+        .padding()
+    }
+}
+
+// MARK: - Territory Info Popup (for regions not in our country list)
+
+/// Mapping of territory codes to their parent country codes
+enum TerritoryMapping {
+    static let territories: [String: (name: String, parentCode: String)] = [
+        // Denmark
+        "GL": ("Greenland", "DK"),
+        "FO": ("Faroe Islands", "DK"),
+
+        // France
+        "NC": ("New Caledonia", "FR"),
+        "PF": ("French Polynesia", "FR"),
+        "TF": ("French Southern Lands", "FR"),
+        "WF": ("Wallis and Futuna", "FR"),
+        "PM": ("Saint Pierre and Miquelon", "FR"),
+        "BL": ("Saint Barthélemy", "FR"),
+        "MF": ("Saint Martin", "FR"),
+        "GF": ("French Guiana", "FR"),
+        "GP": ("Guadeloupe", "FR"),
+        "MQ": ("Martinique", "FR"),
+        "RE": ("Réunion", "FR"),
+        "YT": ("Mayotte", "FR"),
+
+        // United Kingdom
+        "FK": ("Falkland Islands", "GB"),
+        "GI": ("Gibraltar", "GB"),
+        "BM": ("Bermuda", "GB"),
+        "KY": ("Cayman Islands", "GB"),
+        "VG": ("British Virgin Islands", "GB"),
+        "TC": ("Turks and Caicos Islands", "GB"),
+        "MS": ("Montserrat", "GB"),
+        "AI": ("Anguilla", "GB"),
+        "SH": ("Saint Helena", "GB"),
+        "PN": ("Pitcairn Islands", "GB"),
+        "IO": ("British Indian Ocean Territory", "GB"),
+        "GS": ("South Georgia and South Sandwich Islands", "GB"),
+        "GG": ("Guernsey", "GB"),
+        "JE": ("Jersey", "GB"),
+        "IM": ("Isle of Man", "GB"),
+
+        // United States
+        "PR": ("Puerto Rico", "US"),
+        "GU": ("Guam", "US"),
+        "VI": ("U.S. Virgin Islands", "US"),
+        "AS": ("American Samoa", "US"),
+        "MP": ("Northern Mariana Islands", "US"),
+        "UM": ("U.S. Minor Outlying Islands", "US"),
+
+        // Netherlands
+        "AW": ("Aruba", "NL"),
+        "CW": ("Curaçao", "NL"),
+        "SX": ("Sint Maarten", "NL"),
+        "BQ": ("Caribbean Netherlands", "NL"),
+
+        // Australia
+        "NF": ("Norfolk Island", "AU"),
+        "HM": ("Heard Island and McDonald Islands", "AU"),
+        "CC": ("Cocos (Keeling) Islands", "AU"),
+        "CX": ("Christmas Island", "AU"),
+        "CS": ("Coral Sea Islands", "AU"),
+
+        // New Zealand
+        "CK": ("Cook Islands", "NZ"),
+        "NU": ("Niue", "NZ"),
+        "TK": ("Tokelau", "NZ"),
+
+        // Norway
+        "SJ": ("Svalbard and Jan Mayen", "NO"),
+        "BV": ("Bouvet Island", "NO"),
+
+        // China
+        "HK": ("Hong Kong", "CN"),
+        "MO": ("Macao", "CN"),
+
+        // Finland
+        "AX": ("Åland Islands", "FI"),
+
+        // Disputed or special status (no parent)
+        "AQ": ("Antarctica", ""),
+        "CN-TW": ("Taiwan", ""),
+        "TW": ("Taiwan", ""),
+        "KO": ("Kosovo", ""),
+        "EH": ("Western Sahara", ""),
+        "PS": ("Palestine", ""),
+
+        // Special cases
+        "KA": ("Baikonur Cosmodrome", "KZ"),  // Leased to Russia but in Kazakhstan
+        "SP": ("Southern Patagonian Ice Field", ""),  // Disputed Argentina/Chile
+    ]
+
+    static func parentCountry(for code: String) -> Country? {
+        guard let info = territories[code],
+              !info.parentCode.isEmpty else { return nil }
+        return GeographicData.countries.first { $0.id == info.parentCode }
+    }
+
+    static func territoryName(for code: String) -> String {
+        territories[code]?.name ?? "Unknown Territory"
+    }
+}
+
+struct TerritoryInfoPopup: View {
+    let regionCode: String
+    let territoryName: String
+    let isVisited: Bool
+    let onToggle: () -> Void
+    let onDismiss: () -> Void
+
+    private var parentCountry: Country? {
+        TerritoryMapping.parentCountry(for: regionCode)
+    }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(territoryName)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    if let parent = parentCountry {
+                        Text("Territory of \(parent.name) • \(regionCode)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Code: \(regionCode)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            // Allow marking this territory as visited
+            Button(action: {
+                onToggle()
+                onDismiss()
+            }) {
+                HStack {
+                    Image(systemName: isVisited ? "checkmark.circle.fill" : "circle")
+                        .font(.title2)
+                    Text(isVisited ? "Visited" : "Mark as Visited")
+                        .font(.headline)
+                    Spacer()
+                }
+                .padding()
+                .background(isVisited ? Color.green.opacity(0.2) : Color.secondary.opacity(0.1))
+                .foregroundStyle(isVisited ? .green : .primary)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(territoryName), \(isVisited ? "visited" : "not visited")")
+            .accessibilityHint("Double tap to toggle visited status")
+
+            Spacer()
+        }
+        .padding()
+    }
+}
+
+// MARK: - State Map Sheet
+
+struct StateMapSheet: View {
+    let countryCode: String
+    let visitedPlaces: [VisitedPlace]
+    let onDismiss: () -> Void
+    @Environment(\.modelContext) private var modelContext
+
+    @State private var selectedState: String?
+    @State private var showingStatePopup = false
+
+    private var visitedStateCodes: Set<String> {
+        let regionType: String = countryCode == "US"
+            ? VisitedPlace.RegionType.usState.rawValue
+            : VisitedPlace.RegionType.canadianProvince.rawValue
+        return Set(
+            visitedPlaces
+                .filter { $0.regionType == regionType && !$0.isDeleted }
+                .map { $0.regionCode }
+        )
+    }
+
+    private var countryName: String {
+        countryCode == "US" ? "United States" : "Canada"
+    }
+
+    private var stateLabel: String {
+        countryCode == "US" ? "States" : "Provinces"
+    }
+
+    private var selectedStateInfo: StateProvince? {
+        guard let code = selectedState else { return nil }
+        return GeographicData.states(for: countryCode).first { $0.id == code }
+    }
+
+    private var isSelectedStateVisited: Bool {
+        guard let code = selectedState else { return false }
+        return visitedStateCodes.contains(code)
+    }
+
+    @State private var showStateList = false
+
+    private var allStates: [StateProvince] {
+        GeographicData.states(for: countryCode).sorted { $0.name < $1.name }
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Map view
+                ZStack {
+                    StateMapView(
+                        countryCode: countryCode,
+                        visitedStateCodes: visitedStateCodes,
+                        selectedState: $selectedState,
+                        onStateTapped: { stateCode in
+                            selectedState = stateCode
+                            showingStatePopup = true
+                        }
+                    )
+                }
+                .frame(maxHeight: showStateList ? UIScreen.main.bounds.height * 0.4 : .infinity)
+
+                // Expandable state list
+                VStack(spacing: 0) {
+                    // Header bar - tap to expand/collapse
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showStateList.toggle()
+                        }
+                    } label: {
+                        HStack {
+                            Text("\(visitedStateCodes.count)/\(allStates.count) \(stateLabel)")
+                                .font(.headline)
+                            Spacer()
+                            Image(systemName: showStateList ? "chevron.down" : "chevron.up")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal)
+                        .padding(.vertical, 12)
+                        .background(.ultraThinMaterial)
+                    }
+                    .buttonStyle(.plain)
+
+                    // State list (shown when expanded)
+                    if showStateList {
+                        ScrollView {
+                            LazyVStack(spacing: 0) {
+                                ForEach(allStates) { state in
+                                    let isVisited = visitedStateCodes.contains(state.id)
+                                    Button {
+                                        toggleStateDirectly(state)
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: isVisited ? "checkmark.circle.fill" : "circle")
+                                                .foregroundStyle(isVisited ? .green : .secondary)
+                                            Text(state.name)
+                                                .foregroundStyle(.primary)
+                                            Spacer()
+                                            Text(state.id)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        .padding(.horizontal)
+                                        .padding(.vertical, 10)
+                                    }
+                                    .buttonStyle(.plain)
+                                    Divider().padding(.leading)
+                                }
+                            }
+                        }
+                        .frame(maxHeight: UIScreen.main.bounds.height * 0.5)
+                    }
+                }
+            }
+            .navigationTitle(countryName)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Done") {
+                        onDismiss()
+                    }
+                }
+            }
+            .sheet(isPresented: $showingStatePopup) {
+                if let state = selectedStateInfo {
+                    StateInfoPopup(
+                        state: state,
+                        isVisited: isSelectedStateVisited,
+                        onToggle: {
+                            toggleStateVisited(state)
+                        },
+                        onDismiss: {
+                            showingStatePopup = false
+                            selectedState = nil
+                        }
+                    )
+                    .presentationDetents([.height(180)])
+                    .presentationDragIndicator(.visible)
+                }
+            }
+        }
+    }
+
+    private func toggleStateDirectly(_ state: StateProvince) {
+        let regionType: VisitedPlace.RegionType = countryCode == "US" ? .usState : .canadianProvince
+        let isCurrentlyVisited = visitedStateCodes.contains(state.id)
+
+        if isCurrentlyVisited {
+            if let place = visitedPlaces.first(where: {
+                $0.regionType == regionType.rawValue && $0.regionCode == state.id && !$0.isDeleted
+            }) {
+                place.isDeleted = true
+                place.lastModifiedAt = Date()
+            }
+        } else {
+            let place = VisitedPlace(
+                regionType: regionType,
+                regionCode: state.id,
+                regionName: state.name
+            )
+            modelContext.insert(place)
+        }
+    }
+
+    private func toggleStateVisited(_ state: StateProvince) {
+        let regionType: VisitedPlace.RegionType = countryCode == "US" ? .usState : .canadianProvince
+
+        if isSelectedStateVisited {
+            if let place = visitedPlaces.first(where: {
+                $0.regionType == regionType.rawValue && $0.regionCode == state.id
+            }) {
+                place.isDeleted = true
+                place.lastModifiedAt = Date()
+            }
+        } else {
+            let place = VisitedPlace(
+                regionType: regionType,
+                regionCode: state.id,
+                regionName: state.name
+            )
+            modelContext.insert(place)
+        }
+    }
+}
+
+// MARK: - State Info Popup
+
+struct StateInfoPopup: View {
+    let state: StateProvince
+    let isVisited: Bool
+    let onToggle: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            // Header
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(state.name)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    Text(state.id)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            // Toggle Button
+            Button(action: {
+                onToggle()
+                onDismiss()
+            }) {
+                HStack {
+                    Image(systemName: isVisited ? "checkmark.circle.fill" : "circle")
+                        .font(.title2)
+                    Text(isVisited ? "Visited" : "Mark as Visited")
+                        .font(.headline)
+                    Spacer()
+                }
+                .padding()
+                .background(isVisited ? Color.blue.opacity(0.2) : Color.secondary.opacity(0.1))
+                .foregroundStyle(isVisited ? .blue : .primary)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+        }
+        .padding()
     }
 }
 
@@ -292,6 +941,7 @@ struct WorldMapView: View {
 struct CountryListView: View {
     let visitedPlaces: [VisitedPlace]
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var searchText = ""
     @State private var expandedCountries: Set<String> = []
@@ -364,8 +1014,12 @@ struct CountryListView: View {
                                 }
                             }
                         } header: {
+                            let isExpanded = !collapsedContinents.contains(group.continent.id)
+                            let visitedCount = visitedCountInContinent(group.continent)
+                            let totalCount = totalCountInContinent(group.continent)
+
                             Button {
-                                withAnimation {
+                                conditionalWithAnimation(.easeInOut(duration: 0.2), reduceMotion: reduceMotion) {
                                     if collapsedContinents.contains(group.continent.id) {
                                         collapsedContinents.remove(group.continent.id)
                                     } else {
@@ -375,19 +1029,24 @@ struct CountryListView: View {
                             } label: {
                                 HStack {
                                     Text(group.continent.emoji)
+                                        .accessibilityHidden(true)
                                     Text(group.continent.rawValue)
                                         .font(.headline)
                                     Spacer()
-                                    Text("\(visitedCountInContinent(group.continent))/\(totalCountInContinent(group.continent))")
+                                    Text("\(visitedCount)/\(totalCount)")
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
-                                    Image(systemName: collapsedContinents.contains(group.continent.id) ? "chevron.right" : "chevron.down")
+                                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
+                                        .accessibilityHidden(true)
                                 }
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel("\(group.continent.rawValue), \(visitedCount) of \(totalCount) countries visited")
+                            .accessibilityHint("Double tap to \(isExpanded ? "collapse" : "expand")")
+                            .accessibilityAddTraits(.isHeader)
                         }
                     }
                 }
@@ -514,6 +1173,7 @@ struct CountryRow: View {
                         Image(systemName: isVisited ? "checkmark.circle.fill" : "circle")
                             .foregroundStyle(isVisited ? .green : .secondary)
                             .font(.title2)
+                            .accessibilityHidden(true)
 
                         VStack(alignment: .leading) {
                             Text(country.name)
@@ -530,11 +1190,14 @@ struct CountryRow: View {
                             Text("\(visitedStates.count)/\(states.count)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                                .accessibilityHidden(true)
                         }
                     }
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("\(country.name), \(isVisited ? "visited" : "not visited")")
+                .accessibilityHint("Double tap to toggle visited status")
 
                 // Expand/collapse button for states (separate tap target)
                 if country.hasStates {
@@ -549,6 +1212,8 @@ struct CountryRow: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(isExpanded ? "Collapse states" : "Expand states")
+                    .accessibilityHint("Double tap to \(isExpanded ? "hide" : "show") \(states.count) states")
                 }
             }
             .padding(.vertical, 8)
@@ -580,6 +1245,7 @@ struct StateRow: View {
             HStack {
                 Image(systemName: isVisited ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(isVisited ? .blue : .secondary)
+                    .accessibilityHidden(true)
 
                 Text(state.name)
                     .foregroundStyle(.primary)
@@ -594,6 +1260,8 @@ struct StateRow: View {
             .padding(.vertical, 6)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(state.name), \(isVisited ? "visited" : "not visited")")
+        .accessibilityHint("Double tap to toggle visited status")
     }
 }
 
@@ -601,6 +1269,9 @@ struct StateRow: View {
 
 struct StatsView: View {
     let visitedPlaces: [VisitedPlace]
+
+    @ScaledMetric(relativeTo: .largeTitle) private var globeSize: CGFloat = 60
+    @ScaledMetric(relativeTo: .title) private var totalCountSize: CGFloat = 48
 
     private var countriesCount: Int {
         visitedPlaces.filter { $0.regionType == VisitedPlace.RegionType.country.rawValue }.count
@@ -622,8 +1293,9 @@ struct StatsView: View {
                     // Header
                     VStack(spacing: 8) {
                         Image(systemName: "globe.americas.fill")
-                            .font(.system(size: 60))
+                            .font(.system(size: globeSize))
                             .foregroundStyle(.tint)
+                            .accessibilityHidden(true)
 
                         Text("Your Travel Stats")
                             .font(.title2)
@@ -660,7 +1332,7 @@ struct StatsView: View {
                     // Total
                     VStack(spacing: 4) {
                         Text("\(countriesCount + usStatesCount + canadianProvincesCount)")
-                            .font(.system(size: 48, weight: .bold))
+                            .font(.system(size: totalCountSize, weight: .bold))
                             .foregroundStyle(.tint)
 
                         Text("Total Regions Visited")
@@ -668,6 +1340,8 @@ struct StatsView: View {
                             .foregroundStyle(.secondary)
                     }
                     .padding(.top, 8)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Total regions visited: \(countriesCount + usStatesCount + canadianProvincesCount)")
 
                     Spacer()
                 }
@@ -694,6 +1368,7 @@ struct StatCard: View {
             HStack {
                 Image(systemName: icon)
                     .foregroundStyle(color)
+                    .accessibilityHidden(true)
                 Text(title)
                     .font(.headline)
                 Spacer()
@@ -704,6 +1379,7 @@ struct StatCard: View {
 
             ProgressView(value: Double(count), total: Double(total))
                 .tint(color)
+                .accessibilityHidden(true)
 
             HStack {
                 Spacer()
@@ -715,6 +1391,8 @@ struct StatCard: View {
         .padding()
         .background(.quaternary)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(count) of \(total), \(String(format: "%.0f", percentage)) percent")
     }
 }
 
