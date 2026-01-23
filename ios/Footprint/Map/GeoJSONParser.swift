@@ -139,4 +139,108 @@ struct GeoJSONParser {
         case invalidFormat
         case fileNotFound
     }
+
+    // MARK: - State/Province Boundaries
+
+    /// A parsed state/province with its polygon boundaries
+    struct StateBoundary: Identifiable {
+        let id: String  // State code (e.g., "CA", "TX", "ON")
+        let name: String
+        let countryCode: String
+        let polygons: [MKPolygon]
+
+        /// Create a single multi-polygon overlay for this state
+        var overlay: MKMultiPolygon {
+            MKMultiPolygon(polygons)
+        }
+    }
+
+    /// Parse US states GeoJSON data from the app bundle
+    static func parseUSStates() -> [StateBoundary] {
+        let url = Bundle.main.url(
+            forResource: "us_states",
+            withExtension: "geojson",
+            subdirectory: "GeoData"
+        ) ?? Bundle.main.url(
+            forResource: "us_states",
+            withExtension: "geojson"
+        )
+
+        guard let url else {
+            print("US states GeoJSON file not found in bundle")
+            return []
+        }
+
+        do {
+            let data = try Data(contentsOf: url)
+            let boundaries = try parseStateGeoJSON(data)
+            print("Loaded \(boundaries.count) US state boundaries")
+            return boundaries
+        } catch {
+            print("Error parsing US states GeoJSON: \(error)")
+            return []
+        }
+    }
+
+    /// Parse Canadian provinces GeoJSON data from the app bundle
+    static func parseCanadianProvinces() -> [StateBoundary] {
+        let url = Bundle.main.url(
+            forResource: "canadian_provinces",
+            withExtension: "geojson",
+            subdirectory: "GeoData"
+        ) ?? Bundle.main.url(
+            forResource: "canadian_provinces",
+            withExtension: "geojson"
+        )
+
+        guard let url else {
+            print("Canadian provinces GeoJSON file not found in bundle")
+            return []
+        }
+
+        do {
+            let data = try Data(contentsOf: url)
+            let boundaries = try parseStateGeoJSON(data)
+            print("Loaded \(boundaries.count) Canadian province boundaries")
+            return boundaries
+        } catch {
+            print("Error parsing Canadian provinces GeoJSON: \(error)")
+            return []
+        }
+    }
+
+    /// Parse state/province GeoJSON data
+    private static func parseStateGeoJSON(_ data: Data) throws -> [StateBoundary] {
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let features = json["features"] as? [[String: Any]]
+        else {
+            throw GeoJSONError.invalidFormat
+        }
+
+        var boundaries: [StateBoundary] = []
+
+        for feature in features {
+            guard let properties = feature["properties"] as? [String: Any],
+                  let stateCode = properties["state_code"] as? String,
+                  let name = properties["name"] as? String,
+                  let countryCode = properties["country_code"] as? String,
+                  let geometry = feature["geometry"] as? [String: Any]
+            else {
+                continue
+            }
+
+            let polygons = parseGeometry(geometry)
+
+            if !polygons.isEmpty {
+                boundaries.append(StateBoundary(
+                    id: stateCode,
+                    name: name,
+                    countryCode: countryCode,
+                    polygons: polygons
+                ))
+            }
+        }
+
+        return boundaries
+    }
 }

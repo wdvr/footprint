@@ -28,6 +28,29 @@ This is a travel tracking application that allows users to mark countries, US st
 - **Permissions**: Use dangerously disable sandbox after initial setup
 - **Testing**: Comprehensive automated testing for all components
 
+### Deploy to Physical Device
+To build and install the app on Wouter's iPhone (i17pw):
+```bash
+# Build for device
+cd /Users/wouter/dev/footprint/ios
+xcodebuild -project Footprint.xcodeproj -scheme Footprint -destination 'id=00008150-001625E20AE2401C' build
+
+# Install to device
+xcrun devicectl device install app --device 00008150-001625E20AE2401C /Users/wouter/Library/Developer/Xcode/DerivedData/Footprint-cknuwqnwulisrqbmgsqwdnfcjmlq/Build/Products/Debug-iphoneos/Footprint.app
+
+# Launch the app
+xcrun devicectl device process launch --device 00008150-001625E20AE2401C com.wd.footprint.app
+```
+
+### Testing Requirements - IMPORTANT
+When making changes, always write and run tests:
+- **Unit Tests**: Test business logic, data transformations, code formatting (e.g., state codes "US-CA")
+- **Integration Tests**: Test data flow between components, SwiftData operations
+- **UI Tests**: Test user flows, map interactions, state highlighting
+- **Run tests before PRs**: `xcodebuild test -project Footprint.xcodeproj -scheme Footprint -destination 'platform=iOS Simulator,name=iPhone 17'`
+
+Test files location: `ios/FootprintTests/`
+
 ## iOS Development Tools & Setup (2026)
 
 ### Modern iOS Development Stack
