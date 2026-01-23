@@ -181,14 +181,14 @@ struct StateMapView: UIViewRepresentable {
                     renderer.strokeColor = UIColor.systemBlue
                     renderer.lineWidth = 3.0
                 } else if isVisited {
-                    // Visited states: blue with higher opacity
-                    renderer.fillColor = UIColor.systemBlue.withAlphaComponent(0.4)
-                    renderer.strokeColor = UIColor.systemBlue.withAlphaComponent(0.8)
+                    // Visited states: green to match visited countries
+                    renderer.fillColor = UIColor.systemGreen.withAlphaComponent(0.4)
+                    renderer.strokeColor = UIColor.systemGreen.withAlphaComponent(0.8)
                     renderer.lineWidth = 1.5
                 } else {
-                    // Unvisited states: subtle gray
-                    renderer.fillColor = UIColor.systemGray.withAlphaComponent(0.1)
-                    renderer.strokeColor = UIColor.systemGray.withAlphaComponent(0.3)
+                    // Unvisited states: yellow tint
+                    renderer.fillColor = UIColor.systemYellow.withAlphaComponent(0.25)
+                    renderer.strokeColor = UIColor.systemYellow.withAlphaComponent(0.5)
                     renderer.lineWidth = 0.5
                 }
 

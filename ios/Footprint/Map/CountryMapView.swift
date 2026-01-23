@@ -207,20 +207,15 @@ struct CountryMapView: UIViewRepresentable {
                     // State/Province rendering
                     let isVisited = visitedStateCodes.contains(code)
 
-                    // Debug: print state rendering info
-                    if !visitedStateCodes.isEmpty {
-                        print("State \(code): isVisited=\(isVisited), visitedCodes=\(visitedStateCodes)")
-                    }
-
                     if isVisited {
-                        // Visited states: orange/amber color to distinguish from countries
-                        renderer.fillColor = UIColor.systemOrange.withAlphaComponent(0.4)
-                        renderer.strokeColor = UIColor.systemOrange.withAlphaComponent(0.8)
+                        // Visited states: green to match visited countries
+                        renderer.fillColor = UIColor.systemGreen.withAlphaComponent(0.4)
+                        renderer.strokeColor = UIColor.systemGreen.withAlphaComponent(0.8)
                         renderer.lineWidth = 1.0
                     } else {
-                        // Unvisited states: very subtle, just show borders
-                        renderer.fillColor = UIColor.clear
-                        renderer.strokeColor = UIColor.systemGray.withAlphaComponent(0.2)
+                        // Unvisited states: yellow tint
+                        renderer.fillColor = UIColor.systemYellow.withAlphaComponent(0.25)
+                        renderer.strokeColor = UIColor.systemYellow.withAlphaComponent(0.5)
                         renderer.lineWidth = 0.5
                     }
                 } else {

@@ -736,37 +736,80 @@ struct StateMapSheet: View {
         return visitedStateCodes.contains(code)
     }
 
+    @State private var showStateList = false
+
+    private var allStates: [StateProvince] {
+        GeographicData.states(for: countryCode).sorted { $0.name < $1.name }
+    }
+
     var body: some View {
         NavigationStack {
-            ZStack {
-                StateMapView(
-                    countryCode: countryCode,
-                    visitedStateCodes: visitedStateCodes,
-                    selectedState: $selectedState,
-                    onStateTapped: { stateCode in
-                        selectedState = stateCode
-                        showingStatePopup = true
-                    }
-                )
-                .ignoresSafeArea(edges: .bottom)
+            VStack(spacing: 0) {
+                // Map view
+                ZStack {
+                    StateMapView(
+                        countryCode: countryCode,
+                        visitedStateCodes: visitedStateCodes,
+                        selectedState: $selectedState,
+                        onStateTapped: { stateCode in
+                            selectedState = stateCode
+                            showingStatePopup = true
+                        }
+                    )
+                }
+                .frame(maxHeight: showStateList ? UIScreen.main.bounds.height * 0.4 : .infinity)
 
-                // Overlay showing visited count
-                VStack {
-                    Spacer()
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("\(visitedStateCodes.count) \(stateLabel.lowercased())")
+                // Expandable state list
+                VStack(spacing: 0) {
+                    // Header bar - tap to expand/collapse
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showStateList.toggle()
+                        }
+                    } label: {
+                        HStack {
+                            Text("\(visitedStateCodes.count)/\(allStates.count) \(stateLabel)")
                                 .font(.headline)
-                            Text("of \(GeographicData.states(for: countryCode).count) total")
+                            Spacer()
+                            Image(systemName: showStateList ? "chevron.down" : "chevron.up")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                        .padding()
+                        .padding(.horizontal)
+                        .padding(.vertical, 12)
                         .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        Spacer()
                     }
-                    .padding()
+                    .buttonStyle(.plain)
+
+                    // State list (shown when expanded)
+                    if showStateList {
+                        ScrollView {
+                            LazyVStack(spacing: 0) {
+                                ForEach(allStates) { state in
+                                    let isVisited = visitedStateCodes.contains(state.id)
+                                    Button {
+                                        toggleStateDirectly(state)
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: isVisited ? "checkmark.circle.fill" : "circle")
+                                                .foregroundStyle(isVisited ? .green : .secondary)
+                                            Text(state.name)
+                                                .foregroundStyle(.primary)
+                                            Spacer()
+                                            Text(state.id)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        .padding(.horizontal)
+                                        .padding(.vertical, 10)
+                                    }
+                                    .buttonStyle(.plain)
+                                    Divider().padding(.leading)
+                                }
+                            }
+                        }
+                        .frame(maxHeight: UIScreen.main.bounds.height * 0.5)
+                    }
                 }
             }
             .navigationTitle(countryName)
@@ -795,6 +838,27 @@ struct StateMapSheet: View {
                     .presentationDragIndicator(.visible)
                 }
             }
+        }
+    }
+
+    private func toggleStateDirectly(_ state: StateProvince) {
+        let regionType: VisitedPlace.RegionType = countryCode == "US" ? .usState : .canadianProvince
+        let isCurrentlyVisited = visitedStateCodes.contains(state.id)
+
+        if isCurrentlyVisited {
+            if let place = visitedPlaces.first(where: {
+                $0.regionType == regionType.rawValue && $0.regionCode == state.id && !$0.isDeleted
+            }) {
+                place.isDeleted = true
+                place.lastModifiedAt = Date()
+            }
+        } else {
+            let place = VisitedPlace(
+                regionType: regionType,
+                regionCode: state.id,
+                regionName: state.name
+            )
+            modelContext.insert(place)
         }
     }
 
