@@ -225,7 +225,7 @@ struct CountryMapView: UIViewRepresentable {
                     renderer.fillColor = .clear
                     if isVisited {
                         renderer.strokeColor = UIColor.systemGreen
-                        renderer.lineWidth = 3.0
+                        renderer.lineWidth = 1.5
                     } else {
                         renderer.strokeColor = UIColor.systemGray.withAlphaComponent(0.3)
                         renderer.lineWidth = 0.5
