@@ -22,6 +22,8 @@
 		C00294798DCEC7A37B37ED02 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E07153F5CDFA5F55C0487C /* AuthManager.swift */; };
 		C3DA4A92918B7F9FBB3D698E /* GeographicData.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB79DD0340AC874AC75A998D /* GeographicData.swift */; };
 		C4E04A132F22BB4932A0B08E /* countries.geojson in Resources */ = {isa = PBXBuildFile; fileRef = E8F1756B397B5937509FD5E9 /* countries.geojson */; };
+		D5F14B243E33CC5A43B1C09F /* us_states.geojson in Resources */ = {isa = PBXBuildFile; fileRef = F9A2867C4A8E3D5B6C7F0E1A /* us_states.geojson */; };
+		E6A25C354F44DD6B54C2D1AF /* canadian_provinces.geojson in Resources */ = {isa = PBXBuildFile; fileRef = A0B3978D5B9F4E6C7D8A1F2B /* canadian_provinces.geojson */; };
 		C584CE8BE7F2B76E49F8FDF6 /* GeoJSONParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E2F5F601FD2C9BEA04178E5 /* GeoJSONParserTests.swift */; };
 		E186CD7B7C8ADBA2D7B79364 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7BB04D74CC90EA416220D702 /* Assets.xcassets */; };
 		EEF1C332331CD745C2E29CA5 /* GeoJSONParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A9464E97E44DCD324EB7F8 /* GeoJSONParser.swift */; };
@@ -63,6 +65,8 @@
 		7D047C8302CC055C227ABAB2 /* Footprint.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Footprint.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8BB3A459FA117DC6B0399CF2 /* APIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientTests.swift; sourceTree = "<group>"; };
 		E8F1756B397B5937509FD5E9 /* countries.geojson */ = {isa = PBXFileReference; lastKnownFileType = text; path = countries.geojson; sourceTree = "<group>"; };
+		F9A2867C4A8E3D5B6C7F0E1A /* us_states.geojson */ = {isa = PBXFileReference; lastKnownFileType = text; path = us_states.geojson; sourceTree = "<group>"; };
+		A0B3978D5B9F4E6C7D8A1F2B /* canadian_provinces.geojson */ = {isa = PBXFileReference; lastKnownFileType = text; path = canadian_provinces.geojson; sourceTree = "<group>"; };
 		F77B77706A1622EA6FF7F3AB /* CountryMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountryMapView.swift; sourceTree = "<group>"; };
 		FB79DD0340AC874AC75A998D /* GeographicData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeographicData.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -123,7 +127,9 @@
 		49DED6D21011481B2CCA1C44 /* GeoData */ = {
 			isa = PBXGroup;
 			children = (
+				A0B3978D5B9F4E6C7D8A1F2B /* canadian_provinces.geojson */,
 				E8F1756B397B5937509FD5E9 /* countries.geojson */,
+				F9A2867C4A8E3D5B6C7F0E1A /* us_states.geojson */,
 			);
 			path = GeoData;
 			sourceTree = "<group>";
@@ -275,7 +281,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				E186CD7B7C8ADBA2D7B79364 /* Assets.xcassets in Resources */,
+				E6A25C354F44DD6B54C2D1AF /* canadian_provinces.geojson in Resources */,
 				C4E04A132F22BB4932A0B08E /* countries.geojson in Resources */,
+				D5F14B243E33CC5A43B1C09F /* us_states.geojson in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
