@@ -186,9 +186,9 @@ struct StateMapView: UIViewRepresentable {
                     renderer.strokeColor = UIColor.systemGreen.withAlphaComponent(0.8)
                     renderer.lineWidth = 1.5
                 } else {
-                    // Unvisited states: yellow tint
-                    renderer.fillColor = UIColor.systemYellow.withAlphaComponent(0.25)
-                    renderer.strokeColor = UIColor.systemYellow.withAlphaComponent(0.5)
+                    // Unvisited states: subtle light red tint
+                    renderer.fillColor = UIColor.systemRed.withAlphaComponent(0.15)
+                    renderer.strokeColor = UIColor.systemRed.withAlphaComponent(0.3)
                     renderer.lineWidth = 0.5
                 }
 
