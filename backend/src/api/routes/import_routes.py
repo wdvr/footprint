@@ -1,8 +1,10 @@
 """Import API routes for Gmail/Calendar integration."""
 
 import time
+from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import RedirectResponse
 
 from src.api.routes.auth import get_current_user
 from src.models.google_tokens import (
@@ -409,3 +411,36 @@ async def unregister_device_token(
     user_id = current_user["user_id"]
     db_service.delete_device_token(user_id, device_token)
     return {"success": True}
+
+
+@router.get("/oauth/callback")
+async def oauth_callback(
+    code: str = Query(None),
+    error: str = Query(None),
+    scope: str = Query(None),
+):
+    """
+    OAuth callback endpoint for Google Sign-In.
+
+    This receives the OAuth callback from Google and redirects to the iOS app
+    using the custom URL scheme.
+    """
+    # Build the redirect URL for the iOS app
+    app_scheme = "com.wd.footprint.app"
+
+    if error:
+        # Redirect with error
+        params = urlencode({"error": error})
+        redirect_url = f"{app_scheme}:/oauth2callback?{params}"
+    elif code:
+        # Redirect with authorization code
+        params = {"code": code}
+        if scope:
+            params["scope"] = scope
+        redirect_url = f"{app_scheme}:/oauth2callback?{urlencode(params)}"
+    else:
+        # No code or error - redirect with generic error
+        params = urlencode({"error": "no_code"})
+        redirect_url = f"{app_scheme}:/oauth2callback?{params}"
+
+    return RedirectResponse(url=redirect_url, status_code=302)

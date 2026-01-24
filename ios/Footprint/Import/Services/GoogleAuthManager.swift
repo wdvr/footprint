@@ -215,9 +215,11 @@ enum GoogleAuthError: LocalizedError {
 // MARK: - OAuth Configuration
 
 enum GoogleOAuthConfig {
-    static let clientId = "269334695221-sek2s7nqal8hmt2latimle4f8kgesg6l.apps.googleusercontent.com"
+    // Web app client ID (has secret for code exchange)
+    static let clientId = "269334695221-0h0nbiimdobmjefsi13dhvgpsidhk5hf.apps.googleusercontent.com"
     static let callbackScheme = "com.wd.footprint.app"
-    static let redirectUri = "com.wd.footprint.app:/oauth2callback"
+    // HTTPS redirect goes to our backend, which redirects to the app scheme
+    static let redirectUri = "https://footprintmaps.com/api/import/google/oauth/callback"
     static let scopes = [
         "https://www.googleapis.com/auth/gmail.readonly",
         "https://www.googleapis.com/auth/calendar.readonly"

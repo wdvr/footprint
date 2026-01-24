@@ -248,7 +248,7 @@ api_lambda = aws.lambda_.Function(
             # Google OAuth (for Gmail/Calendar import)
             "GOOGLE_CLIENT_ID": config.get("google_client_id") or "",
             "GOOGLE_CLIENT_SECRET": config.get_secret("google_client_secret") or "",
-            "GOOGLE_REDIRECT_URI": "com.wd.footprint.app:/oauth2callback",
+            "GOOGLE_REDIRECT_URI": "https://footprintmaps.com/api/import/google/oauth/callback",
         }
     ),
     tags=common_tags,
@@ -306,6 +306,79 @@ api_gateway_permission = aws.lambda_.Permission(
     function=api_lambda.name,
     principal="apigateway.amazonaws.com",
     source_arn=api_gateway.execution_arn.apply(lambda arn: f"{arn}/*/*"),
+)
+
+# =============================================================================
+# Custom Domain (footprintmaps.com)
+# =============================================================================
+
+domain_name = config.get("domain_name") or "footprintmaps.com"
+
+# Get the hosted zone (created automatically with domain registration)
+hosted_zone = aws.route53.get_zone(name=domain_name)
+
+# ACM Certificate for the domain
+certificate = aws.acm.Certificate(
+    resource_name("certificate"),
+    domain_name=domain_name,
+    subject_alternative_names=[f"*.{domain_name}"],
+    validation_method="DNS",
+    tags=common_tags,
+)
+
+# DNS validation record (same record validates both domain and wildcard)
+cert_validation_record = aws.route53.Record(
+    resource_name("cert-validation-record"),
+    zone_id=hosted_zone.zone_id,
+    name=certificate.domain_validation_options[0].resource_record_name,
+    type=certificate.domain_validation_options[0].resource_record_type,
+    records=[certificate.domain_validation_options[0].resource_record_value],
+    ttl=300,
+    allow_overwrite=True,
+    opts=ResourceOptions(depends_on=[certificate]),
+)
+
+# Wait for certificate validation
+cert_validation = aws.acm.CertificateValidation(
+    resource_name("cert-validation"),
+    certificate_arn=certificate.arn,
+    validation_record_fqdns=[cert_validation_record.fqdn],
+)
+
+# API Gateway custom domain
+api_domain = aws.apigatewayv2.DomainName(
+    resource_name("api-domain"),
+    domain_name=domain_name,
+    domain_name_configuration=aws.apigatewayv2.DomainNameDomainNameConfigurationArgs(
+        certificate_arn=cert_validation.certificate_arn,
+        endpoint_type="REGIONAL",
+        security_policy="TLS_1_2",
+    ),
+    tags=common_tags,
+)
+
+# API mapping to connect domain to API
+api_mapping = aws.apigatewayv2.ApiMapping(
+    resource_name("api-mapping"),
+    api_id=api_gateway.id,
+    domain_name=api_domain.domain_name,
+    stage=api_stage.name,
+    api_mapping_key="api",  # https://footprintmaps.com/api/...
+)
+
+# Route53 A record pointing to API Gateway
+api_dns_record = aws.route53.Record(
+    resource_name("api-dns"),
+    zone_id=hosted_zone.zone_id,
+    name=domain_name,
+    type="A",
+    aliases=[
+        aws.route53.RecordAliasArgs(
+            name=api_domain.domain_name_configuration.target_domain_name,
+            zone_id=api_domain.domain_name_configuration.hosted_zone_id,
+            evaluate_target_health=False,
+        )
+    ],
 )
 
 # =============================================================================

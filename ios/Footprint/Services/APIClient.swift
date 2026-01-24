@@ -142,11 +142,14 @@ actor APIClient {
     }
 
     struct UserResponse: Decodable {
-        let id: String
-        let appleUserId: String
+        let userId: String
+        let appleUserId: String?
         let email: String?
         let displayName: String?
         let createdAt: Date?
+        let countriesVisited: Int?
+        let usStatesVisited: Int?
+        let canadianProvincesVisited: Int?
     }
 
     func authenticateWithApple(identityToken: String, authorizationCode: String) async throws -> AuthResponse {
