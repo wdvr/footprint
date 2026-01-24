@@ -43,7 +43,7 @@ jobs:
     - name: Run tests
       run: |
         cd backend
-        uv run pytest tests/ -v
+        uv run python -m pytest tests/ -v
 
   infrastructure-validate:
     name: Infrastructure Validation

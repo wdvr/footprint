@@ -159,7 +159,7 @@ pre-commit install
 pre-commit run --all-files
 
 # Backend tests
-cd backend && pytest
+cd backend && uv run python -m pytest tests/
 
 # iOS tests
 xcodebuild test -project ios/Footprint.xcodeproj -scheme Footprint -destination 'platform=iOS Simulator,name=iPhone 16'
@@ -177,7 +177,7 @@ xcodebuild test -project ios/Footprint.xcodeproj -scheme Footprint -destination 
 |---|---------|-------------|--------|
 | 1 | **Live location tracking** | Request location permission, show current position on map, auto-detect visited places | ✅ DONE |
 | 2 | **iOS Widget** | Home screen widget showing travel stats (code ready, add target in Xcode) | ✅ DONE |
-| 3 | **Friend lists & sharing** | Connect with friends, share/compare travel lists (backend complete) | ✅ DONE |
+| 3 | **Friend lists & sharing** | Connect with friends, share/compare travel lists (backend + iOS UI complete) | ✅ DONE |
 | 4 | **Feature requests & feedback** | In-app feedback form that saves to DynamoDB for async review | 🔲 TODO |
 | 5 | **Gmail/Calendar import** | Read travel confirmations from email/calendar, suggest locations to add | 🔲 TODO |
 | 6 | **States for other countries** | Add state/province boundaries for Australia, Mexico, etc. | 🔲 TODO |
