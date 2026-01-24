@@ -1,8 +1,15 @@
 import SwiftUI
 import SwiftData
+#if canImport(UIKit)
+import UIKit
+#endif
 
 @main
 struct FootprintApp: App {
+    #if canImport(UIKit)
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    #endif
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             VisitedPlace.self,
@@ -24,9 +31,42 @@ struct FootprintApp: App {
     }
 }
 
+#if canImport(UIKit)
+/// AppDelegate to handle push notification callbacks
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        // Set up notification delegate
+        UNUserNotificationCenter.current().delegate = PushNotificationManager.shared
+
+        // Set up notification categories
+        PushNotificationManager.shared.setupNotificationCategories()
+
+        return true
+    }
+
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        PushNotificationManager.shared.didRegisterForRemoteNotifications(deviceToken: deviceToken)
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        PushNotificationManager.shared.didFailToRegisterForRemoteNotifications(error: error)
+    }
+}
+#endif
+
 struct RootView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var authManager = AuthManager.shared
+    @State private var hasRequestedNotifications = false
 
     var body: some View {
         Group {
@@ -36,6 +76,12 @@ struct RootView: View {
                         // Configure sync manager and start sync
                         SyncManager.shared.configure(modelContext: modelContext)
                         await SyncManager.shared.sync()
+
+                        // Request push notification permission once
+                        if !hasRequestedNotifications {
+                            hasRequestedNotifications = true
+                            _ = await PushNotificationManager.shared.requestPermission()
+                        }
                     }
             } else {
                 LoginView()
@@ -77,6 +123,24 @@ struct LoginView: View {
                     SignInWithAppleButton()
                         .frame(height: 50)
                         .padding(.horizontal, 40)
+
+                    #if DEBUG
+                    // Dev mode login - bypasses Apple Sign In
+                    Button(action: {
+                        authManager.signInDevMode()
+                    }) {
+                        HStack {
+                            Image(systemName: "hammer.fill")
+                            Text("Dev Mode Login")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.orange)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    .padding(.horizontal, 40)
+                    #endif
                 }
 
                 if let error = authManager.error {

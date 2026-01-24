@@ -121,6 +121,17 @@ class AuthService:
         }
         return jwt.encode(payload, self.JWT_SECRET, algorithm=self.JWT_ALGORITHM)
 
+    def create_tokens(self, user_id: str) -> TokenResponse:
+        """Create both access and refresh tokens."""
+        access_token = self.create_access_token(user_id)
+        refresh_token = self.create_refresh_token(user_id)
+        return TokenResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            expires_in=self.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
+
     def verify_access_token(self, token: str) -> str | None:
         """Verify access token and return user_id."""
         try:

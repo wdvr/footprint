@@ -13,9 +13,9 @@ actor APIClient {
     static let shared = APIClient()
 
     #if DEBUG
-    private let baseURL = "https://66sdbasq7k.execute-api.us-east-1.amazonaws.com/dev"
+    private let baseURL = "https://jz0gkkwq8b.execute-api.us-east-1.amazonaws.com/dev"
     #else
-    private let baseURL = "https://66sdbasq7k.execute-api.us-east-1.amazonaws.com/prod"
+    private let baseURL = "https://jz0gkkwq8b.execute-api.us-east-1.amazonaws.com/prod"
     #endif
 
     private var accessToken: String?
@@ -160,6 +160,24 @@ actor APIClient {
     func getCurrentUser() async throws -> UserResponse {
         try await _request("/auth/me", authenticated: true)
     }
+
+    /// Store tokens (for dev mode auth)
+    func storeTokens(accessToken: String, refreshToken: String) {
+        setTokens(access: accessToken, refresh: refreshToken)
+    }
+
+    #if DEBUG
+    /// Dev mode authentication - bypasses Apple Sign In for testing
+    func authDevMode(deviceId: String) async throws -> AuthResponse {
+        struct DevAuthRequest: Encodable {
+            let deviceId: String
+        }
+        let body = DevAuthRequest(deviceId: deviceId)
+        let response: AuthResponse = try await _request("/auth/dev", method: "POST", body: body)
+        setTokens(access: response.accessToken, refresh: response.refreshToken)
+        return response
+    }
+    #endif
 
     // MARK: - Places Endpoints
 
