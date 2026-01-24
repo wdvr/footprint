@@ -358,6 +358,82 @@ class DynamoDBService:
             }
         )
 
+    # Feedback operations
+    FEEDBACK_SK = "FEEDBACK#{feedback_id}"
+
+    @staticmethod
+    def _get_feedback_sk(feedback_id: str) -> str:
+        return f"FEEDBACK#{feedback_id}"
+
+    def create_feedback(
+        self,
+        user_id: str,
+        feedback_id: str,
+        feedback_type: str,
+        title: str,
+        description: str,
+        app_version: str | None = None,
+        device_info: str | None = None,
+    ) -> dict[str, Any]:
+        """Create a feedback submission."""
+        now = datetime.now(UTC).isoformat()
+        item = {
+            "pk": self._get_user_pk(user_id),
+            "sk": self._get_feedback_sk(feedback_id),
+            "gsi1pk": "FEEDBACK",
+            "gsi1sk": f"{now}#{feedback_id}",
+            "entity_type": "feedback",
+            "feedback_id": feedback_id,
+            "user_id": user_id,
+            "type": feedback_type,
+            "title": title,
+            "description": description,
+            "status": "new",
+            "app_version": app_version,
+            "device_info": device_info,
+            "created_at": now,
+            "updated_at": now,
+        }
+        table.put_item(Item=item)
+        return item
+
+    def get_user_feedback(self, user_id: str) -> list[dict[str, Any]]:
+        """Get all feedback submitted by a user."""
+        response = table.query(
+            KeyConditionExpression=Key("pk").eq(self._get_user_pk(user_id))
+            & Key("sk").begins_with("FEEDBACK#")
+        )
+        return response.get("Items", [])
+
+    def get_all_feedback(self, limit: int = 50) -> list[dict[str, Any]]:
+        """Get all feedback (for admin review)."""
+        response = table.query(
+            IndexName="gsi1",
+            KeyConditionExpression=Key("gsi1pk").eq("FEEDBACK"),
+            ScanIndexForward=False,  # Most recent first
+            Limit=limit,
+        )
+        return response.get("Items", [])
+
+    def update_feedback_status(
+        self, user_id: str, feedback_id: str, status: str
+    ) -> dict[str, Any]:
+        """Update feedback status."""
+        response = table.update_item(
+            Key={
+                "pk": self._get_user_pk(user_id),
+                "sk": self._get_feedback_sk(feedback_id),
+            },
+            UpdateExpression="SET #status = :status, #updated_at = :updated_at",
+            ExpressionAttributeNames={"#status": "status", "#updated_at": "updated_at"},
+            ExpressionAttributeValues={
+                ":status": status,
+                ":updated_at": datetime.now(UTC).isoformat(),
+            },
+            ReturnValues="ALL_NEW",
+        )
+        return response.get("Attributes", {})
+
 
 # Singleton instance
 db_service = DynamoDBService()
