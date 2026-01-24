@@ -82,8 +82,13 @@ actor APIClient {
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        if authenticated, let token = accessToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if authenticated {
+            if let token = accessToken {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                print("[API] \(method) \(path) - Auth token present (len=\(token.count))")
+            } else {
+                print("[API] \(method) \(path) - Auth token MISSING!")
+            }
         }
 
         if let body = body {
@@ -98,6 +103,7 @@ actor APIClient {
             throw APIError.networkError(NSError(domain: "Invalid response", code: 0))
         }
 
+        print("[API] \(method) \(path) - Response: \(httpResponse.statusCode)")
         switch httpResponse.statusCode {
         case 200...299:
             let decoder = JSONDecoder()
@@ -105,9 +111,11 @@ actor APIClient {
             decoder.dateDecodingStrategy = .iso8601
             return try decoder.decode(T.self, from: data)
         case 401:
+            print("[API] \(method) \(path) - 401 Unauthorized!")
             throw APIError.unauthorized
         default:
             let message = String(data: data, encoding: .utf8) ?? "Unknown error"
+            print("[API] \(method) \(path) - Error: \(httpResponse.statusCode) - \(message)")
             throw APIError.serverError(httpResponse.statusCode, message)
         }
     }
