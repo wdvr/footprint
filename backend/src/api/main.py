@@ -5,7 +5,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import auth, friends, places, sync
+from src.api.routes import auth, feedback, friends, places, sync
 
 # Application metadata
 app = FastAPI(
@@ -31,6 +31,7 @@ app.include_router(auth.router)
 app.include_router(places.router)
 app.include_router(sync.router)
 app.include_router(friends.router)
+app.include_router(feedback.router)
 
 
 @app.get("/")
