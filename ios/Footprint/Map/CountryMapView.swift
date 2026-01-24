@@ -7,6 +7,7 @@ struct CountryMapView: UIViewRepresentable {
     let visitedCountryCodes: Set<String>
     let visitedStateCodes: Set<String>  // Format: "US-CA", "CA-ON", etc.
     @Binding var selectedCountry: String?
+    @Binding var centerOnUserLocation: Bool
     var onCountryTapped: ((String) -> Void)?
     var showUserLocation: Bool = false
 
@@ -44,6 +45,20 @@ struct CountryMapView: UIViewRepresentable {
         context.coordinator.visitedStateCodes = visitedStateCodes
         context.coordinator.onCountryTapped = onCountryTapped
         mapView.showsUserLocation = showUserLocation
+
+        // Center on user location if requested
+        if centerOnUserLocation {
+            DispatchQueue.main.async {
+                self.centerOnUserLocation = false
+                if let userLocation = mapView.userLocation.location {
+                    let region = MKCoordinateRegion(
+                        center: userLocation.coordinate,
+                        span: MKCoordinateSpan(latitudeDelta: 5, longitudeDelta: 5)
+                    )
+                    mapView.setRegion(region, animated: true)
+                }
+            }
+        }
 
         // Update selected country if changed externally
         if context.coordinator.selectedCountryCode != selectedCountry {
@@ -274,6 +289,7 @@ struct CountryMapView: UIViewRepresentable {
         visitedCountryCodes: ["US", "CA", "MX", "GB", "FR"],
         visitedStateCodes: ["US-CA", "US-NY", "US-TX", "CA-ON", "CA-BC"],
         selectedCountry: .constant(nil),
+        centerOnUserLocation: .constant(false),
         onCountryTapped: { code in
             print("Tapped country: \(code)")
         }

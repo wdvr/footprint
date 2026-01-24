@@ -32,6 +32,7 @@
 		FCB4258CB6E5774DB64EDD3D /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4E1A64A7722E32CCA5A978 /* APIClient.swift */; };
 		L0C4T10NM4N4G3R5W1FT0002 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = L0C4T10NM4N4G3R5W1FT0001 /* LocationManager.swift */; };
 		L0C4T10NT3ST5F1L30002 /* LocationManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = L0C4T10NT3ST5F1L30001 /* LocationManagerTests.swift */; };
+		FR13ND5V13W5W1FT0002 /* FriendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR13ND5V13W5W1FT0001 /* FriendsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -73,6 +74,7 @@
 		A0B3978D5B9F4E6C7D8A1F2B /* canadian_provinces.geojson */ = {isa = PBXFileReference; lastKnownFileType = text; path = canadian_provinces.geojson; sourceTree = "<group>"; };
 		F77B77706A1622EA6FF7F3AB /* CountryMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountryMapView.swift; sourceTree = "<group>"; };
 		FB79DD0340AC874AC75A998D /* GeographicData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeographicData.swift; sourceTree = "<group>"; };
+		FR13ND5V13W5W1FT0001 /* FriendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -127,6 +129,14 @@
 				C3D4E5F6A7B8C9D0E1F2A3B4 /* AccessibleMapSummary.swift */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		FR13ND5GR0UP0001 /* Friends */ = {
+			isa = PBXGroup;
+			children = (
+				FR13ND5V13W5W1FT0001 /* FriendsView.swift */,
+			);
+			path = Friends;
 			sourceTree = "<group>";
 		};
 		49DED6D21011481B2CCA1C44 /* GeoData */ = {
@@ -195,6 +205,7 @@
 				2F0B1E5C5C1E54BF0960A8A6 /* FootprintApp.swift */,
 				5BF04DEAA61E7C94B23511A5 /* Info.plist */,
 				0FFA9B25ECD9344749E1AE39 /* Data */,
+				FR13ND5GR0UP0001 /* Friends */,
 				131236A58FDA641860DF0086 /* Generated */,
 				3655264F980A5B4600D7A110 /* Map */,
 				8ED1C0159534A0CB2D199ED8 /* Models */,
@@ -322,6 +333,7 @@
 				4239C1A84745E095920F0371 /* CountryBoundaries.swift in Sources */,
 				1422EE7E2E4EE9BC742FD37F /* CountryMapView.swift in Sources */,
 				7E9BA923F26087F9A02CC08E /* FootprintApp.swift in Sources */,
+				FR13ND5V13W5W1FT0002 /* FriendsView.swift in Sources */,
 				EEF1C332331CD745C2E29CA5 /* GeoJSONParser.swift in Sources */,
 				C3DA4A92918B7F9FBB3D698E /* GeographicData.swift in Sources */,
 				0A1B2C3D4E5F6A7B8C9D0E1F /* StateMapView.swift in Sources */,

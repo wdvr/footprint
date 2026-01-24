@@ -283,8 +283,7 @@ struct WorldMapView: View {
     @State private var stateMapCountry: String?
     @State private var showListView = false
     @State private var locationManager = LocationManager()
-    @State private var showLocationDetectedAlert = false
-    @State private var detectedLocation: (country: String, state: String?) = ("", nil)
+    @State private var centerOnUserLocation = false
 
     private var visitedCountryCodes: Set<String> {
         Set(
@@ -339,6 +338,7 @@ struct WorldMapView: View {
                         visitedCountryCodes: visitedCountryCodes,
                         visitedStateCodes: visitedStateCodes,
                         selectedCountry: $selectedCountry,
+                        centerOnUserLocation: $centerOnUserLocation,
                         onCountryTapped: { countryCode in
                             selectedCountry = countryCode
                         },
@@ -377,14 +377,18 @@ struct WorldMapView: View {
                     Button {
                         if locationManager.authorizationStatus == .notDetermined {
                             locationManager.requestPermission()
+                        } else if locationManager.isTracking {
+                            // When already tracking, center on user location
+                            centerOnUserLocation = true
                         } else {
-                            locationManager.toggleTracking()
+                            // Start tracking
+                            locationManager.startTracking()
                         }
                     } label: {
                         Image(systemName: locationManager.isTracking ? "location.fill" : "location")
                             .foregroundStyle(locationManager.isTracking ? .blue : .primary)
                     }
-                    .accessibilityLabel(locationManager.isTracking ? "Stop tracking location" : "Start tracking location")
+                    .accessibilityLabel(locationManager.isTracking ? "Center on current location" : "Start tracking location")
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -400,18 +404,6 @@ struct WorldMapView: View {
             }
             .onAppear {
                 setupLocationCallbacks()
-            }
-            .alert("New Location Detected", isPresented: $showLocationDetectedAlert) {
-                Button("Mark as Visited") {
-                    markDetectedLocationAsVisited()
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                if let state = detectedLocation.state {
-                    Text("You're in \(state), \(detectedLocation.country). Would you like to mark it as visited?")
-                } else {
-                    Text("You're in \(detectedLocation.country). Would you like to mark it as visited?")
-                }
             }
             .sheet(isPresented: $showingCountryPopup) {
                 if let country = selectedCountryInfo {
@@ -524,9 +516,15 @@ struct WorldMapView: View {
                     && !$0.isDeleted
             }
             if !isVisited {
-                let countryName = GeographicData.countries.first { $0.id == countryCode }?.name ?? countryCode
-                detectedLocation = (countryName, nil)
-                showLocationDetectedAlert = true
+                // Auto-mark country as visited
+                if let country = GeographicData.countries.first(where: { $0.id == countryCode }) {
+                    let place = VisitedPlace(
+                        regionType: .country,
+                        regionCode: country.id,
+                        regionName: country.name
+                    )
+                    modelContext.insert(place)
+                }
             }
         }
 
@@ -538,31 +536,12 @@ struct WorldMapView: View {
                     && !$0.isDeleted
             }
             if !isVisited {
-                let countryName = countryCode == "US" ? "USA" : "Canada"
-                detectedLocation = (countryName, stateCode)
-                showLocationDetectedAlert = true
-            }
-        }
-    }
-
-    private func markDetectedLocationAsVisited() {
-        if let stateCode = detectedLocation.state {
-            // Mark state as visited
-            let countryCode = detectedLocation.country == "USA" ? "US" : "CA"
-            let regionType: VisitedPlace.RegionType = countryCode == "US" ? .usState : .canadianProvince
-            let place = VisitedPlace(
-                regionType: regionType,
-                regionCode: stateCode,
-                regionName: stateCode
-            )
-            modelContext.insert(place)
-        } else {
-            // Mark country as visited
-            if let country = GeographicData.countries.first(where: { $0.name == detectedLocation.country }) {
+                // Auto-mark state/province as visited
+                let stateName = GeographicData.states(for: countryCode).first { $0.id == stateCode }?.name ?? stateCode
                 let place = VisitedPlace(
-                    regionType: .country,
-                    regionCode: country.id,
-                    regionName: country.name
+                    regionType: regionType,
+                    regionCode: stateCode,
+                    regionName: stateName
                 )
                 modelContext.insert(place)
             }
