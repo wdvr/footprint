@@ -1,6 +1,7 @@
 import MapKit
 import SwiftData
 import SwiftUI
+import WidgetKit
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
@@ -35,6 +36,33 @@ struct ContentView: View {
                 }
                 .tag(3)
         }
+        .onChange(of: visitedPlaces.count) {
+            updateWidgetData()
+        }
+        .onAppear {
+            updateWidgetData()
+        }
+    }
+
+    /// Update shared UserDefaults for widget
+    private func updateWidgetData() {
+        let countriesVisited = visitedPlaces.filter {
+            $0.regionType == VisitedPlace.RegionType.country.rawValue
+        }.count
+
+        let statesVisited = visitedPlaces.filter {
+            $0.regionType == VisitedPlace.RegionType.usState.rawValue ||
+            $0.regionType == VisitedPlace.RegionType.canadianProvince.rawValue
+        }.count
+
+        // Save to shared UserDefaults for widget
+        if let defaults = UserDefaults(suiteName: "group.com.wd.footprint") {
+            defaults.set(countriesVisited, forKey: "countriesVisited")
+            defaults.set(statesVisited, forKey: "statesVisited")
+        }
+
+        // Tell widget to reload
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
 
