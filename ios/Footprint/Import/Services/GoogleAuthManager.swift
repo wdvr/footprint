@@ -50,15 +50,25 @@ class GoogleAuthManager: NSObject {
         // Use AuthenticationServices for OAuth flow
         let authCode = try await performOAuthFlow()
 
-        // Exchange auth code with backend
-        let response: GoogleConnectResponse = try await APIClient.shared.request(
-            path: "/import/google/connect",
-            method: .post,
-            body: GoogleConnectRequest(authorizationCode: authCode)
-        )
+        print("[GoogleAuth] Got auth code, checking if authenticated...")
+        let isAuth = await APIClient.shared.isAuthenticated
+        print("[GoogleAuth] APIClient.isAuthenticated = \(isAuth)")
 
-        isConnected = true
-        connectedEmail = response.email
+        // Exchange auth code with backend
+        print("[GoogleAuth] Calling /import/google/connect...")
+        do {
+            let response: GoogleConnectResponse = try await APIClient.shared.request(
+                path: "/import/google/connect",
+                method: .post,
+                body: GoogleConnectRequest(authorizationCode: authCode)
+            )
+            print("[GoogleAuth] Connect succeeded: \(response.email)")
+            isConnected = true
+            connectedEmail = response.email
+        } catch {
+            print("[GoogleAuth] Connect FAILED: \(error)")
+            throw error
+        }
     }
 
     /// Disconnect Google account
