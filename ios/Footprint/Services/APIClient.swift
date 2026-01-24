@@ -51,7 +51,24 @@ actor APIClient {
 
     // MARK: - HTTP Methods
 
-    private func request<T: Decodable>(
+    enum HTTPMethod: String {
+        case get = "GET"
+        case post = "POST"
+        case put = "PUT"
+        case delete = "DELETE"
+    }
+
+    /// Public request method for API calls
+    func request<T: Decodable>(
+        path: String,
+        method: HTTPMethod = .get,
+        body: Encodable? = nil,
+        authenticated: Bool = true
+    ) async throws -> T {
+        try await _request(path, method: method.rawValue, body: body, authenticated: authenticated)
+    }
+
+    private func _request<T: Decodable>(
         _ path: String,
         method: String = "GET",
         body: Encodable? = nil,
@@ -120,7 +137,7 @@ actor APIClient {
 
     func authenticateWithApple(identityToken: String, authorizationCode: String) async throws -> AuthResponse {
         let body = AppleAuthRequest(identityToken: identityToken, authorizationCode: authorizationCode)
-        let response: AuthResponse = try await request("/auth/apple", method: "POST", body: body)
+        let response: AuthResponse = try await _request("/auth/apple", method: "POST", body: body)
         setTokens(access: response.accessToken, refresh: response.refreshToken)
         return response
     }
@@ -135,13 +152,13 @@ actor APIClient {
         }
 
         let body = RefreshRequest(refreshToken: token)
-        let response: AuthResponse = try await request("/auth/refresh", method: "POST", body: body)
+        let response: AuthResponse = try await _request("/auth/refresh", method: "POST", body: body)
         setTokens(access: response.accessToken, refresh: response.refreshToken)
         return response
     }
 
     func getCurrentUser() async throws -> UserResponse {
-        try await request("/auth/me", authenticated: true)
+        try await _request("/auth/me", authenticated: true)
     }
 
     // MARK: - Places Endpoints
@@ -171,7 +188,7 @@ actor APIClient {
     }
 
     func getVisitedPlaces() async throws -> [VisitedPlaceResponse] {
-        let response: PlacesListResponse = try await request("/places", authenticated: true)
+        let response: PlacesListResponse = try await _request("/places", authenticated: true)
         return response.places
     }
 
@@ -189,11 +206,11 @@ actor APIClient {
             visitedDate: visitedDate,
             notes: notes
         )
-        return try await request("/places", method: "POST", body: body, authenticated: true)
+        return try await _request("/places", method: "POST", body: body, authenticated: true)
     }
 
     func deleteVisitedPlace(regionType: String, regionCode: String) async throws {
-        let _: EmptyResponse = try await request("/places/\(regionType)/\(regionCode)", method: "DELETE", authenticated: true)
+        let _: EmptyResponse = try await _request("/places/\(regionType)/\(regionCode)", method: "DELETE", authenticated: true)
     }
 
     // MARK: - Sync Endpoints
@@ -219,7 +236,7 @@ actor APIClient {
 
     func syncPlaces(lastSyncAt: Date?, changes: [PlaceChange]) async throws -> SyncResponse {
         let body = SyncRequest(lastSyncAt: lastSyncAt, changes: changes)
-        return try await request("/sync", method: "POST", body: body, authenticated: true)
+        return try await _request("/sync", method: "POST", body: body, authenticated: true)
     }
 
     // MARK: - Stats Endpoints
@@ -232,7 +249,7 @@ actor APIClient {
     }
 
     func getStats() async throws -> StatsResponse {
-        try await request("/places/stats", authenticated: true)
+        try await _request("/places/stats", authenticated: true)
     }
 
     // MARK: - Health Check
@@ -243,7 +260,7 @@ actor APIClient {
     }
 
     func healthCheck() async throws -> HealthResponse {
-        try await request("/health")
+        try await _request("/health")
     }
 }
 

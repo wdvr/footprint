@@ -27,9 +27,14 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
         authorizationStatus = locationManager.authorizationStatus
     }
 
-    /// Request location permission
+    /// Request location permission (always for background tracking)
     func requestPermission() {
-        locationManager.requestWhenInUseAuthorization()
+        locationManager.requestAlwaysAuthorization()
+    }
+
+    /// Request the user's current location once (for centering map)
+    func requestCurrentLocation() {
+        locationManager.requestLocation()
     }
 
     /// Start tracking location
