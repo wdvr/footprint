@@ -100,16 +100,37 @@ Research needed for:
 
 ## Development Workflow
 
-### Git Workflow - COMMIT FREQUENTLY
-1. **Frequent Commits**: Commit every logical change, don't batch work
-2. **Feature Branches**: Create branches from main for each feature/fix
-3. **Clear Messages**: Use descriptive commit messages explaining the "why"
-4. **Pull Requests**: ALL changes must go through PR review process
+### GitHub Issues - SOURCE OF TRUTH
+All bugs, features, and tasks are tracked in GitHub Issues:
+- **View issues**: `gh issue list`
+- **Create bug**: `gh issue create --title "BUG: description" --label "bug"`
+- **Create feature**: `gh issue create --title "Feature name" --label "feature"`
+- **Close issue**: `gh issue close <number>` (do this when PR is merged)
+
+Labels:
+- `bug` - Something is broken
+- `feature` - New functionality
+- `ios` - iOS app related
+- `backend` - Backend/API related
+- `infrastructure` - Deployment, CI/CD
+- `blocked` - Waiting on external dependency
+
+### Git Workflow - FEATURE BRANCHES + PRs
+1. **Create branch for each feature/fix**: `git checkout -b feature/issue-XX-description`
+2. **Reference issue in branch name**: Use issue number for traceability
+3. **Frequent Commits**: Commit every logical change, don't batch work
+4. **Create PR when ready**: `gh pr create --title "Title" --body "Fixes #XX"`
 5. **PR Requirements**:
    - All tests must pass
-   - Code review approval required
-   - No direct pushes to main
+   - Reference the GitHub issue being fixed
+   - No direct pushes to main or long-running feature branches
 6. **Merge Strategy**: Squash and merge for clean history
+7. **Close issue**: Automatically closed when PR merged with "Fixes #XX"
+
+### DO NOT:
+- Push directly to main
+- Push multiple unrelated features to the same branch
+- Leave PRs open for too long without review
 
 ### Testing Strategy - TEST EVERYTHING
 
