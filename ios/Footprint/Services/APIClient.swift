@@ -120,11 +120,15 @@ actor APIClient {
     }
 
     struct AuthResponse: Decodable {
+        let user: UserResponse
+        let tokens: TokensResponse
+    }
+
+    struct TokensResponse: Decodable {
         let accessToken: String
         let refreshToken: String
         let tokenType: String
         let expiresIn: Int
-        let user: UserResponse
     }
 
     struct UserResponse: Decodable {
@@ -138,7 +142,7 @@ actor APIClient {
     func authenticateWithApple(identityToken: String, authorizationCode: String) async throws -> AuthResponse {
         let body = AppleAuthRequest(identityToken: identityToken, authorizationCode: authorizationCode)
         let response: AuthResponse = try await _request("/auth/apple", method: "POST", body: body)
-        setTokens(access: response.accessToken, refresh: response.refreshToken)
+        setTokens(access: response.tokens.accessToken, refresh: response.tokens.refreshToken)
         return response
     }
 
@@ -153,7 +157,7 @@ actor APIClient {
 
         let body = RefreshRequest(refreshToken: token)
         let response: AuthResponse = try await _request("/auth/refresh", method: "POST", body: body)
-        setTokens(access: response.accessToken, refresh: response.refreshToken)
+        setTokens(access: response.tokens.accessToken, refresh: response.tokens.refreshToken)
         return response
     }
 
@@ -174,7 +178,7 @@ actor APIClient {
         }
         let body = DevAuthRequest(deviceId: deviceId)
         let response: AuthResponse = try await _request("/auth/dev", method: "POST", body: body)
-        setTokens(access: response.accessToken, refresh: response.refreshToken)
+        setTokens(access: response.tokens.accessToken, refresh: response.tokens.refreshToken)
         return response
     }
     #endif

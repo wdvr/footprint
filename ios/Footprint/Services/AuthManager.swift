@@ -68,8 +68,8 @@ class AuthManager: NSObject {
                     deviceId: UIDevice.current.identifierForVendor?.uuidString ?? "dev-device"
                 )
                 await APIClient.shared.storeTokens(
-                    accessToken: response.accessToken,
-                    refreshToken: response.refreshToken
+                    accessToken: response.tokens.accessToken,
+                    refreshToken: response.tokens.refreshToken
                 )
                 user = response.user
                 isAuthenticated = true
