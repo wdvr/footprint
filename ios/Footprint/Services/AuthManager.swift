@@ -54,6 +54,34 @@ class AuthManager: NSObject {
         UserDefaults.standard.set(true, forKey: "offline_mode")
     }
 
+    /// Dev mode: Sign in with a test user ID for development/testing
+    /// This bypasses Apple Sign In while waiting for approval
+    func signInDevMode() {
+        #if DEBUG
+        isLoading = true
+        error = nil
+
+        Task {
+            do {
+                // Use a fixed test user for dev mode
+                let response = try await APIClient.shared.authDevMode(
+                    deviceId: UIDevice.current.identifierForVendor?.uuidString ?? "dev-device"
+                )
+                await APIClient.shared.storeTokens(
+                    accessToken: response.accessToken,
+                    refreshToken: response.refreshToken
+                )
+                user = response.user
+                isAuthenticated = true
+                isLoading = false
+            } catch {
+                self.error = "Dev auth failed: \(error.localizedDescription)"
+                isLoading = false
+            }
+        }
+        #endif
+    }
+
     func signOut() async {
         await APIClient.shared.clearTokens()
         isAuthenticated = false

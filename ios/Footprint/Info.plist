@@ -2,9 +2,25 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Footprint uses your location to show where you are on the map and can automatically detect which countries you visit.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Footprint can track your location in the background to automatically record the countries you visit during your travels.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.wd.footprint.app</string>
+			</array>
+			<key>CFBundleURLName</key>
+			<string>Google OAuth Callback</string>
+		</dict>
+	</array>
 </dict>
 </plist>

@@ -71,6 +71,9 @@ struct ContentView: View {
 struct SettingsView: View {
     @State private var showingSignOutAlert = false
     @State private var showingDeleteAccountAlert = false
+    @State private var showingImportSheet = false
+
+    private let googleAuth = GoogleAuthManager.shared
 
     var body: some View {
         NavigationStack {
@@ -110,6 +113,37 @@ struct SettingsView: View {
                         }
                     } label: {
                         Label("Force Full Sync", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                }
+
+                // Import Section
+                Section("Import") {
+                    Button {
+                        showingImportSheet = true
+                    } label: {
+                        Label("Import from Gmail/Calendar", systemImage: "envelope.badge.fill")
+                    }
+
+                    if googleAuth.isConnected, let email = googleAuth.connectedEmail {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                            VStack(alignment: .leading) {
+                                Text("Google Connected")
+                                    .font(.subheadline)
+                                Text(email)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button("Disconnect") {
+                                Task {
+                                    await googleAuth.disconnect()
+                                }
+                            }
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                        }
                     }
                 }
 
@@ -157,6 +191,9 @@ struct SettingsView: View {
                 }
             } message: {
                 Text("This will permanently delete your account and all associated data. This action cannot be undone.")
+            }
+            .sheet(isPresented: $showingImportSheet) {
+                ImportView()
             }
         }
     }
