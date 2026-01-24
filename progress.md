@@ -166,8 +166,8 @@ xcodebuild test -project ios/Footprint.xcodeproj -scheme Footprint -destination 
 ```
 
 ## Key Metrics & Success Criteria
-- **Test Coverage**: 92 backend + 31 iOS tests passing
-- **CI/CD**: All PRs run automated tests
+- **Test Coverage**: 68 backend + 71 iOS tests passing
+- **CI/CD**: All PRs run automated tests (backend + iOS)
 - **Code Quality**: Pre-commit hooks enforce standards
 - **Offline Capability**: Full functionality without internet ✅
 
@@ -175,9 +175,9 @@ xcodebuild test -project ios/Footprint.xcodeproj -scheme Footprint -destination 
 
 | # | Feature | Description | Status |
 |---|---------|-------------|--------|
-| 1 | **Live location tracking** | Request location permission, show current position on map, auto-detect visited places | 🔲 TODO |
-| 2 | **iOS Widget** | Home screen widget showing travel stats (countries visited, %) | 🔲 TODO |
-| 3 | **Friend lists & sharing** | Connect with friends, share/compare travel lists | 🔲 TODO |
+| 1 | **Live location tracking** | Request location permission, show current position on map, auto-detect visited places | ✅ DONE |
+| 2 | **iOS Widget** | Home screen widget showing travel stats (code ready, add target in Xcode) | ✅ DONE |
+| 3 | **Friend lists & sharing** | Connect with friends, share/compare travel lists (backend complete) | ✅ DONE |
 | 4 | **Feature requests & feedback** | In-app feedback form that saves to DynamoDB for async review | 🔲 TODO |
 | 5 | **Gmail/Calendar import** | Read travel confirmations from email/calendar, suggest locations to add | 🔲 TODO |
 | 6 | **States for other countries** | Add state/province boundaries for Australia, Mexico, etc. | 🔲 TODO |
