@@ -30,6 +30,8 @@
 		F8F0D0F741001DB122F501F8 /* APIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BB3A459FA117DC6B0399CF2 /* APIClientTests.swift */; };
 		FAEE1917D2F3D12D3722FA77 /* SyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2188CD92D5369E26F73572A1 /* SyncManager.swift */; };
 		FCB4258CB6E5774DB64EDD3D /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4E1A64A7722E32CCA5A978 /* APIClient.swift */; };
+		L0C4T10NM4N4G3R5W1FT0002 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = L0C4T10NM4N4G3R5W1FT0001 /* LocationManager.swift */; };
+		L0C4T10NT3ST5F1L30002 /* LocationManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = L0C4T10NT3ST5F1L30001 /* LocationManagerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,12 +50,14 @@
 		B2C3D4E5F6A7B8C9D0E1F2A3 /* AccessibilityHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityHelpers.swift; sourceTree = "<group>"; };
 		C3D4E5F6A7B8C9D0E1F2A3B4 /* AccessibleMapSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibleMapSummary.swift; sourceTree = "<group>"; };
 		11E07153F5CDFA5F55C0487C /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
+		L0C4T10NM4N4G3R5W1FT0001 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
 		16A790782FCA451412D6B1EA /* VisitedPlace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisitedPlace.swift; sourceTree = "<group>"; };
 		1E4277758F60A4544446B42D /* FootprintTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FootprintTests.swift; sourceTree = "<group>"; };
 		2188CD92D5369E26F73572A1 /* SyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncManager.swift; sourceTree = "<group>"; };
 		2F0B1E5C5C1E54BF0960A8A6 /* FootprintApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FootprintApp.swift; sourceTree = "<group>"; };
 		3E2F5F601FD2C9BEA04178E5 /* GeoJSONParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoJSONParserTests.swift; sourceTree = "<group>"; };
 		D1E2F3A4B5C6D7E8F9A0B1C2 /* MapViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewTests.swift; sourceTree = "<group>"; };
+		L0C4T10NT3ST5F1L30001 /* LocationManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManagerTests.swift; sourceTree = "<group>"; };
 		50C78AD6C2BFDF458E421F0A /* SyncManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncManagerTests.swift; sourceTree = "<group>"; };
 		5518FCF7E707C87C9B44207A /* CountryBoundaries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountryBoundaries.swift; sourceTree = "<group>"; };
 		5BF04DEAA61E7C94B23511A5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -103,6 +107,7 @@
 			children = (
 				0C4E1A64A7722E32CCA5A978 /* APIClient.swift */,
 				11E07153F5CDFA5F55C0487C /* AuthManager.swift */,
+				L0C4T10NM4N4G3R5W1FT0001 /* LocationManager.swift */,
 				2188CD92D5369E26F73572A1 /* SyncManager.swift */,
 			);
 			path = Services;
@@ -175,6 +180,7 @@
 				1E4277758F60A4544446B42D /* FootprintTests.swift */,
 				74B388C29EC8E33A7CFE6587 /* GeographicDataTests.swift */,
 				3E2F5F601FD2C9BEA04178E5 /* GeoJSONParserTests.swift */,
+				L0C4T10NT3ST5F1L30001 /* LocationManagerTests.swift */,
 				D1E2F3A4B5C6D7E8F9A0B1C2 /* MapViewTests.swift */,
 				50C78AD6C2BFDF458E421F0A /* SyncManagerTests.swift */,
 			);
@@ -298,6 +304,7 @@
 				587DC996DD345157E8ADF8D4 /* FootprintTests.swift in Sources */,
 				C584CE8BE7F2B76E49F8FDF6 /* GeoJSONParserTests.swift in Sources */,
 				3EFF51BB5197358A4405D7D3 /* GeographicDataTests.swift in Sources */,
+				L0C4T10NT3ST5F1L30002 /* LocationManagerTests.swift in Sources */,
 				A2B3C4D5E6F7A8B9C0D1E2F3 /* MapViewTests.swift in Sources */,
 				0737BB1F9D86379154F9D0A4 /* SyncManagerTests.swift in Sources */,
 			);
@@ -319,6 +326,7 @@
 				C3DA4A92918B7F9FBB3D698E /* GeographicData.swift in Sources */,
 				0A1B2C3D4E5F6A7B8C9D0E1F /* StateMapView.swift in Sources */,
 				FAEE1917D2F3D12D3722FA77 /* SyncManager.swift in Sources */,
+				L0C4T10NM4N4G3R5W1FT0002 /* LocationManager.swift in Sources */,
 				7A481CFA80ACF0DEDBF67FEF /* VisitedPlace.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

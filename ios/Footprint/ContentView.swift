@@ -254,6 +254,9 @@ struct WorldMapView: View {
     @State private var showingStateMap = false
     @State private var stateMapCountry: String?
     @State private var showListView = false
+    @State private var locationManager = LocationManager()
+    @State private var showLocationDetectedAlert = false
+    @State private var detectedLocation: (country: String, state: String?) = ("", nil)
 
     private var visitedCountryCodes: Set<String> {
         Set(
@@ -310,7 +313,8 @@ struct WorldMapView: View {
                         selectedCountry: $selectedCountry,
                         onCountryTapped: { countryCode in
                             selectedCountry = countryCode
-                        }
+                        },
+                        showUserLocation: locationManager.isTracking
                     )
                     .ignoresSafeArea(edges: .bottom)
                     .onChange(of: selectedCountry) { _, newValue in
@@ -341,6 +345,19 @@ struct WorldMapView: View {
             }
             .navigationTitle("Footprint")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        if locationManager.authorizationStatus == .notDetermined {
+                            locationManager.requestPermission()
+                        } else {
+                            locationManager.toggleTracking()
+                        }
+                    } label: {
+                        Image(systemName: locationManager.isTracking ? "location.fill" : "location")
+                            .foregroundStyle(locationManager.isTracking ? .blue : .primary)
+                    }
+                    .accessibilityLabel(locationManager.isTracking ? "Stop tracking location" : "Start tracking location")
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         conditionalWithAnimation(.easeInOut, reduceMotion: reduceMotion) {
@@ -351,6 +368,21 @@ struct WorldMapView: View {
                     }
                     .accessibilityLabel(showListView ? "Show map" : "Show list")
                     .accessibilityHint("Double tap to switch to \(showListView ? "map" : "list") view")
+                }
+            }
+            .onAppear {
+                setupLocationCallbacks()
+            }
+            .alert("New Location Detected", isPresented: $showLocationDetectedAlert) {
+                Button("Mark as Visited") {
+                    markDetectedLocationAsVisited()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                if let state = detectedLocation.state {
+                    Text("You're in \(state), \(detectedLocation.country). Would you like to mark it as visited?")
+                } else {
+                    Text("You're in \(detectedLocation.country). Would you like to mark it as visited?")
                 }
             }
             .sheet(isPresented: $showingCountryPopup) {
@@ -452,6 +484,60 @@ struct WorldMapView: View {
                 regionName: name
             )
             modelContext.insert(place)
+        }
+    }
+
+    private func setupLocationCallbacks() {
+        locationManager.onCountryDetected = { countryCode in
+            // Check if country is not already visited
+            let isVisited = visitedPlaces.contains {
+                $0.regionType == VisitedPlace.RegionType.country.rawValue
+                    && $0.regionCode == countryCode
+                    && !$0.isDeleted
+            }
+            if !isVisited {
+                let countryName = GeographicData.countries.first { $0.id == countryCode }?.name ?? countryCode
+                detectedLocation = (countryName, nil)
+                showLocationDetectedAlert = true
+            }
+        }
+
+        locationManager.onStateDetected = { countryCode, stateCode in
+            let regionType: VisitedPlace.RegionType = countryCode == "US" ? .usState : .canadianProvince
+            let isVisited = visitedPlaces.contains {
+                $0.regionType == regionType.rawValue
+                    && $0.regionCode == stateCode
+                    && !$0.isDeleted
+            }
+            if !isVisited {
+                let countryName = countryCode == "US" ? "USA" : "Canada"
+                detectedLocation = (countryName, stateCode)
+                showLocationDetectedAlert = true
+            }
+        }
+    }
+
+    private func markDetectedLocationAsVisited() {
+        if let stateCode = detectedLocation.state {
+            // Mark state as visited
+            let countryCode = detectedLocation.country == "USA" ? "US" : "CA"
+            let regionType: VisitedPlace.RegionType = countryCode == "US" ? .usState : .canadianProvince
+            let place = VisitedPlace(
+                regionType: regionType,
+                regionCode: stateCode,
+                regionName: stateCode
+            )
+            modelContext.insert(place)
+        } else {
+            // Mark country as visited
+            if let country = GeographicData.countries.first(where: { $0.name == detectedLocation.country }) {
+                let place = VisitedPlace(
+                    regionType: .country,
+                    regionCode: country.id,
+                    regionName: country.name
+                )
+                modelContext.insert(place)
+            }
         }
     }
 }

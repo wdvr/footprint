@@ -74,3 +74,32 @@ jobs:
       run: |
         cd infrastructure
         uv run python -m py_compile __main__.py deploy_lambda.py
+
+  ios-test:
+    name: iOS Tests
+    runs-on: macos-15
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Select Xcode
+      run: sudo xcode-select -s /Applications/Xcode_26.0.app/Contents/Developer
+
+    - name: Build and Test
+      run: |
+        cd ios
+        xcodebuild test \
+          -project Footprint.xcodeproj \
+          -scheme Footprint \
+          -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+          -only-testing:FootprintTests \
+          -resultBundlePath TestResults.xcresult \
+          | xcpretty
+
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: ios/TestResults.xcresult

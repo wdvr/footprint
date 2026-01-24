@@ -8,6 +8,7 @@ struct CountryMapView: UIViewRepresentable {
     let visitedStateCodes: Set<String>  // Format: "US-CA", "CA-ON", etc.
     @Binding var selectedCountry: String?
     var onCountryTapped: ((String) -> Void)?
+    var showUserLocation: Bool = false
 
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView()
@@ -15,6 +16,7 @@ struct CountryMapView: UIViewRepresentable {
         mapView.mapType = .mutedStandard
         mapView.showsCompass = true
         mapView.showsScale = true
+        mapView.showsUserLocation = showUserLocation
 
         // Set initial region to show the world
         let worldRegion = MKCoordinateRegion(
@@ -41,6 +43,7 @@ struct CountryMapView: UIViewRepresentable {
         context.coordinator.visitedCountryCodes = visitedCountryCodes
         context.coordinator.visitedStateCodes = visitedStateCodes
         context.coordinator.onCountryTapped = onCountryTapped
+        mapView.showsUserLocation = showUserLocation
 
         // Update selected country if changed externally
         if context.coordinator.selectedCountryCode != selectedCountry {
