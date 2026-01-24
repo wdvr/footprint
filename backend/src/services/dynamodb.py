@@ -235,6 +235,129 @@ class DynamoDBService:
         )
         return response.get("Items", [])
 
+    # Friend operations
+    FRIEND_SK = "FRIEND#{friend_id}"
+    FRIEND_REQUEST_SK = "FRIEND_REQUEST#{request_id}"
+
+    @staticmethod
+    def _get_friend_sk(friend_id: str) -> str:
+        return f"FRIEND#{friend_id}"
+
+    @staticmethod
+    def _get_friend_request_sk(request_id: str) -> str:
+        return f"FRIEND_REQUEST#{request_id}"
+
+    def create_friend_request(
+        self,
+        from_user_id: str,
+        to_user_id: str,
+        request_id: str,
+        message: str | None = None,
+    ) -> dict[str, Any]:
+        """Create a friend request."""
+        item = {
+            "pk": self._get_user_pk(to_user_id),
+            "sk": self._get_friend_request_sk(request_id),
+            "gsi1pk": f"FRIEND_REQUEST#{from_user_id}",
+            "gsi1sk": to_user_id,
+            "entity_type": "friend_request",
+            "request_id": request_id,
+            "from_user_id": from_user_id,
+            "to_user_id": to_user_id,
+            "status": "pending",
+            "message": message,
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
+        }
+        table.put_item(Item=item)
+        return item
+
+    def get_friend_requests(self, user_id: str) -> list[dict[str, Any]]:
+        """Get pending friend requests for a user."""
+        response = table.query(
+            KeyConditionExpression=Key("pk").eq(self._get_user_pk(user_id))
+            & Key("sk").begins_with("FRIEND_REQUEST#"),
+            FilterExpression="status = :status",
+            ExpressionAttributeValues={":status": "pending"},
+        )
+        return response.get("Items", [])
+
+    def update_friend_request(
+        self, user_id: str, request_id: str, status: str
+    ) -> dict[str, Any]:
+        """Update friend request status."""
+        response = table.update_item(
+            Key={
+                "pk": self._get_user_pk(user_id),
+                "sk": self._get_friend_request_sk(request_id),
+            },
+            UpdateExpression="SET #status = :status, #updated_at = :updated_at",
+            ExpressionAttributeNames={"#status": "status", "#updated_at": "updated_at"},
+            ExpressionAttributeValues={
+                ":status": status,
+                ":updated_at": datetime.now(UTC).isoformat(),
+            },
+            ReturnValues="ALL_NEW",
+        )
+        return response.get("Attributes", {})
+
+    def create_friendship(self, user_id: str, friend_id: str) -> None:
+        """Create a bidirectional friendship."""
+        now = datetime.now(UTC).isoformat()
+
+        # Create friendship for user -> friend
+        table.put_item(
+            Item={
+                "pk": self._get_user_pk(user_id),
+                "sk": self._get_friend_sk(friend_id),
+                "gsi1pk": "FRIENDS",
+                "gsi1sk": f"{user_id}#{friend_id}",
+                "entity_type": "friendship",
+                "user_id": user_id,
+                "friend_id": friend_id,
+                "created_at": now,
+            }
+        )
+
+        # Create friendship for friend -> user
+        table.put_item(
+            Item={
+                "pk": self._get_user_pk(friend_id),
+                "sk": self._get_friend_sk(user_id),
+                "gsi1pk": "FRIENDS",
+                "gsi1sk": f"{friend_id}#{user_id}",
+                "entity_type": "friendship",
+                "user_id": friend_id,
+                "friend_id": user_id,
+                "created_at": now,
+            }
+        )
+
+    def get_friends(self, user_id: str) -> list[dict[str, Any]]:
+        """Get all friends for a user."""
+        response = table.query(
+            KeyConditionExpression=Key("pk").eq(self._get_user_pk(user_id))
+            & Key("sk").begins_with("FRIEND#")
+        )
+        return response.get("Items", [])
+
+    def remove_friendship(self, user_id: str, friend_id: str) -> None:
+        """Remove a bidirectional friendship."""
+        # Remove user -> friend
+        table.delete_item(
+            Key={
+                "pk": self._get_user_pk(user_id),
+                "sk": self._get_friend_sk(friend_id),
+            }
+        )
+        # Remove friend -> user
+        table.delete_item(
+            Key={
+                "pk": self._get_user_pk(friend_id),
+                "sk": self._get_friend_sk(user_id),
+            }
+        )
+
 
 # Singleton instance
 db_service = DynamoDBService()
