@@ -29,13 +29,15 @@ actor APIClient {
         self.accessToken = access
         self.refreshToken = refresh
         // Store in Keychain for persistence
-        KeychainHelper.save(key: "accessToken", value: access)
-        KeychainHelper.save(key: "refreshToken", value: refresh)
+        let accessSaved = KeychainHelper.save(key: "accessToken", value: access)
+        let refreshSaved = KeychainHelper.save(key: "refreshToken", value: refresh)
+        print("[APIClient] setTokens: accessSaved=\(accessSaved), refreshSaved=\(refreshSaved), tokenLen=\(access.count)")
     }
 
     func loadStoredTokens() {
         self.accessToken = KeychainHelper.load(key: "accessToken")
         self.refreshToken = KeychainHelper.load(key: "refreshToken")
+        print("[APIClient] loadStoredTokens: access=\(accessToken != nil ? "present(\(accessToken!.count) chars)" : "nil"), refresh=\(refreshToken != nil ? "present" : "nil")")
     }
 
     func clearTokens() {
@@ -300,39 +302,58 @@ private struct EmptyResponse: Decodable {}
 // MARK: - Keychain Helper
 
 enum KeychainHelper {
-    static func save(key: String, value: String) {
-        guard let data = value.data(using: .utf8) else { return }
+    @discardableResult
+    static func save(key: String, value: String) -> Bool {
+        guard let data = value.data(using: .utf8) else {
+            print("[Keychain] save(\(key)): failed to encode string")
+            return false
+        }
 
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
+            kSecAttrService as String: "com.wd.footprint.app",
             kSecValueData as String: data
         ]
 
-        SecItemDelete(query as CFDictionary)
-        SecItemAdd(query as CFDictionary, nil)
+        // Delete any existing item
+        let deleteStatus = SecItemDelete(query as CFDictionary)
+
+        // Add new item
+        let addStatus = SecItemAdd(query as CFDictionary, nil)
+        let success = addStatus == errSecSuccess
+        print("[Keychain] save(\(key)): delete=\(deleteStatus), add=\(addStatus), success=\(success)")
+        return success
     }
 
     static func load(key: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
+            kSecAttrService as String: "com.wd.footprint.app",
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
 
         var result: AnyObject?
-        SecItemCopyMatching(query as CFDictionary, &result)
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
 
-        guard let data = result as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
+        guard status == errSecSuccess, let data = result as? Data else {
+            print("[Keychain] load(\(key)): status=\(status), found=false")
+            return nil
+        }
+        let value = String(data: data, encoding: .utf8)
+        print("[Keychain] load(\(key)): status=\(status), found=\(value != nil), len=\(value?.count ?? 0)")
+        return value
     }
 
     static func delete(key: String) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key
+            kSecAttrAccount as String: key,
+            kSecAttrService as String: "com.wd.footprint.app"
         ]
-        SecItemDelete(query as CFDictionary)
+        let status = SecItemDelete(query as CFDictionary)
+        print("[Keychain] delete(\(key)): status=\(status)")
     }
 }

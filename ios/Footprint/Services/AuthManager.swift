@@ -25,15 +25,30 @@ class AuthManager: NSObject {
     }
 
     private func loadStoredAuth() async {
+        print("[AuthManager] loadStoredAuth: starting...")
         await APIClient.shared.loadStoredTokens()
-        if await APIClient.shared.isAuthenticated {
+        let hasToken = await APIClient.shared.isAuthenticated
+        print("[AuthManager] loadStoredAuth: hasToken=\(hasToken)")
+        if hasToken {
             do {
                 user = try await APIClient.shared.getCurrentUser()
                 isAuthenticated = true
+                print("[AuthManager] loadStoredAuth: user loaded, isAuthenticated=true")
             } catch {
-                // Token expired or invalid
-                await APIClient.shared.clearTokens()
+                print("[AuthManager] loadStoredAuth: getCurrentUser failed: \(error)")
+                // Try to refresh token before giving up
+                do {
+                    _ = try await APIClient.shared.refreshAccessToken()
+                    user = try await APIClient.shared.getCurrentUser()
+                    isAuthenticated = true
+                    print("[AuthManager] loadStoredAuth: refresh succeeded, isAuthenticated=true")
+                } catch {
+                    print("[AuthManager] loadStoredAuth: refresh also failed, clearing tokens")
+                    await APIClient.shared.clearTokens()
+                }
             }
+        } else {
+            print("[AuthManager] loadStoredAuth: no stored token found")
         }
     }
 

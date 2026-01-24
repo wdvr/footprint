@@ -70,6 +70,15 @@ struct ImportView: View {
         flowState = .connecting
 
         Task {
+            // First verify we're authenticated with Footprint API
+            let isAuth = await APIClient.shared.isAuthenticated
+            print("[ImportView] startConnection: APIClient.isAuthenticated = \(isAuth)")
+
+            guard isAuth else {
+                flowState = .error("Please sign in to your Footprint account first. Go to Settings and sign in, then try again.")
+                return
+            }
+
             do {
                 if !googleAuth.isConnected {
                     try await googleAuth.signIn()
