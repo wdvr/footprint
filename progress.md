@@ -171,23 +171,18 @@ xcodebuild test -project ios/Footprint.xcodeproj -scheme Footprint -destination 
 - **Code Quality**: Pre-commit hooks enforce standards
 - **Offline Capability**: Full functionality without internet ✅
 
-## Future Features Roadmap
+## Future Features Roadmap (Priority Order)
 
-### Geographic Expansion
-- [ ] **States for other countries** - Add state/province boundaries for more countries (Australia, Mexico, etc.)
-- [ ] **Cities & Landmarks** - Track visited cities and famous landmarks
-
-### Live Features
-- [ ] **Live location tracking** - Request location permission and show current position on map
-- [ ] **Friend lists & sharing** - Connect with friends and share/compare travel lists
-
-### Platform Expansion
-- [ ] **iOS Widget** - Home screen widget showing travel stats
-- [ ] **macOS app** - Native Mac app (Universal purchase)
-
-### Data Integration
-- [ ] **Feature requests & feedback** - In-app feedback that saves to DynamoDB for async review
-- [ ] **Gmail/Calendar import** - Read travel confirmations from email/calendar, suggest locations to add with confirmation UI
+| # | Feature | Description | Status |
+|---|---------|-------------|--------|
+| 1 | **Live location tracking** | Request location permission, show current position on map, auto-detect visited places | 🔲 TODO |
+| 2 | **iOS Widget** | Home screen widget showing travel stats (countries visited, %) | 🔲 TODO |
+| 3 | **Friend lists & sharing** | Connect with friends, share/compare travel lists | 🔲 TODO |
+| 4 | **Feature requests & feedback** | In-app feedback form that saves to DynamoDB for async review | 🔲 TODO |
+| 5 | **Gmail/Calendar import** | Read travel confirmations from email/calendar, suggest locations to add | 🔲 TODO |
+| 6 | **States for other countries** | Add state/province boundaries for Australia, Mexico, etc. | 🔲 TODO |
+| 7 | **Cities & Landmarks** | Track visited cities and famous landmarks | 🔲 TODO |
+| 8 | **macOS app** | Native Mac app (Universal purchase) | 🔲 TODO |
 
 ## Notes & Learnings
 - Swift 6 strict concurrency requires `nonisolated(unsafe)` for test mocks
