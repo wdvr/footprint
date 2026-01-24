@@ -431,16 +431,16 @@ async def oauth_callback(
     if error:
         # Redirect with error
         params = urlencode({"error": error})
-        redirect_url = f"{app_scheme}:/oauth2callback?{params}"
+        redirect_url = f"{app_scheme}://oauth2callback?{params}"
     elif code:
         # Redirect with authorization code
         params = {"code": code}
         if scope:
             params["scope"] = scope
-        redirect_url = f"{app_scheme}:/oauth2callback?{urlencode(params)}"
+        redirect_url = f"{app_scheme}://oauth2callback?{urlencode(params)}"
     else:
         # No code or error - redirect with generic error
         params = urlencode({"error": "no_code"})
-        redirect_url = f"{app_scheme}:/oauth2callback?{params}"
+        redirect_url = f"{app_scheme}://oauth2callback?{params}"
 
     return RedirectResponse(url=redirect_url, status_code=302)
