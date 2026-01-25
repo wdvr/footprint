@@ -248,7 +248,7 @@ api_lambda = aws.lambda_.Function(
             # Google OAuth (for Gmail/Calendar import)
             "GOOGLE_CLIENT_ID": config.get("google_client_id") or "",
             "GOOGLE_CLIENT_SECRET": config.get_secret("google_client_secret") or "",
-            "GOOGLE_REDIRECT_URI": "com.wd.footprint.app:/oauth2callback",
+            "GOOGLE_REDIRECT_URI": "https://api.footprintmaps.com/import/google/oauth/callback",
         }
     ),
     tags=common_tags,
@@ -309,6 +309,253 @@ api_gateway_permission = aws.lambda_.Permission(
 )
 
 # =============================================================================
+# Custom Domain (footprintmaps.com)
+# =============================================================================
+
+domain_name = config.get("domain_name") or "footprintmaps.com"
+api_subdomain = f"api.{domain_name}"
+
+# Get the hosted zone (created automatically with domain registration)
+hosted_zone = aws.route53.get_zone(name=domain_name)
+
+# ACM Certificate for the domain (regional, for API Gateway)
+certificate = aws.acm.Certificate(
+    resource_name("certificate"),
+    domain_name=domain_name,
+    subject_alternative_names=[f"*.{domain_name}"],
+    validation_method="DNS",
+    tags=common_tags,
+)
+
+# DNS validation record (same record validates both domain and wildcard)
+cert_validation_record = aws.route53.Record(
+    resource_name("cert-validation-record"),
+    zone_id=hosted_zone.zone_id,
+    name=certificate.domain_validation_options[0].resource_record_name,
+    type=certificate.domain_validation_options[0].resource_record_type,
+    records=[certificate.domain_validation_options[0].resource_record_value],
+    ttl=300,
+    allow_overwrite=True,
+    opts=ResourceOptions(depends_on=[certificate]),
+)
+
+# Wait for certificate validation
+cert_validation = aws.acm.CertificateValidation(
+    resource_name("cert-validation"),
+    certificate_arn=certificate.arn,
+    validation_record_fqdns=[cert_validation_record.fqdn],
+)
+
+# =============================================================================
+# API Gateway Custom Domain (api.footprintmaps.com)
+# =============================================================================
+
+# API Gateway custom domain - now on api subdomain
+api_domain = aws.apigatewayv2.DomainName(
+    resource_name("api-domain"),
+    domain_name=api_subdomain,
+    domain_name_configuration=aws.apigatewayv2.DomainNameDomainNameConfigurationArgs(
+        certificate_arn=cert_validation.certificate_arn,
+        endpoint_type="REGIONAL",
+        security_policy="TLS_1_2",
+    ),
+    tags=common_tags,
+)
+
+# API mapping to connect domain to API (no path prefix needed now)
+api_mapping = aws.apigatewayv2.ApiMapping(
+    resource_name("api-mapping"),
+    api_id=api_gateway.id,
+    domain_name=api_domain.domain_name,
+    stage=api_stage.name,
+    # No api_mapping_key - API is at root of api.footprintmaps.com
+)
+
+# Route53 A record for API subdomain
+api_dns_record = aws.route53.Record(
+    resource_name("api-dns"),
+    zone_id=hosted_zone.zone_id,
+    name=api_subdomain,
+    type="A",
+    aliases=[
+        aws.route53.RecordAliasArgs(
+            name=api_domain.domain_name_configuration.target_domain_name,
+            zone_id=api_domain.domain_name_configuration.hosted_zone_id,
+            evaluate_target_health=False,
+        )
+    ],
+)
+
+# =============================================================================
+# Marketing Website (footprintmaps.com) - S3 + CloudFront
+# =============================================================================
+
+# S3 bucket for website static files
+website_bucket = aws.s3.BucketV2(
+    resource_name("website"),
+    bucket=resource_name("website", include_account=True),
+    tags=common_tags,
+)
+
+# Website bucket configuration
+website_bucket_website = aws.s3.BucketWebsiteConfigurationV2(
+    resource_name("website-config"),
+    bucket=website_bucket.id,
+    index_document=aws.s3.BucketWebsiteConfigurationV2IndexDocumentArgs(
+        suffix="index.html",
+    ),
+    error_document=aws.s3.BucketWebsiteConfigurationV2ErrorDocumentArgs(
+        key="index.html",  # SPA fallback
+    ),
+)
+
+# Block public access - CloudFront will use OAC
+website_bucket_public_access_block = aws.s3.BucketPublicAccessBlock(
+    resource_name("website-pab"),
+    bucket=website_bucket.id,
+    block_public_acls=True,
+    block_public_policy=True,
+    ignore_public_acls=True,
+    restrict_public_buckets=True,
+)
+
+# CloudFront Origin Access Control for S3
+website_oac = aws.cloudfront.OriginAccessControl(
+    resource_name("website-oac"),
+    name=resource_name("website-oac"),
+    origin_access_control_origin_type="s3",
+    signing_behavior="always",
+    signing_protocol="sigv4",
+)
+
+# ACM Certificate for CloudFront (must be in us-east-1)
+# Note: Using the same certificate since we're already in us-east-1
+cloudfront_certificate = aws.acm.Certificate(
+    resource_name("cf-certificate"),
+    domain_name=domain_name,
+    validation_method="DNS",
+    tags=common_tags,
+    opts=ResourceOptions(
+        provider=aws.Provider("us-east-1-provider", region="us-east-1")
+    ),
+)
+
+# DNS validation for CloudFront cert
+cf_cert_validation_record = aws.route53.Record(
+    resource_name("cf-cert-validation-record"),
+    zone_id=hosted_zone.zone_id,
+    name=cloudfront_certificate.domain_validation_options[0].resource_record_name,
+    type=cloudfront_certificate.domain_validation_options[0].resource_record_type,
+    records=[cloudfront_certificate.domain_validation_options[0].resource_record_value],
+    ttl=300,
+    allow_overwrite=True,
+    opts=ResourceOptions(depends_on=[cloudfront_certificate]),
+)
+
+cf_cert_validation = aws.acm.CertificateValidation(
+    resource_name("cf-cert-validation"),
+    certificate_arn=cloudfront_certificate.arn,
+    validation_record_fqdns=[cf_cert_validation_record.fqdn],
+    opts=ResourceOptions(
+        provider=aws.Provider("us-east-1-provider-validation", region="us-east-1")
+    ),
+)
+
+# CloudFront distribution for marketing website
+website_distribution = aws.cloudfront.Distribution(
+    resource_name("website-cdn"),
+    enabled=True,
+    is_ipv6_enabled=True,
+    default_root_object="index.html",
+    aliases=[domain_name],
+    origins=[
+        aws.cloudfront.DistributionOriginArgs(
+            domain_name=website_bucket.bucket_regional_domain_name,
+            origin_id="S3Origin",
+            origin_access_control_id=website_oac.id,
+        ),
+    ],
+    default_cache_behavior=aws.cloudfront.DistributionDefaultCacheBehaviorArgs(
+        allowed_methods=["GET", "HEAD", "OPTIONS"],
+        cached_methods=["GET", "HEAD"],
+        target_origin_id="S3Origin",
+        viewer_protocol_policy="redirect-to-https",
+        compress=True,
+        forwarded_values=aws.cloudfront.DistributionDefaultCacheBehaviorForwardedValuesArgs(
+            query_string=False,
+            cookies=aws.cloudfront.DistributionDefaultCacheBehaviorForwardedValuesCookiesArgs(
+                forward="none",
+            ),
+        ),
+        min_ttl=0,
+        default_ttl=86400,
+        max_ttl=31536000,
+    ),
+    custom_error_responses=[
+        # SPA routing - return index.html for 404s
+        aws.cloudfront.DistributionCustomErrorResponseArgs(
+            error_code=404,
+            response_code=200,
+            response_page_path="/index.html",
+        ),
+        aws.cloudfront.DistributionCustomErrorResponseArgs(
+            error_code=403,
+            response_code=200,
+            response_page_path="/index.html",
+        ),
+    ],
+    restrictions=aws.cloudfront.DistributionRestrictionsArgs(
+        geo_restriction=aws.cloudfront.DistributionRestrictionsGeoRestrictionArgs(
+            restriction_type="none",
+        ),
+    ),
+    viewer_certificate=aws.cloudfront.DistributionViewerCertificateArgs(
+        acm_certificate_arn=cf_cert_validation.certificate_arn,
+        ssl_support_method="sni-only",
+        minimum_protocol_version="TLSv1.2_2021",
+    ),
+    tags=common_tags,
+)
+
+# S3 bucket policy to allow CloudFront access
+website_bucket_policy = aws.s3.BucketPolicy(
+    resource_name("website-policy"),
+    bucket=website_bucket.id,
+    policy=pulumi.Output.all(website_bucket.arn, website_distribution.arn).apply(
+        lambda args: json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Sid": "AllowCloudFrontServicePrincipal",
+                        "Effect": "Allow",
+                        "Principal": {"Service": "cloudfront.amazonaws.com"},
+                        "Action": "s3:GetObject",
+                        "Resource": f"{args[0]}/*",
+                        "Condition": {"StringEquals": {"AWS:SourceArn": args[1]}},
+                    }
+                ],
+            }
+        )
+    ),
+)
+
+# Route53 A record for main domain pointing to CloudFront
+website_dns_record = aws.route53.Record(
+    resource_name("website-dns"),
+    zone_id=hosted_zone.zone_id,
+    name=domain_name,
+    type="A",
+    aliases=[
+        aws.route53.RecordAliasArgs(
+            name=website_distribution.domain_name,
+            zone_id=website_distribution.hosted_zone_id,
+            evaluate_target_health=False,
+        )
+    ],
+)
+
+# =============================================================================
 # Exports
 # =============================================================================
 
@@ -320,10 +567,15 @@ export("lambda_function_name", api_lambda.name)
 export("lambda_function_arn", api_lambda.arn)
 export("api_gateway_id", api_gateway.id)
 export("api_url", api_stage.invoke_url)
+export("api_domain_url", pulumi.Output.concat("https://", api_subdomain))
+export("website_bucket_name", website_bucket.bucket)
+export("website_url", pulumi.Output.concat("https://", domain_name))
+export("cloudfront_distribution_id", website_distribution.id)
 export("environment", environment)
 export("app_name", app_name)
 
 # Output deployment information
 pulumi.log.info(f"Deploying Footprint infrastructure for environment: {environment}")
 pulumi.log.info(f"DynamoDB Table: {resource_name('table')}")
-pulumi.log.info("API Gateway will be available at the exported api_url")
+pulumi.log.info(f"API will be available at: https://{api_subdomain}")
+pulumi.log.info(f"Website will be available at: https://{domain_name}")

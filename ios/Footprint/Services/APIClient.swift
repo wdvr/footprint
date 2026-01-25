@@ -12,11 +12,7 @@ enum APIError: Error {
 actor APIClient {
     static let shared = APIClient()
 
-    #if DEBUG
-    private let baseURL = "https://jz0gkkwq8b.execute-api.us-east-1.amazonaws.com/dev"
-    #else
-    private let baseURL = "https://jz0gkkwq8b.execute-api.us-east-1.amazonaws.com/prod"
-    #endif
+    private let baseURL = "https://api.footprintmaps.com"
 
     private var accessToken: String?
     private var refreshToken: String?
