@@ -53,7 +53,7 @@ private struct PhotoCluster {
 }
 
 /// Persisted scan progress for resumption
-private struct ScanProgress: Codable {
+private struct PhotoScanProgress: Codable {
     var processedGridKeys: Set<String>
     var discoveredLocations: [DiscoveredLocation]
     var totalClusters: Int
@@ -274,6 +274,8 @@ final class PhotoImportManager {
         guard authorizationStatus == .authorized || authorizationStatus == .limited else {
             let granted = await requestPermission()
             if !granted { return }
+            // After requesting permission, continue with the scan
+            return await scanPhotoLibrary(existingPlaces: existingPlaces)
         }
 
         // Request notification permission for background updates
@@ -388,7 +390,7 @@ final class PhotoImportManager {
     private func geocodeClusters(
         _ clusters: [PhotoCluster],
         existingPlaces: [VisitedPlace],
-        existingProgress: ScanProgress? = nil
+        existingProgress: PhotoScanProgress? = nil
     ) async {
         let totalClusters = clusters.count + (existingProgress?.processedGridKeys.count ?? 0)
 
@@ -437,7 +439,7 @@ final class PhotoImportManager {
             for cluster in clusters {
                 // Check for cancellation
                 if Task.isCancelled {
-                    saveScanProgress(ScanProgress(
+                    saveScanProgress(PhotoScanProgress(
                         processedGridKeys: processedGridKeys,
                         discoveredLocations: buildDiscoveredLocations(from: locationCounts),
                         totalClusters: totalClusters,
@@ -511,7 +513,7 @@ final class PhotoImportManager {
 
                 // Save progress periodically (every 10 clusters)
                 if processedCount % 10 == 0 {
-                    saveScanProgress(ScanProgress(
+                    saveScanProgress(PhotoScanProgress(
                         processedGridKeys: processedGridKeys,
                         discoveredLocations: buildDiscoveredLocations(from: locationCounts),
                         totalClusters: totalClusters,
@@ -553,15 +555,15 @@ final class PhotoImportManager {
 
     // MARK: - Progress Persistence
 
-    private func saveScanProgress(_ progress: ScanProgress) {
+    private func saveScanProgress(_ progress: PhotoScanProgress) {
         if let data = try? JSONEncoder().encode(progress) {
             UserDefaults.standard.set(data, forKey: progressKey)
         }
     }
 
-    private func loadScanProgress() -> ScanProgress? {
+    private func loadScanProgress() -> PhotoScanProgress? {
         guard let data = UserDefaults.standard.data(forKey: progressKey),
-              let progress = try? JSONDecoder().decode(ScanProgress.self, from: data) else {
+              let progress = try? JSONDecoder().decode(PhotoScanProgress.self, from: data) else {
             return nil
         }
         return progress

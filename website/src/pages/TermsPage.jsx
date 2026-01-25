@@ -4,7 +4,7 @@ function TermsPage() {
       <div className="container">
         <div className="legal-content">
           <h1>Terms of Service</h1>
-          <p className="last-updated">Last updated: January 2025</p>
+          <p className="last-updated">Last updated: January 2026</p>
 
           <p>
             Welcome to Footprint! These Terms of Service ("Terms") govern your use of the Footprint

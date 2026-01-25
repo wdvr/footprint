@@ -4,7 +4,7 @@ function PrivacyPage() {
       <div className="container">
         <div className="legal-content">
           <h1>Privacy Policy</h1>
-          <p className="last-updated">Last updated: January 2025</p>
+          <p className="last-updated">Last updated: January 2026</p>
 
           <p>
             Your privacy is important to us. This Privacy Policy explains how Footprint ("we", "us",

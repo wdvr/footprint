@@ -40,6 +40,8 @@
 		IMP0RTV13W0001 /* ImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = IMP0RTV13W0002 /* ImportView.swift */; };
 		IMP0RTR3V0001 /* ImportReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = IMP0RTR3V0002 /* ImportReviewView.swift */; };
 		PUSHN0T1F0001 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = PUSHN0T1F0002 /* PushNotificationManager.swift */; };
+		PH0T01MP0RTM4N0002 /* PhotoImportManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = PH0T01MP0RTM4N0001 /* PhotoImportManager.swift */; };
+		PH0T01MP0RTV13W0002 /* PhotoImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PH0T01MP0RTV13W0001 /* PhotoImportView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -89,6 +91,8 @@
 		IMP0RTV13W0002 /* ImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportView.swift; sourceTree = "<group>"; };
 		IMP0RTR3V0002 /* ImportReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportReviewView.swift; sourceTree = "<group>"; };
 		PUSHN0T1F0002 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
+		PH0T01MP0RTM4N0001 /* PhotoImportManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoImportManager.swift; sourceTree = "<group>"; };
+		PH0T01MP0RTV13W0001 /* PhotoImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoImportView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -124,6 +128,7 @@
 				0C4E1A64A7722E32CCA5A978 /* APIClient.swift */,
 				11E07153F5CDFA5F55C0487C /* AuthManager.swift */,
 				L0C4T10NM4N4G3R5W1FT0001 /* LocationManager.swift */,
+				PH0T01MP0RTM4N0001 /* PhotoImportManager.swift */,
 				PUSHN0T1F0002 /* PushNotificationManager.swift */,
 				2188CD92D5369E26F73572A1 /* SyncManager.swift */,
 			);
@@ -142,6 +147,7 @@
 			isa = PBXGroup;
 			children = (
 				C3D4E5F6A7B8C9D0E1F2A3B4 /* AccessibleMapSummary.swift */,
+				PH0T01MP0RTV13W0001 /* PhotoImportView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -406,6 +412,8 @@
 				0A1B2C3D4E5F6A7B8C9D0E1F /* StateMapView.swift in Sources */,
 				FAEE1917D2F3D12D3722FA77 /* SyncManager.swift in Sources */,
 				L0C4T10NM4N4G3R5W1FT0002 /* LocationManager.swift in Sources */,
+				PH0T01MP0RTM4N0002 /* PhotoImportManager.swift in Sources */,
+				PH0T01MP0RTV13W0002 /* PhotoImportView.swift in Sources */,
 				PUSHN0T1F0001 /* PushNotificationManager.swift in Sources */,
 				7A481CFA80ACF0DEDBF67FEF /* VisitedPlace.swift in Sources */,
 			);
