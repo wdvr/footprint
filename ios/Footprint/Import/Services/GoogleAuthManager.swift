@@ -221,6 +221,8 @@ enum GoogleOAuthConfig {
     // HTTPS redirect goes to our backend, which redirects to the app scheme
     static let redirectUri = "https://footprintmaps.com/api/import/google/oauth/callback"
     static let scopes = [
+        "openid",
+        "https://www.googleapis.com/auth/userinfo.email",
         "https://www.googleapis.com/auth/gmail.readonly",
         "https://www.googleapis.com/auth/calendar.readonly"
     ]

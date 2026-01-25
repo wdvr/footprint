@@ -56,11 +56,16 @@ async def connect_google(
     server-side.
     """
     user_id = current_user["user_id"]
+    print(
+        f"[GoogleConnect] user_id={user_id}, auth_code_len={len(request.authorization_code)}"
+    )
 
     try:
         result = google_service.exchange_auth_code(request.authorization_code, user_id)
+        print(f"[GoogleConnect] Success: email={result['email']}")
         return GoogleConnectResponse(email=result["email"], connected=True)
     except Exception as e:
+        print(f"[GoogleConnect] ERROR: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to connect Google account: {str(e)}",

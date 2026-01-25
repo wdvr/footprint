@@ -16,6 +16,8 @@ GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "")
 
 SCOPES = [
+    "openid",
+    "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/calendar.readonly",
 ]
@@ -41,6 +43,9 @@ class GoogleService:
 
         Returns the connected Google email.
         """
+        print(f"[GoogleService] exchange_auth_code: redirect_uri={GOOGLE_REDIRECT_URI}")
+        print(f"[GoogleService] client_id={GOOGLE_CLIENT_ID[:20]}...")
+
         flow = Flow.from_client_config(
             self.client_config,
             scopes=SCOPES,
@@ -48,8 +53,12 @@ class GoogleService:
         )
 
         # Exchange the auth code for tokens
+        print(f"[GoogleService] Fetching token with auth_code (len={len(auth_code)})")
         flow.fetch_token(code=auth_code)
         credentials = flow.credentials
+        print(
+            f"[GoogleService] Token fetched: token={credentials.token[:20] if credentials.token else 'None'}..., refresh={credentials.refresh_token is not None}"
+        )
 
         # Get user info to get email
         service = build("oauth2", "v2", credentials=credentials)
