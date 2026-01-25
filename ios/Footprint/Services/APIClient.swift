@@ -13,9 +13,9 @@ actor APIClient {
     static let shared = APIClient()
 
     #if DEBUG
-    private let baseURL = "https://66sdbasq7k.execute-api.us-east-1.amazonaws.com/dev"
+    private let baseURL = "https://jz0gkkwq8b.execute-api.us-east-1.amazonaws.com/dev"
     #else
-    private let baseURL = "https://66sdbasq7k.execute-api.us-east-1.amazonaws.com/prod"
+    private let baseURL = "https://jz0gkkwq8b.execute-api.us-east-1.amazonaws.com/prod"
     #endif
 
     private var accessToken: String?
@@ -82,8 +82,13 @@ actor APIClient {
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        if authenticated, let token = accessToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if authenticated {
+            if let token = accessToken {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                print("[API] \(method) \(path) - Auth token present (len=\(token.count))")
+            } else {
+                print("[API] \(method) \(path) - Auth token MISSING!")
+            }
         }
 
         if let body = body {
@@ -98,6 +103,7 @@ actor APIClient {
             throw APIError.networkError(NSError(domain: "Invalid response", code: 0))
         }
 
+        print("[API] \(method) \(path) - Response: \(httpResponse.statusCode)")
         switch httpResponse.statusCode {
         case 200...299:
             let decoder = JSONDecoder()
@@ -105,9 +111,11 @@ actor APIClient {
             decoder.dateDecodingStrategy = .iso8601
             return try decoder.decode(T.self, from: data)
         case 401:
+            print("[API] \(method) \(path) - 401 Unauthorized!")
             throw APIError.unauthorized
         default:
             let message = String(data: data, encoding: .utf8) ?? "Unknown error"
+            print("[API] \(method) \(path) - Error: \(httpResponse.statusCode) - \(message)")
             throw APIError.serverError(httpResponse.statusCode, message)
         }
     }
@@ -120,11 +128,15 @@ actor APIClient {
     }
 
     struct AuthResponse: Decodable {
+        let user: UserResponse
+        let tokens: TokensResponse
+    }
+
+    struct TokensResponse: Decodable {
         let accessToken: String
         let refreshToken: String
         let tokenType: String
         let expiresIn: Int
-        let user: UserResponse
     }
 
     struct UserResponse: Decodable {
@@ -138,7 +150,7 @@ actor APIClient {
     func authenticateWithApple(identityToken: String, authorizationCode: String) async throws -> AuthResponse {
         let body = AppleAuthRequest(identityToken: identityToken, authorizationCode: authorizationCode)
         let response: AuthResponse = try await _request("/auth/apple", method: "POST", body: body)
-        setTokens(access: response.accessToken, refresh: response.refreshToken)
+        setTokens(access: response.tokens.accessToken, refresh: response.tokens.refreshToken)
         return response
     }
 
@@ -153,13 +165,31 @@ actor APIClient {
 
         let body = RefreshRequest(refreshToken: token)
         let response: AuthResponse = try await _request("/auth/refresh", method: "POST", body: body)
-        setTokens(access: response.accessToken, refresh: response.refreshToken)
+        setTokens(access: response.tokens.accessToken, refresh: response.tokens.refreshToken)
         return response
     }
 
     func getCurrentUser() async throws -> UserResponse {
         try await _request("/auth/me", authenticated: true)
     }
+
+    /// Store tokens (for dev mode auth)
+    func storeTokens(accessToken: String, refreshToken: String) {
+        setTokens(access: accessToken, refresh: refreshToken)
+    }
+
+    #if DEBUG
+    /// Dev mode authentication - bypasses Apple Sign In for testing
+    func authDevMode(deviceId: String) async throws -> AuthResponse {
+        struct DevAuthRequest: Encodable {
+            let deviceId: String
+        }
+        let body = DevAuthRequest(deviceId: deviceId)
+        let response: AuthResponse = try await _request("/auth/dev", method: "POST", body: body)
+        setTokens(access: response.tokens.accessToken, refresh: response.tokens.refreshToken)
+        return response
+    }
+    #endif
 
     // MARK: - Places Endpoints
 

@@ -22,6 +22,9 @@ REQUIREMENTS = [
     "python-jose[cryptography]",
     "httpx",
     "python-dateutil",
+    "pycountry",
+    "google-auth-oauthlib",
+    "google-api-python-client",
 ]
 
 

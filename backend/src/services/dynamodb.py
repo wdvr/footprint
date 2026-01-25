@@ -358,6 +358,317 @@ class DynamoDBService:
             }
         )
 
+    # Feedback operations
+    FEEDBACK_SK = "FEEDBACK#{feedback_id}"
+
+    @staticmethod
+    def _get_feedback_sk(feedback_id: str) -> str:
+        return f"FEEDBACK#{feedback_id}"
+
+    def create_feedback(
+        self,
+        user_id: str,
+        feedback_id: str,
+        feedback_type: str,
+        title: str,
+        description: str,
+        app_version: str | None = None,
+        device_info: str | None = None,
+    ) -> dict[str, Any]:
+        """Create a feedback submission."""
+        now = datetime.now(UTC).isoformat()
+        item = {
+            "pk": self._get_user_pk(user_id),
+            "sk": self._get_feedback_sk(feedback_id),
+            "gsi1pk": "FEEDBACK",
+            "gsi1sk": f"{now}#{feedback_id}",
+            "entity_type": "feedback",
+            "feedback_id": feedback_id,
+            "user_id": user_id,
+            "type": feedback_type,
+            "title": title,
+            "description": description,
+            "status": "new",
+            "app_version": app_version,
+            "device_info": device_info,
+            "created_at": now,
+            "updated_at": now,
+        }
+        table.put_item(Item=item)
+        return item
+
+    def get_user_feedback(self, user_id: str) -> list[dict[str, Any]]:
+        """Get all feedback submitted by a user."""
+        response = table.query(
+            KeyConditionExpression=Key("pk").eq(self._get_user_pk(user_id))
+            & Key("sk").begins_with("FEEDBACK#")
+        )
+        return response.get("Items", [])
+
+    def get_all_feedback(self, limit: int = 50) -> list[dict[str, Any]]:
+        """Get all feedback (for admin review)."""
+        response = table.query(
+            IndexName="gsi1",
+            KeyConditionExpression=Key("gsi1pk").eq("FEEDBACK"),
+            ScanIndexForward=False,  # Most recent first
+            Limit=limit,
+        )
+        return response.get("Items", [])
+
+    def update_feedback_status(
+        self, user_id: str, feedback_id: str, status: str
+    ) -> dict[str, Any]:
+        """Update feedback status."""
+        response = table.update_item(
+            Key={
+                "pk": self._get_user_pk(user_id),
+                "sk": self._get_feedback_sk(feedback_id),
+            },
+            UpdateExpression="SET #status = :status, #updated_at = :updated_at",
+            ExpressionAttributeNames={"#status": "status", "#updated_at": "updated_at"},
+            ExpressionAttributeValues={
+                ":status": status,
+                ":updated_at": datetime.now(UTC).isoformat(),
+            },
+            ReturnValues="ALL_NEW",
+        )
+        return response.get("Attributes", {})
+
+    # Google tokens operations
+    GOOGLE_TOKENS_SK = "GOOGLE_TOKENS"
+
+    def store_google_tokens(
+        self, user_id: str, token_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Store Google OAuth tokens for a user."""
+        now = datetime.now(UTC).isoformat()
+        item = {
+            "pk": self._get_user_pk(user_id),
+            "sk": self.GOOGLE_TOKENS_SK,
+            "entity_type": "google_tokens",
+            "user_id": user_id,
+            "access_token": token_data.get("access_token", ""),
+            "refresh_token": token_data.get("refresh_token", ""),
+            "token_expiry": token_data.get("token_expiry", ""),
+            "email": token_data.get("email", ""),
+            "scopes": token_data.get("scopes", []),
+            "created_at": now,
+            "updated_at": now,
+        }
+        table.put_item(Item=item)
+        return item
+
+    def get_google_tokens(self, user_id: str) -> dict[str, Any] | None:
+        """Get Google OAuth tokens for a user."""
+        response = table.get_item(
+            Key={"pk": self._get_user_pk(user_id), "sk": self.GOOGLE_TOKENS_SK}
+        )
+        return response.get("Item")
+
+    def update_google_tokens(
+        self, user_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Update Google OAuth tokens."""
+        update_expr_parts = []
+        expr_attr_names = {}
+        expr_attr_values = {}
+
+        for key, value in updates.items():
+            safe_key = f"#{key}"
+            expr_attr_names[safe_key] = key
+            expr_attr_values[f":{key}"] = value
+            update_expr_parts.append(f"{safe_key} = :{key}")
+
+        # Always update updated_at
+        expr_attr_names["#updated_at"] = "updated_at"
+        expr_attr_values[":updated_at"] = datetime.now(UTC).isoformat()
+        update_expr_parts.append("#updated_at = :updated_at")
+
+        response = table.update_item(
+            Key={"pk": self._get_user_pk(user_id), "sk": self.GOOGLE_TOKENS_SK},
+            UpdateExpression="SET " + ", ".join(update_expr_parts),
+            ExpressionAttributeNames=expr_attr_names,
+            ExpressionAttributeValues=expr_attr_values,
+            ReturnValues="ALL_NEW",
+        )
+        return response.get("Attributes", {})
+
+    def delete_google_tokens(self, user_id: str) -> bool:
+        """Delete Google OAuth tokens for a user."""
+        table.delete_item(
+            Key={"pk": self._get_user_pk(user_id), "sk": self.GOOGLE_TOKENS_SK}
+        )
+        return True
+
+    # Import job operations
+    IMPORT_JOB_SK = "IMPORT_JOB#{job_id}"
+
+    @staticmethod
+    def _get_import_job_sk(job_id: str) -> str:
+        return f"IMPORT_JOB#{job_id}"
+
+    def create_import_job(
+        self, user_id: str, job_id: str, job_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Create an import job record."""
+        now = datetime.now(UTC).isoformat()
+        item = {
+            "pk": self._get_user_pk(user_id),
+            "sk": self._get_import_job_sk(job_id),
+            "gsi1pk": "IMPORT_JOB",
+            "gsi1sk": f"{user_id}#{job_id}",
+            "entity_type": "import_job",
+            "job_id": job_id,
+            "user_id": user_id,
+            "status": job_data.get("status", "pending"),
+            "progress": job_data.get("progress", {}),
+            "created_at": now,
+            "updated_at": now,
+            **{k: v for k, v in job_data.items() if k not in ["status", "progress"]},
+        }
+        table.put_item(Item=item)
+        return item
+
+    def get_import_job(self, user_id: str, job_id: str) -> dict[str, Any] | None:
+        """Get an import job by ID."""
+        response = table.get_item(
+            Key={
+                "pk": self._get_user_pk(user_id),
+                "sk": self._get_import_job_sk(job_id),
+            }
+        )
+        return response.get("Item")
+
+    def get_user_import_jobs(
+        self, user_id: str, limit: int = 10
+    ) -> list[dict[str, Any]]:
+        """Get recent import jobs for a user."""
+        response = table.query(
+            KeyConditionExpression=Key("pk").eq(self._get_user_pk(user_id))
+            & Key("sk").begins_with("IMPORT_JOB#"),
+            ScanIndexForward=False,
+            Limit=limit,
+        )
+        return response.get("Items", [])
+
+    def update_import_job(
+        self, user_id: str, job_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Update an import job."""
+        update_expr_parts = []
+        expr_attr_names = {}
+        expr_attr_values = {}
+
+        for key, value in updates.items():
+            safe_key = f"#{key}"
+            expr_attr_names[safe_key] = key
+            expr_attr_values[f":{key}"] = value
+            update_expr_parts.append(f"{safe_key} = :{key}")
+
+        # Always update updated_at
+        expr_attr_names["#updated_at"] = "updated_at"
+        expr_attr_values[":updated_at"] = datetime.now(UTC).isoformat()
+        update_expr_parts.append("#updated_at = :updated_at")
+
+        response = table.update_item(
+            Key={
+                "pk": self._get_user_pk(user_id),
+                "sk": self._get_import_job_sk(job_id),
+            },
+            UpdateExpression="SET " + ", ".join(update_expr_parts),
+            ExpressionAttributeNames=expr_attr_names,
+            ExpressionAttributeValues=expr_attr_values,
+            ReturnValues="ALL_NEW",
+        )
+        return response.get("Attributes", {})
+
+    # Device token operations for push notifications
+    DEVICE_TOKEN_SK = "DEVICE_TOKEN#{device_token}"
+
+    @staticmethod
+    def _get_device_token_sk(device_token: str) -> str:
+        # Use hash of token to keep SK short
+        import hashlib
+
+        token_hash = hashlib.sha256(device_token.encode()).hexdigest()[:16]
+        return f"DEVICE_TOKEN#{token_hash}"
+
+    def register_device_token(
+        self, user_id: str, device_token: str, platform: str = "ios"
+    ) -> dict[str, Any]:
+        """Register a device token for push notifications."""
+        now = datetime.now(UTC).isoformat()
+        item = {
+            "pk": self._get_user_pk(user_id),
+            "sk": self._get_device_token_sk(device_token),
+            "gsi1pk": "DEVICE_TOKEN",
+            "gsi1sk": device_token,
+            "entity_type": "device_token",
+            "user_id": user_id,
+            "device_token": device_token,
+            "platform": platform,
+            "created_at": now,
+            "updated_at": now,
+        }
+        table.put_item(Item=item)
+        return item
+
+    def get_user_device_tokens(self, user_id: str) -> list[dict[str, Any]]:
+        """Get all device tokens for a user."""
+        response = table.query(
+            KeyConditionExpression=Key("pk").eq(self._get_user_pk(user_id))
+            & Key("sk").begins_with("DEVICE_TOKEN#")
+        )
+        return response.get("Items", [])
+
+    def delete_device_token(self, user_id: str, device_token: str) -> bool:
+        """Delete a device token."""
+        table.delete_item(
+            Key={
+                "pk": self._get_user_pk(user_id),
+                "sk": self._get_device_token_sk(device_token),
+            }
+        )
+        return True
+
+    # Store import results for async jobs
+    IMPORT_RESULTS_SK = "IMPORT_RESULTS#{job_id}"
+
+    @staticmethod
+    def _get_import_results_sk(job_id: str) -> str:
+        return f"IMPORT_RESULTS#{job_id}"
+
+    def store_import_results(
+        self, user_id: str, job_id: str, results: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Store import scan results for a job."""
+        now = datetime.now(UTC).isoformat()
+        item = {
+            "pk": self._get_user_pk(user_id),
+            "sk": self._get_import_results_sk(job_id),
+            "entity_type": "import_results",
+            "job_id": job_id,
+            "user_id": user_id,
+            "candidates": results.get("candidates", []),
+            "scanned_emails": results.get("scanned_emails", 0),
+            "scanned_events": results.get("scanned_events", 0),
+            "created_at": now,
+            # TTL - expire after 24 hours
+            "ttl": int(datetime.now(UTC).timestamp()) + 86400,
+        }
+        table.put_item(Item=item)
+        return item
+
+    def get_import_results(self, user_id: str, job_id: str) -> dict[str, Any] | None:
+        """Get import scan results for a job."""
+        response = table.get_item(
+            Key={
+                "pk": self._get_user_pk(user_id),
+                "sk": self._get_import_results_sk(job_id),
+            }
+        )
+        return response.get("Item")
+
 
 # Singleton instance
 db_service = DynamoDBService()

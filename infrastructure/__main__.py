@@ -245,6 +245,10 @@ api_lambda = aws.lambda_.Function(
             "JWT_SECRET": config.get_secret("jwt_secret")
             or "dev-secret-change-in-production",
             "APPLE_BUNDLE_ID": "com.footprint.app",
+            # Google OAuth (for Gmail/Calendar import)
+            "GOOGLE_CLIENT_ID": config.get("google_client_id") or "",
+            "GOOGLE_CLIENT_SECRET": config.get_secret("google_client_secret") or "",
+            "GOOGLE_REDIRECT_URI": "com.wd.footprint.app:/oauth2callback",
         }
     ),
     tags=common_tags,

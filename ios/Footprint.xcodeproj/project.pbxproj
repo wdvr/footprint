@@ -33,6 +33,13 @@
 		L0C4T10NM4N4G3R5W1FT0002 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = L0C4T10NM4N4G3R5W1FT0001 /* LocationManager.swift */; };
 		L0C4T10NT3ST5F1L30002 /* LocationManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = L0C4T10NT3ST5F1L30001 /* LocationManagerTests.swift */; };
 		FR13ND5V13W5W1FT0002 /* FriendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR13ND5V13W5W1FT0001 /* FriendsView.swift */; };
+		F33DB4CKV13W5W1FT0002 /* FeedbackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F33DB4CKV13W5W1FT0001 /* FeedbackView.swift */; };
+		IMP0RT4UTH0001 /* GoogleAuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = IMP0RT4UTH0002 /* GoogleAuthManager.swift */; };
+		IMP0RT4P10001 /* ImportAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = IMP0RT4P10002 /* ImportAPI.swift */; };
+		IMP0RTST4T0001 /* ImportState.swift in Sources */ = {isa = PBXBuildFile; fileRef = IMP0RTST4T0002 /* ImportState.swift */; };
+		IMP0RTV13W0001 /* ImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = IMP0RTV13W0002 /* ImportView.swift */; };
+		IMP0RTR3V0001 /* ImportReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = IMP0RTR3V0002 /* ImportReviewView.swift */; };
+		PUSHN0T1F0001 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = PUSHN0T1F0002 /* PushNotificationManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -75,6 +82,13 @@
 		F77B77706A1622EA6FF7F3AB /* CountryMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountryMapView.swift; sourceTree = "<group>"; };
 		FB79DD0340AC874AC75A998D /* GeographicData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeographicData.swift; sourceTree = "<group>"; };
 		FR13ND5V13W5W1FT0001 /* FriendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsView.swift; sourceTree = "<group>"; };
+		F33DB4CKV13W5W1FT0001 /* FeedbackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackView.swift; sourceTree = "<group>"; };
+		IMP0RT4UTH0002 /* GoogleAuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuthManager.swift; sourceTree = "<group>"; };
+		IMP0RT4P10002 /* ImportAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportAPI.swift; sourceTree = "<group>"; };
+		IMP0RTST4T0002 /* ImportState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportState.swift; sourceTree = "<group>"; };
+		IMP0RTV13W0002 /* ImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportView.swift; sourceTree = "<group>"; };
+		IMP0RTR3V0002 /* ImportReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportReviewView.swift; sourceTree = "<group>"; };
+		PUSHN0T1F0002 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -110,6 +124,7 @@
 				0C4E1A64A7722E32CCA5A978 /* APIClient.swift */,
 				11E07153F5CDFA5F55C0487C /* AuthManager.swift */,
 				L0C4T10NM4N4G3R5W1FT0001 /* LocationManager.swift */,
+				PUSHN0T1F0002 /* PushNotificationManager.swift */,
 				2188CD92D5369E26F73572A1 /* SyncManager.swift */,
 			);
 			path = Services;
@@ -137,6 +152,50 @@
 				FR13ND5V13W5W1FT0001 /* FriendsView.swift */,
 			);
 			path = Friends;
+			sourceTree = "<group>";
+		};
+		F33DB4CKGR0UP0001 /* Feedback */ = {
+			isa = PBXGroup;
+			children = (
+				F33DB4CKV13W5W1FT0001 /* FeedbackView.swift */,
+			);
+			path = Feedback;
+			sourceTree = "<group>";
+		};
+		IMP0RTGR0UP0001 /* Import */ = {
+			isa = PBXGroup;
+			children = (
+				IMP0RTGR0UP0002 /* Models */,
+				IMP0RTGR0UP0003 /* Services */,
+				IMP0RTGR0UP0004 /* Views */,
+			);
+			path = Import;
+			sourceTree = "<group>";
+		};
+		IMP0RTGR0UP0002 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				IMP0RTST4T0002 /* ImportState.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		IMP0RTGR0UP0003 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				IMP0RT4UTH0002 /* GoogleAuthManager.swift */,
+				IMP0RT4P10002 /* ImportAPI.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		IMP0RTGR0UP0004 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				IMP0RTV13W0002 /* ImportView.swift */,
+				IMP0RTR3V0002 /* ImportReviewView.swift */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 		49DED6D21011481B2CCA1C44 /* GeoData */ = {
@@ -205,8 +264,10 @@
 				2F0B1E5C5C1E54BF0960A8A6 /* FootprintApp.swift */,
 				5BF04DEAA61E7C94B23511A5 /* Info.plist */,
 				0FFA9B25ECD9344749E1AE39 /* Data */,
+				F33DB4CKGR0UP0001 /* Feedback */,
 				FR13ND5GR0UP0001 /* Friends */,
 				131236A58FDA641860DF0086 /* Generated */,
+				IMP0RTGR0UP0001 /* Import */,
 				3655264F980A5B4600D7A110 /* Map */,
 				8ED1C0159534A0CB2D199ED8 /* Models */,
 				C2E816A4C0960E58858739C9 /* Resources */,
@@ -333,12 +394,19 @@
 				4239C1A84745E095920F0371 /* CountryBoundaries.swift in Sources */,
 				1422EE7E2E4EE9BC742FD37F /* CountryMapView.swift in Sources */,
 				7E9BA923F26087F9A02CC08E /* FootprintApp.swift in Sources */,
+				F33DB4CKV13W5W1FT0002 /* FeedbackView.swift in Sources */,
 				FR13ND5V13W5W1FT0002 /* FriendsView.swift in Sources */,
 				EEF1C332331CD745C2E29CA5 /* GeoJSONParser.swift in Sources */,
 				C3DA4A92918B7F9FBB3D698E /* GeographicData.swift in Sources */,
+				IMP0RT4UTH0001 /* GoogleAuthManager.swift in Sources */,
+				IMP0RT4P10001 /* ImportAPI.swift in Sources */,
+				IMP0RTR3V0001 /* ImportReviewView.swift in Sources */,
+				IMP0RTST4T0001 /* ImportState.swift in Sources */,
+				IMP0RTV13W0001 /* ImportView.swift in Sources */,
 				0A1B2C3D4E5F6A7B8C9D0E1F /* StateMapView.swift in Sources */,
 				FAEE1917D2F3D12D3722FA77 /* SyncManager.swift in Sources */,
 				L0C4T10NM4N4G3R5W1FT0002 /* LocationManager.swift in Sources */,
+				PUSHN0T1F0001 /* PushNotificationManager.swift in Sources */,
 				7A481CFA80ACF0DEDBF67FEF /* VisitedPlace.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
