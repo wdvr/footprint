@@ -546,6 +546,7 @@ website_dns_record = aws.route53.Record(
     zone_id=hosted_zone.zone_id,
     name=domain_name,
     type="A",
+    allow_overwrite=True,
     aliases=[
         aws.route53.RecordAliasArgs(
             name=website_distribution.domain_name,
