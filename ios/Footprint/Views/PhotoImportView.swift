@@ -18,10 +18,13 @@ struct PhotoImportView: View {
             VStack {
                 switch importManager.state {
                 case .idle:
-                    IdleView(onStartScan: startScan)
+                    IdleView(onStartScan: startScan, hasPendingScan: importManager.hasPendingScan, onResume: resumeScan)
 
                 case .requestingPermission:
                     PermissionRequestView()
+
+                case .collecting(let photosProcessed):
+                    CollectingView(photosProcessed: photosProcessed)
 
                 case .scanning(let progress, let processed, let total):
                     ScanningView(progress: progress, processed: processed, total: total, isBackgrounded: false)
@@ -83,6 +86,17 @@ struct PhotoImportView: View {
         }
     }
 
+    private func resumeScan() {
+        Task {
+            await importManager.resumeScan(existingPlaces: existingPlaces)
+
+            // Auto-select all discovered locations
+            if case .completed(let locations) = importManager.state {
+                selectedLocations = Set(locations)
+            }
+        }
+    }
+
     private func importSelectedLocations() {
         importManager.importLocations(Array(selectedLocations), into: modelContext)
         dismiss()
@@ -93,6 +107,8 @@ struct PhotoImportView: View {
 
 private struct IdleView: View {
     let onStartScan: () -> Void
+    let hasPendingScan: Bool
+    let onResume: () -> Void
 
     var body: some View {
         VStack(spacing: 24) {
@@ -135,17 +151,66 @@ private struct IdleView: View {
 
             Spacer()
 
-            Button(action: onStartScan) {
-                Label("Start Scan", systemImage: "magnifyingglass")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(.tint)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            VStack(spacing: 12) {
+                if hasPendingScan {
+                    Button(action: onResume) {
+                        Label("Resume Previous Scan", systemImage: "arrow.clockwise")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(.tint)
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+
+                    Button(action: onStartScan) {
+                        Text("Start New Scan")
+                            .font(.subheadline)
+                    }
+                } else {
+                    Button(action: onStartScan) {
+                        Label("Start Scan", systemImage: "magnifyingglass")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(.tint)
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                }
             }
             .padding(.horizontal)
             .padding(.bottom, 24)
+        }
+    }
+}
+
+// MARK: - Collecting View (Phase 1: Enumerating photos)
+
+private struct CollectingView: View {
+    let photosProcessed: Int
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            ProgressView()
+                .scaleEffect(1.5)
+
+            VStack(spacing: 8) {
+                Text("Collecting Photos...")
+                    .font(.headline)
+
+                Text("\(photosProcessed.formatted()) photos scanned")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Text("Grouping by location")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
         }
     }
 }
@@ -298,11 +363,14 @@ private struct LocationsListView: View {
     let onImport: () -> Void
 
     private var countries: [DiscoveredLocation] {
-        locations.filter { $0.regionType == .country }
+        locations.filter { $0.regionType == VisitedPlace.RegionType.country.rawValue }
     }
 
     private var states: [DiscoveredLocation] {
-        locations.filter { $0.regionType == .usState || $0.regionType == .canadianProvince }
+        locations.filter {
+            $0.regionType == VisitedPlace.RegionType.usState.rawValue ||
+            $0.regionType == VisitedPlace.RegionType.canadianProvince.rawValue
+        }
     }
 
     var body: some View {
@@ -396,17 +464,19 @@ private struct LocationRow: View {
 
     private var iconName: String {
         switch location.regionType {
-        case .country: return "flag.fill"
-        case .usState: return "star.fill"
-        case .canadianProvince: return "leaf.fill"
+        case VisitedPlace.RegionType.country.rawValue: return "flag.fill"
+        case VisitedPlace.RegionType.usState.rawValue: return "star.fill"
+        case VisitedPlace.RegionType.canadianProvince.rawValue: return "leaf.fill"
+        default: return "mappin"
         }
     }
 
     private var iconColor: Color {
         switch location.regionType {
-        case .country: return .green
-        case .usState: return .blue
-        case .canadianProvince: return .red
+        case VisitedPlace.RegionType.country.rawValue: return .green
+        case VisitedPlace.RegionType.usState.rawValue: return .blue
+        case VisitedPlace.RegionType.canadianProvince.rawValue: return .red
+        default: return .gray
         }
     }
 

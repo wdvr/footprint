@@ -24,5 +24,13 @@
 	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Footprint scans your photo library to discover places you've visited based on photo location data. All processing happens entirely on your device - no photos or data are uploaded to any server.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.wd.footprint.photo-import</string>
+	</array>
 </dict>
 </plist>
