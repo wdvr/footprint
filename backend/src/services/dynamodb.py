@@ -565,10 +565,11 @@ class DynamoDBService:
             expr_attr_values[f":{key}"] = value
             update_expr_parts.append(f"{safe_key} = :{key}")
 
-        # Always update updated_at
-        expr_attr_names["#updated_at"] = "updated_at"
-        expr_attr_values[":updated_at"] = datetime.now(UTC).isoformat()
-        update_expr_parts.append("#updated_at = :updated_at")
+        # Always update updated_at (if not already in updates)
+        if "updated_at" not in updates:
+            expr_attr_names["#updated_at"] = "updated_at"
+            expr_attr_values[":updated_at"] = datetime.now(UTC).isoformat()
+            update_expr_parts.append("#updated_at = :updated_at")
 
         response = table.update_item(
             Key={
