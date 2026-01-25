@@ -99,7 +99,7 @@ pulumi up --yes
 | 4 | **Bucket list mode** | Mark places you WANT to visit, toggle between "visited" and "want to visit" | 🔲 TODO |
 | 5 | **Travel timeline** | Add visit dates to places, "When did I visit France?", chronological history | 🔲 TODO |
 | 6 | **Photos & memories** | Attach photos to visited places, integrate with Photos app | 🔲 TODO |
-| 7 | **Photo library import** | Scan photo library GPS metadata, auto-suggest places you've visited | 🔲 TODO |
+| 7 | **Photo library import** | Scan photo library GPS metadata, auto-suggest places you've visited | ✅ DONE |
 | 8 | **Badges & achievements** | Gamification: "10 countries", "All US states", "Europe explorer", unlock rewards | 🔲 TODO |
 | 9 | **Push notifications** | "You're near a new country!", weekly travel stats, achievement unlocks | 🔲 TODO |
 

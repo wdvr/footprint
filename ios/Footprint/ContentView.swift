@@ -72,6 +72,7 @@ struct SettingsView: View {
     @State private var showingSignOutAlert = false
     @State private var showingDeleteAccountAlert = false
     @State private var showingImportSheet = false
+    @State private var showingPhotoImport = false
 
     private let googleAuth = GoogleAuthManager.shared
 
@@ -118,6 +119,21 @@ struct SettingsView: View {
 
                 // Import Section
                 Section("Import") {
+                    Button {
+                        showingPhotoImport = true
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Import from Photos")
+                                Text("Discover places from your photo library")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: "photo.on.rectangle.angled")
+                        }
+                    }
+
                     Button {
                         showingImportSheet = true
                     } label: {
@@ -194,6 +210,9 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showingImportSheet) {
                 ImportView()
+            }
+            .sheet(isPresented: $showingPhotoImport) {
+                PhotoImportView()
             }
         }
     }

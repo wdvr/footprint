@@ -22,5 +22,7 @@
 			<string>Google OAuth Callback</string>
 		</dict>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Footprint scans your photo library to discover places you've visited based on photo location data. All processing happens entirely on your device - no photos or data are uploaded to any server.</string>
 </dict>
 </plist>
