@@ -136,6 +136,7 @@ logs/
 
 # Geographic data (large files)
 data/raw/
+data/geographic/
 *.shp
 *.shx
 *.dbf
