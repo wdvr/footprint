@@ -88,8 +88,8 @@ final class PhotoImportManager {
     private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
     private var currentScanTask: Task<Void, Never>?
 
-    // Grid cell size in degrees (~55km at equator)
-    private let gridCellSize: Double = 0.5
+    // Grid cell size in degrees (~1km at equator, preserves city-level granularity)
+    private let gridCellSize: Double = 0.009
 
     private let progressKey = "PhotoImportScanProgress"
 
