@@ -10,6 +10,11 @@ struct FootprintApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     #endif
 
+    init() {
+        // Register background task for photo import
+        PhotoImportManager.registerBackgroundTask()
+    }
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             VisitedPlace.self,
