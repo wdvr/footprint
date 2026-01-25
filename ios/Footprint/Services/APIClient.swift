@@ -1,12 +1,47 @@
 import Foundation
 
-enum APIError: Error {
+enum APIError: LocalizedError {
     case invalidURL
     case noData
     case decodingError
     case networkError(Error)
     case serverError(Int, String)
     case unauthorized
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL:
+            return "Invalid URL"
+        case .noData:
+            return "No data received"
+        case .decodingError:
+            return "Failed to parse response"
+        case .networkError(let error):
+            return "Network error: \(error.localizedDescription)"
+        case .serverError(let code, let message):
+            // Try to extract detail from JSON error response
+            if let data = message.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let detail = json["detail"] as? String {
+                return "Error \(code): \(detail)"
+            }
+            return "Error \(code): \(message)"
+        case .unauthorized:
+            return "Not authenticated. Please sign in again."
+        }
+    }
+
+    /// Error code for debugging (shown to user)
+    var errorCode: String {
+        switch self {
+        case .invalidURL: return "URL_INVALID"
+        case .noData: return "NO_DATA"
+        case .decodingError: return "DECODE_FAIL"
+        case .networkError: return "NETWORK"
+        case .serverError(let code, _): return "HTTP_\(code)"
+        case .unauthorized: return "UNAUTH"
+        }
+    }
 }
 
 actor APIClient {
@@ -59,16 +94,18 @@ actor APIClient {
         path: String,
         method: HTTPMethod = .get,
         body: Encodable? = nil,
-        authenticated: Bool = true
+        authenticated: Bool = true,
+        timeout: TimeInterval = 60
     ) async throws -> T {
-        try await _request(path, method: method.rawValue, body: body, authenticated: authenticated)
+        try await _request(path, method: method.rawValue, body: body, authenticated: authenticated, timeout: timeout)
     }
 
     private func _request<T: Decodable>(
         _ path: String,
         method: String = "GET",
         body: Encodable? = nil,
-        authenticated: Bool = false
+        authenticated: Bool = false,
+        timeout: TimeInterval = 60
     ) async throws -> T {
         guard let url = URL(string: "\(baseURL)\(path)") else {
             throw APIError.invalidURL
@@ -76,6 +113,7 @@ actor APIClient {
 
         var request = URLRequest(url: url)
         request.httpMethod = method
+        request.timeoutInterval = timeout
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         if authenticated {
@@ -265,7 +303,7 @@ actor APIClient {
 
     func syncPlaces(lastSyncAt: Date?, changes: [PlaceChange]) async throws -> SyncResponse {
         let body = SyncRequest(lastSyncAt: lastSyncAt, changes: changes)
-        return try await _request("/sync", method: "POST", body: body, authenticated: true)
+        return try await _request("/sync/simple", method: "POST", body: body, authenticated: true)
     }
 
     // MARK: - Stats Endpoints

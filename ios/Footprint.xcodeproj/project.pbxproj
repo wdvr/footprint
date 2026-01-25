@@ -39,6 +39,7 @@
 		IMP0RTST4T0001 /* ImportState.swift in Sources */ = {isa = PBXBuildFile; fileRef = IMP0RTST4T0002 /* ImportState.swift */; };
 		IMP0RTV13W0001 /* ImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = IMP0RTV13W0002 /* ImportView.swift */; };
 		IMP0RTR3V0001 /* ImportReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = IMP0RTR3V0002 /* ImportReviewView.swift */; };
+		IMP0RTS0UR0001 /* ImportSourcesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = IMP0RTS0UR0002 /* ImportSourcesView.swift */; };
 		PUSHN0T1F0001 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = PUSHN0T1F0002 /* PushNotificationManager.swift */; };
 		PH0T01MP0RTM4N0002 /* PhotoImportManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = PH0T01MP0RTM4N0001 /* PhotoImportManager.swift */; };
 		PH0T01MP0RTV13W0002 /* PhotoImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PH0T01MP0RTV13W0001 /* PhotoImportView.swift */; };
@@ -90,6 +91,7 @@
 		IMP0RTST4T0002 /* ImportState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportState.swift; sourceTree = "<group>"; };
 		IMP0RTV13W0002 /* ImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportView.swift; sourceTree = "<group>"; };
 		IMP0RTR3V0002 /* ImportReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportReviewView.swift; sourceTree = "<group>"; };
+		IMP0RTS0UR0002 /* ImportSourcesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportSourcesView.swift; sourceTree = "<group>"; };
 		PUSHN0T1F0002 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
 		PH0T01MP0RTM4N0001 /* PhotoImportManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoImportManager.swift; sourceTree = "<group>"; };
 		PH0T01MP0RTV13W0001 /* PhotoImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoImportView.swift; sourceTree = "<group>"; };
@@ -200,6 +202,7 @@
 			children = (
 				IMP0RTV13W0002 /* ImportView.swift */,
 				IMP0RTR3V0002 /* ImportReviewView.swift */,
+				IMP0RTS0UR0002 /* ImportSourcesView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -407,6 +410,7 @@
 				IMP0RT4UTH0001 /* GoogleAuthManager.swift in Sources */,
 				IMP0RT4P10001 /* ImportAPI.swift in Sources */,
 				IMP0RTR3V0001 /* ImportReviewView.swift in Sources */,
+				IMP0RTS0UR0001 /* ImportSourcesView.swift in Sources */,
 				IMP0RTST4T0001 /* ImportState.swift in Sources */,
 				IMP0RTV13W0001 /* ImportView.swift in Sources */,
 				0A1B2C3D4E5F6A7B8C9D0E1F /* StateMapView.swift in Sources */,

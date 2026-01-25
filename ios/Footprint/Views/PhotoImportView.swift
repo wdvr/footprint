@@ -9,7 +9,7 @@ struct PhotoImportView: View {
     @Query(filter: #Predicate<VisitedPlace> { !$0.isDeleted })
     private var existingPlaces: [VisitedPlace]
 
-    @State private var importManager = PhotoImportManager()
+    private var importManager: PhotoImportManager { PhotoImportManager.shared }
     @State private var selectedLocations: Set<DiscoveredLocation> = []
     @State private var showImportConfirmation = false
 
@@ -24,20 +24,33 @@ struct PhotoImportView: View {
                     PermissionRequestView()
 
                 case .collecting(let photosProcessed):
-                    CollectingView(photosProcessed: photosProcessed)
+                    CollectingView(
+                        photosProcessed: photosProcessed,
+                        totalPhotos: importManager.totalPhotosToProcess,
+                        onMinimize: minimizeAndDismiss
+                    )
 
-                case .scanning(let progress, let processed, let total):
-                    ScanningView(progress: progress, processed: processed, total: total, isBackgrounded: false)
+                case .scanning(let progress, let processed, let total, let locationsFound):
+                    ScanningView(progress: progress, processed: processed, total: total, locationsFound: locationsFound, isBackgrounded: false, onMinimize: minimizeAndDismiss)
 
-                case .backgrounded(let progress, let processed, let total):
-                    ScanningView(progress: progress, processed: processed, total: total, isBackgrounded: true)
+                case .backgrounded(let progress, let processed, let total, let locationsFound):
+                    ScanningView(progress: progress, processed: processed, total: total, locationsFound: locationsFound, isBackgrounded: true, onMinimize: minimizeAndDismiss)
 
-                case .completed(let locations):
+                case .completed(let locations, let totalFound, let alreadyVisited):
                     if locations.isEmpty {
-                        NoLocationsFoundView(onDismiss: { dismiss() })
+                        NoLocationsFoundView(
+                            totalFound: totalFound,
+                            alreadyVisited: alreadyVisited,
+                            onDismiss: {
+                                importManager.reset()
+                                dismiss()
+                            }
+                        )
                     } else {
                         LocationsListView(
                             locations: locations,
+                            totalFound: totalFound,
+                            alreadyVisited: alreadyVisited,
                             selectedLocations: $selectedLocations,
                             onImport: { showImportConfirmation = true }
                         )
@@ -51,9 +64,15 @@ struct PhotoImportView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        importManager.reset()
-                        dismiss()
+                    if importManager.isScanning {
+                        Button("Minimize") {
+                            minimizeAndDismiss()
+                        }
+                    } else {
+                        Button("Cancel") {
+                            importManager.reset()
+                            dismiss()
+                        }
                     }
                 }
             }
@@ -72,7 +91,16 @@ struct PhotoImportView: View {
                     importManager.handleForegroundTransition()
                 }
             }
+            .onAppear {
+                // Restore from minimized state when view appears
+                importManager.restore()
+            }
         }
+    }
+
+    private func minimizeAndDismiss() {
+        importManager.minimize()
+        dismiss()
     }
 
     private func startScan() {
@@ -80,7 +108,7 @@ struct PhotoImportView: View {
             await importManager.scanPhotoLibrary(existingPlaces: existingPlaces)
 
             // Auto-select all discovered locations
-            if case .completed(let locations) = importManager.state {
+            if case .completed(let locations, _, _) = importManager.state {
                 selectedLocations = Set(locations)
             }
         }
@@ -91,7 +119,7 @@ struct PhotoImportView: View {
             await importManager.resumeScan(existingPlaces: existingPlaces)
 
             // Auto-select all discovered locations
-            if case .completed(let locations) = importManager.state {
+            if case .completed(let locations, _, _) = importManager.state {
                 selectedLocations = Set(locations)
             }
         }
@@ -189,21 +217,55 @@ private struct IdleView: View {
 
 private struct CollectingView: View {
     let photosProcessed: Int
+    let totalPhotos: Int
+    let onMinimize: () -> Void
+
+    @State private var displayedCount: Int = 0
+    @State private var animationTimer: Timer?
+
+    private var progress: Double {
+        guard totalPhotos > 0 else { return 0 }
+        return min(1.0, Double(displayedCount) / Double(totalPhotos))
+    }
 
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
 
-            ProgressView()
-                .scaleEffect(1.5)
+            ZStack {
+                Circle()
+                    .stroke(lineWidth: 8)
+                    .opacity(0.2)
+                    .foregroundStyle(.tint)
+
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .foregroundStyle(.tint)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.linear(duration: 0.1), value: progress)
+
+                VStack {
+                    Text("\(Int(progress * 100))%")
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .contentTransition(.numericText())
+                    Text("\(displayedCount.formatted())")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .contentTransition(.numericText())
+                }
+            }
+            .frame(width: 120, height: 120)
 
             VStack(spacing: 8) {
                 Text("Collecting Photos...")
                     .font(.headline)
 
-                Text("\(photosProcessed.formatted()) photos scanned")
+                Text("Scanning \(displayedCount.formatted()) of \(totalPhotos.formatted()) photos")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .contentTransition(.numericText())
 
                 Text("Grouping by location")
                     .font(.caption)
@@ -211,6 +273,41 @@ private struct CollectingView: View {
             }
 
             Spacer()
+
+            Button(action: onMinimize) {
+                Label("Continue in Background", systemImage: "arrow.down.right.square")
+                    .font(.subheadline)
+            }
+            .padding(.bottom, 24)
+        }
+        .onChange(of: photosProcessed) { _, newValue in
+            animateToValue(newValue)
+        }
+        .onAppear {
+            displayedCount = photosProcessed
+        }
+    }
+
+    private func animateToValue(_ target: Int) {
+        // Calculate steps to animate smoothly
+        let difference = target - displayedCount
+        guard difference > 0 else {
+            displayedCount = target
+            return
+        }
+
+        // Animate quickly - roughly 50 updates to reach target
+        let steps = min(difference, 50)
+        let increment = max(1, difference / steps)
+        let interval = 0.02 // 20ms per step = ~1 second total
+
+        animationTimer?.invalidate()
+        animationTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
+            if displayedCount < target {
+                displayedCount = min(displayedCount + increment, target)
+            } else {
+                timer.invalidate()
+            }
         }
     }
 }
@@ -240,7 +337,9 @@ private struct ScanningView: View {
     let progress: Double
     let processed: Int
     let total: Int
+    let locationsFound: Int
     let isBackgrounded: Bool
+    let onMinimize: () -> Void
 
     var body: some View {
         VStack(spacing: 24) {
@@ -253,14 +352,14 @@ private struct ScanningView: View {
                     .foregroundStyle(.tint)
 
                 Circle()
-                    .trim(from: 0, to: progress)
+                    .trim(from: 0, to: min(1.0, progress))
                     .stroke(style: StrokeStyle(lineWidth: 8, lineCap: .round))
                     .foregroundStyle(.tint)
                     .rotationEffect(.degrees(-90))
                     .animation(.linear, value: progress)
 
                 VStack {
-                    Text("\(Int(progress * 100))%")
+                    Text("\(Int(min(100, progress * 100)))%")
                         .font(.title)
                         .fontWeight(.bold)
                     Text("\(processed)/\(total)")
@@ -274,9 +373,15 @@ private struct ScanningView: View {
                 Text("Scanning Photos...")
                     .font(.headline)
 
-                Text("Analyzing location data from your photos")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                if locationsFound > 0 {
+                    Text("\(locationsFound) unique location\(locationsFound == 1 ? "" : "s") detected")
+                        .font(.subheadline)
+                        .foregroundStyle(.blue)
+                } else {
+                    Text("Analyzing location data from your photos")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             // Background mode indicator
@@ -311,6 +416,12 @@ private struct ScanningView: View {
             }
 
             Spacer()
+
+            Button(action: onMinimize) {
+                Label("Continue in Background", systemImage: "arrow.down.right.square")
+                    .font(.subheadline)
+            }
+            .padding(.bottom, 24)
         }
     }
 }
@@ -318,6 +429,8 @@ private struct ScanningView: View {
 // MARK: - No Locations Found View
 
 private struct NoLocationsFoundView: View {
+    let totalFound: Int
+    let alreadyVisited: Int
     let onDismiss: () -> Void
 
     var body: some View {
@@ -326,18 +439,30 @@ private struct NoLocationsFoundView: View {
 
             Image(systemName: "photo.badge.checkmark")
                 .font(.system(size: 60))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.green)
 
             VStack(spacing: 12) {
-                Text("No New Locations Found")
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                if totalFound > 0 {
+                    Text("All Caught Up!")
+                        .font(.title2)
+                        .fontWeight(.semibold)
 
-                Text("All locations from your photos are already in your visited places, or your photos don't contain location data.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                    Text("Found \(totalFound) location\(totalFound == 1 ? "" : "s") in your photos, but \(alreadyVisited == totalFound ? "all" : "\(alreadyVisited)") \(alreadyVisited == 1 ? "is" : "are") already in your visited places.")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                } else {
+                    Text("No Locations Found")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+
+                    Text("Your photos don't contain location data, or the locations couldn't be identified.")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                }
             }
 
             Spacer()
@@ -359,6 +484,8 @@ private struct NoLocationsFoundView: View {
 
 private struct LocationsListView: View {
     let locations: [DiscoveredLocation]
+    let totalFound: Int
+    let alreadyVisited: Int
     @Binding var selectedLocations: Set<DiscoveredLocation>
     let onImport: () -> Void
 
@@ -377,8 +504,14 @@ private struct LocationsListView: View {
         VStack(spacing: 0) {
             // Header
             VStack(spacing: 8) {
-                Text("Found \(locations.count) Location\(locations.count == 1 ? "" : "s")")
+                Text("Found \(locations.count) New Location\(locations.count == 1 ? "" : "s")")
                     .font(.headline)
+
+                if alreadyVisited > 0 {
+                    Text("\(totalFound) total found, \(alreadyVisited) already visited")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
 
                 Text("Select the places you want to add")
                     .font(.subheadline)

@@ -4,23 +4,45 @@ import Foundation
 
 extension APIClient {
 
-    // MARK: - Scan Gmail/Calendar (Sync - deprecated)
+    // MARK: - Separate Gmail and Calendar Scans (Recommended)
 
-    /// Start scanning Gmail and Calendar for travel history (synchronous, may timeout)
-    func scanGoogleImports() async throws -> ImportScanResponse {
+    /// Scan Gmail only for travel-related emails
+    func scanGmail() async throws -> GmailScanResponse {
         try await request(
-            path: "/import/google/scan",
-            method: .post
+            path: "/import/google/scan/gmail",
+            method: .post,
+            timeout: 300 // 5 minute timeout for email scanning
         )
     }
 
-    // MARK: - Async Scan (Recommended)
+    /// Scan Google Calendar only for travel events
+    func scanCalendar() async throws -> CalendarScanResponse {
+        try await request(
+            path: "/import/google/scan/calendar",
+            method: .post,
+            timeout: 300 // 5 minute timeout for calendar scanning
+        )
+    }
+
+    // MARK: - Combined Scan (Legacy - may timeout)
+
+    /// Scan both Gmail and Calendar (may timeout for large mailboxes)
+    func scanGoogleImports() async throws -> ImportScanResponse {
+        try await request(
+            path: "/import/google/scan",
+            method: .post,
+            timeout: 600 // 10 minute timeout
+        )
+    }
+
+    // MARK: - Async Scan (Background processing)
 
     /// Start an async import scan job
     func startAsyncScan() async throws -> StartImportResponse {
         try await request(
             path: "/import/google/scan/start",
-            method: .post
+            method: .post,
+            timeout: 600 // 10 minute timeout - job runs synchronously in Lambda
         )
     }
 
@@ -68,6 +90,18 @@ extension APIClient {
 struct ImportScanResponse: Decodable {
     let candidates: [ImportCandidate]
     let scannedEmails: Int
+    let scannedEvents: Int
+    let scanDurationSeconds: Double
+}
+
+struct GmailScanResponse: Decodable {
+    let candidates: [ImportCandidate]
+    let scannedEmails: Int
+    let scanDurationSeconds: Double
+}
+
+struct CalendarScanResponse: Decodable {
+    let candidates: [ImportCandidate]
     let scannedEvents: Int
     let scanDurationSeconds: Double
 }

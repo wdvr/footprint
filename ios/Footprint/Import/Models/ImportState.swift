@@ -4,8 +4,9 @@ import Foundation
 enum ImportFlowState {
     case intro
     case connecting
-    case scanning(ScanProgress)
-    case reviewing(ImportScanResponse)
+    case scanningGmail
+    case scanningCalendar(gmailCandidates: [ImportCandidate], emailCount: Int)
+    case reviewing(candidates: [ImportCandidate], emailCount: Int, eventCount: Int)
     case confirming
     case success(Int)
     case error(String)

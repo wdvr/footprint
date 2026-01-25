@@ -220,3 +220,98 @@ async def get_sync_status(current_user: dict = Depends(get_current_user)):
         "last_sync_at": current_user.get("last_sync_at"),
         "last_sync_device": current_user.get("last_sync_device"),
     }
+
+
+# --- Legacy/Simple Sync Endpoint for iOS Compatibility ---
+
+
+class SimplePlaceChange(BaseModel):
+    """Place change from iOS client."""
+
+    region_type: str
+    region_code: str
+    region_name: str
+    is_deleted: bool
+    last_modified_at: float  # iOS uses Date.timeIntervalSinceReferenceDate
+
+
+class SimpleSyncRequest(BaseModel):
+    """Simple sync request from iOS client."""
+
+    last_sync_at: float | None = None  # iOS uses Date.timeIntervalSinceReferenceDate
+    changes: list[SimplePlaceChange]
+
+
+class SimpleSyncResponse(BaseModel):
+    """Simple sync response for iOS client."""
+
+    server_changes: list[dict]
+    synced_at: str
+    conflicts_resolved: int
+
+
+@router.post("/simple", response_model=SimpleSyncResponse)
+async def sync_simple(
+    request: SimpleSyncRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Simple sync endpoint for iOS compatibility.
+
+    Accepts the simpler iOS sync format and returns server changes.
+    Uses last-write-wins conflict resolution.
+    """
+    user_id = current_user["user_id"]
+    conflicts_resolved = 0
+
+    # Process client changes
+    for change in request.changes:
+        try:
+            existing = db_service.get_visited_place(
+                user_id, change.region_type, change.region_code
+            )
+
+            if change.is_deleted:
+                if existing and not existing.get("is_deleted", False):
+                    db_service.delete_visited_place(
+                        user_id, change.region_type, change.region_code
+                    )
+            else:
+                place_data = {
+                    "region_type": change.region_type,
+                    "region_code": change.region_code,
+                    "region_name": change.region_name,
+                    "is_deleted": False,
+                }
+
+                if existing:
+                    db_service.update_visited_place(
+                        user_id, change.region_type, change.region_code, place_data
+                    )
+                else:
+                    db_service.create_visited_place(user_id, place_data)
+        except Exception as e:
+            print(f"[Sync] Error processing change: {e}")
+
+    # Get all user's places for response
+    all_places = db_service.get_user_visited_places(user_id)
+    server_changes = [
+        {
+            "id": place.get("id", ""),
+            "region_type": place.get("region_type", ""),
+            "region_code": place.get("region_code", ""),
+            "region_name": place.get("region_name", ""),
+            "visited_date": place.get("visited_date"),
+            "notes": place.get("notes"),
+            "created_at": place.get("created_at", ""),
+            "updated_at": place.get("updated_at", ""),
+        }
+        for place in all_places
+        if not place.get("is_deleted", False)
+    ]
+
+    return SimpleSyncResponse(
+        server_changes=server_changes,
+        synced_at=datetime.now(UTC).isoformat(),
+        conflicts_resolved=conflicts_resolved,
+    )
