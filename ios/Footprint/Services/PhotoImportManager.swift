@@ -2,6 +2,7 @@ import CoreLocation
 import Photos
 import SwiftData
 import SwiftUI
+import UserNotifications
 
 /// Represents a discovered location from the photo library
 struct DiscoveredLocation: Identifiable, Hashable {
@@ -31,17 +32,118 @@ final class PhotoImportManager {
         case idle
         case requestingPermission
         case scanning(progress: Double, photosProcessed: Int, totalPhotos: Int)
+        case backgrounded(progress: Double, photosProcessed: Int, totalPhotos: Int)
         case completed(locations: [DiscoveredLocation])
         case error(String)
     }
 
     var state: ImportState = .idle
     var authorizationStatus: PHAuthorizationStatus = .notDetermined
+    var isRunningInBackground = false
 
     private let geocoder = CLGeocoder()
+    private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
 
     init() {
         authorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+    }
+
+    /// Check if currently scanning
+    var isScanning: Bool {
+        switch state {
+        case .scanning, .backgrounded:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Request notification permission for background updates
+    func requestNotificationPermission() async {
+        let center = UNUserNotificationCenter.current()
+        do {
+            try await center.requestAuthorization(options: [.alert, .sound])
+        } catch {
+            // Notifications not critical, continue without them
+        }
+    }
+
+    /// Called when app enters background during scan
+    func handleBackgroundTransition() {
+        guard isScanning else { return }
+
+        isRunningInBackground = true
+
+        // Update state to show backgrounded
+        if case .scanning(let progress, let processed, let total) = state {
+            state = .backgrounded(progress: progress, photosProcessed: processed, totalPhotos: total)
+        }
+
+        // Start background task to get extended execution time
+        beginBackgroundTask()
+
+        // Show notification that import continues
+        showBackgroundNotification()
+    }
+
+    /// Called when app returns to foreground
+    func handleForegroundTransition() {
+        isRunningInBackground = false
+
+        // Update state back to scanning if we were backgrounded
+        if case .backgrounded(let progress, let processed, let total) = state {
+            state = .scanning(progress: progress, photosProcessed: processed, totalPhotos: total)
+        }
+
+        // Remove any pending notifications
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ["photo-import-background"])
+    }
+
+    private func beginBackgroundTask() {
+        guard backgroundTaskID == .invalid else { return }
+
+        backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "PhotoImport") { [weak self] in
+            // Time expired - end the task
+            self?.endBackgroundTask()
+        }
+    }
+
+    private func endBackgroundTask() {
+        guard backgroundTaskID != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundTaskID)
+        backgroundTaskID = .invalid
+    }
+
+    private func showBackgroundNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "Photo Import in Progress"
+        content.body = "Keep Footprint open for faster import. The scan will continue in the background but may be slower."
+        content.sound = nil
+
+        let request = UNNotificationRequest(
+            identifier: "photo-import-background",
+            content: content,
+            trigger: nil // Deliver immediately
+        )
+
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    private func showCompletionNotification(locationsFound: Int) {
+        let content = UNMutableNotificationContent()
+        content.title = "Photo Import Complete"
+        content.body = locationsFound > 0
+            ? "Found \(locationsFound) new location\(locationsFound == 1 ? "" : "s") from your photos!"
+            : "No new locations found in your photos."
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: "photo-import-complete",
+            content: content,
+            trigger: nil
+        )
+
+        UNUserNotificationCenter.current().add(request)
     }
 
     /// Request permission to access the photo library
@@ -74,6 +176,9 @@ final class PhotoImportManager {
             if !granted { return }
         }
 
+        // Request notification permission for background updates
+        await requestNotificationPermission()
+
         state = .scanning(progress: 0, photosProcessed: 0, totalPhotos: 0)
 
         // Fetch all photos with location data
@@ -86,6 +191,7 @@ final class PhotoImportManager {
 
         if totalPhotos == 0 {
             state = .completed(locations: [])
+            endBackgroundTask()
             return
         }
 
@@ -98,7 +204,6 @@ final class PhotoImportManager {
         let existingCodes = Set(existingPlaces.filter { !$0.isDeleted }.map { "\($0.regionType):\($0.regionCode)" })
 
         // Process photos in batches to avoid overwhelming the geocoder
-        let batchSize = 50
         var processedCount = 0
 
         // Sample photos if there are too many (geocoding is rate-limited)
@@ -107,7 +212,7 @@ final class PhotoImportManager {
 
         var photosToProcess: [(CLLocation, Date?)] = []
 
-        assets.enumerateObjects { asset, index, _ in
+        assets.enumerateObjects { asset, _, _ in
             if let location = asset.location {
                 // Sample if needed
                 if sampleRate >= 1.0 || Double.random(in: 0...1) < sampleRate {
@@ -120,9 +225,13 @@ final class PhotoImportManager {
         for (location, date) in photosToProcess {
             processedCount += 1
 
-            // Update progress
+            // Update progress - use backgrounded state if in background
             let progress = Double(processedCount) / Double(photosToProcess.count)
-            state = .scanning(progress: progress, photosProcessed: processedCount, totalPhotos: photosToProcess.count)
+            if isRunningInBackground {
+                state = .backgrounded(progress: progress, photosProcessed: processedCount, totalPhotos: photosToProcess.count)
+            } else {
+                state = .scanning(progress: progress, photosProcessed: processedCount, totalPhotos: photosToProcess.count)
+            }
 
             // Reverse geocode
             do {
@@ -193,6 +302,13 @@ final class PhotoImportManager {
         }
 
         state = .completed(locations: discoveredLocations)
+
+        // End background task and notify if we were in background
+        endBackgroundTask()
+        if isRunningInBackground {
+            showCompletionNotification(locationsFound: discoveredLocations.count)
+        }
+        isRunningInBackground = false
     }
 
     /// Import selected locations as visited places
@@ -211,6 +327,11 @@ final class PhotoImportManager {
     /// Reset the import state
     func reset() {
         state = .idle
+        isRunningInBackground = false
+        endBackgroundTask()
+        UNUserNotificationCenter.current().removeDeliveredNotifications(
+            withIdentifiers: ["photo-import-background", "photo-import-complete"]
+        )
     }
 
     /// Convert state/province name to code

@@ -5,6 +5,7 @@ import SwiftUI
 struct PhotoImportView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @Query(filter: #Predicate<VisitedPlace> { !$0.isDeleted })
     private var existingPlaces: [VisitedPlace]
 
@@ -23,7 +24,10 @@ struct PhotoImportView: View {
                     PermissionRequestView()
 
                 case .scanning(let progress, let processed, let total):
-                    ScanningView(progress: progress, processed: processed, total: total)
+                    ScanningView(progress: progress, processed: processed, total: total, isBackgrounded: false)
+
+                case .backgrounded(let progress, let processed, let total):
+                    ScanningView(progress: progress, processed: processed, total: total, isBackgrounded: true)
 
                 case .completed(let locations):
                     if locations.isEmpty {
@@ -45,6 +49,7 @@ struct PhotoImportView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
+                        importManager.reset()
                         dismiss()
                     }
                 }
@@ -56,6 +61,13 @@ struct PhotoImportView: View {
                 }
             } message: {
                 Text("Add \(selectedLocations.count) location\(selectedLocations.count == 1 ? "" : "s") to your visited places?")
+            }
+            .onChange(of: scenePhase) { oldPhase, newPhase in
+                if newPhase == .background && importManager.isScanning {
+                    importManager.handleBackgroundTransition()
+                } else if newPhase == .active && importManager.isRunningInBackground {
+                    importManager.handleForegroundTransition()
+                }
             }
         }
     }
@@ -163,6 +175,7 @@ private struct ScanningView: View {
     let progress: Double
     let processed: Int
     let total: Int
+    let isBackgrounded: Bool
 
     var body: some View {
         VStack(spacing: 24) {
@@ -199,6 +212,37 @@ private struct ScanningView: View {
                 Text("Analyzing location data from your photos")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+            }
+
+            // Background mode indicator
+            if isBackgrounded {
+                VStack(spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.clockwise")
+                            .foregroundStyle(.orange)
+                        Text("Continuing in background...")
+                            .font(.subheadline)
+                            .foregroundStyle(.orange)
+                    }
+
+                    Text("You'll be notified when complete")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.orange.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal)
+            } else {
+                // Tip about background processing
+                HStack(spacing: 8) {
+                    Image(systemName: "info.circle")
+                        .foregroundStyle(.secondary)
+                    Text("Keep app open for faster scanning")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 8)
             }
 
             Spacer()
