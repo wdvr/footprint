@@ -28,7 +28,8 @@ from pathlib import Path
 
 # Base URLs for data sources
 DR5HN_BASE = "https://raw.githubusercontent.com/dr5hn/countries-states-cities-database/master"
-ISO3166_API = "https://iso3166-2-api.vercel.app/api"
+# Using GitHub mirror of GeoNames data (more reliable than GeoNames server)
+GEONAMES_CITIES_URL = "https://raw.githubusercontent.com/lmfmaier/cities-json/master/cities500.json"
 
 # Output directories
 SCRIPT_DIR = Path(__file__).parent
@@ -117,45 +118,48 @@ def fetch_states_provinces():
     return output
 
 
-def fetch_cities(min_population: int = 50000):
+def fetch_cities(min_population: int = 250000):
     """
-    Fetch cities data for all countries.
+    Fetch cities data from GeoNames (via GitHub mirror) with population filtering.
 
     Args:
-        min_population: Minimum population to include (default 50,000)
-                       Set to 0 for all cities (153k+)
+        min_population: Minimum population to include (default 250,000)
 
-    Source: dr5hn/countries-states-cities-database
+    Source: lmfmaier/cities-json (GitHub mirror of GeoNames)
     """
-    print("\n=== Fetching Cities Data ===")
+    print(f"\n=== Fetching Cities Data (population >= {min_population:,}) ===")
 
-    # Fetch the full combined file (countries + states + cities)
-    # This is ~47MB but has all the hierarchy properly linked
-    url = f"{DR5HN_BASE}/json/countries+states+cities.json"
-    print("  Fetching countries+states+cities.json (large file, please wait)...")
-    countries_data = fetch_json(url)
+    # Download from GitHub mirror (more reliable than GeoNames server)
+    print("  Downloading cities JSON from GitHub...")
+    cities_raw = fetch_json(GEONAMES_CITIES_URL)
 
-    # Extract cities from the nested structure
+    print(f"  Downloaded {len(cities_raw):,} total cities from GeoNames")
+
+    # Filter by population and convert to our format
     cities_data = []
-    for country in countries_data:
-        country_code = country.get("iso2", "")
-        country_name = country.get("name", "")
-        for state in country.get("states", []):
-            state_code = state.get("state_code", "")
-            state_name = state.get("name", "")
-            for city in state.get("cities", []):
-                cities_data.append({
-                    "id": city.get("id"),
-                    "name": city.get("name"),
-                    "state_code": state_code,
-                    "state_name": state_name,
-                    "country_code": country_code,
-                    "country_name": country_name,
-                    "latitude": city.get("latitude"),
-                    "longitude": city.get("longitude"),
-                })
+    for city in cities_raw:
+        try:
+            population = int(city.get("pop", "0") or "0")
+        except ValueError:
+            population = 0
 
-    print(f"  Downloaded {len(cities_data):,} total cities")
+        if population < min_population:
+            continue
+
+        cities_data.append({
+            "id": str(city.get("id", "")),
+            "name": city.get("name", ""),
+            "country_code": city.get("country", ""),
+            "admin1": city.get("admin1", ""),  # state/province name
+            "latitude": city.get("lat", ""),
+            "longitude": city.get("lon", ""),
+            "population": population,
+        })
+
+    print(f"  Found {len(cities_data):,} cities with population >= {min_population:,}")
+
+    # Sort by population descending within each country
+    cities_data.sort(key=lambda x: x["population"], reverse=True)
 
     # Group by country
     cities_by_country = {}
@@ -167,8 +171,9 @@ def fetch_cities(min_population: int = 50000):
 
     # Create output structure
     output = {
-        "source": "dr5hn/countries-states-cities-database",
-        "license": "ODbL 1.0 (Open Database License)",
+        "source": "GeoNames via lmfmaier/cities-json",
+        "license": "Creative Commons Attribution 4.0 (GeoNames)",
+        "min_population": min_population,
         "total_cities": len(cities_data),
         "countries_with_cities": len(cities_by_country),
         "cities_by_country": cities_by_country,
@@ -196,8 +201,12 @@ def fetch_cities(min_population: int = 50000):
     )[:10]
     print(f"\n  Top 10 countries by city count:")
     for country_code, cities in top_countries:
-        country_name = cities[0].get("country_name", country_code) if cities else country_code
-        print(f"    {country_code} ({country_name}): {len(cities):,}")
+        print(f"    {country_code}: {len(cities):,} cities")
+
+    # Show some sample cities
+    print(f"\n  Sample large cities:")
+    for city in cities_data[:5]:
+        print(f"    {city['name']} ({city['country_code']}): pop {city['population']:,}")
 
     return output
 
@@ -290,27 +299,25 @@ def create_ios_states_json(states_data: dict):
     print(f"  Total states: {total_states}")
 
 
-def create_ios_cities_json(cities_data: dict, max_per_country: int = 100):
+def create_ios_cities_json(cities_data: dict):
     """
-    Create a compact JSON file with top cities for iOS app.
+    Create a compact JSON file with cities for iOS app.
 
-    Args:
-        max_per_country: Maximum cities to include per country
+    Cities are already filtered by population (250k+), so we include all of them.
     """
-    print(f"\n=== Creating iOS Cities JSON (max {max_per_country}/country) ===")
+    print("\n=== Creating iOS Cities JSON ===")
 
     ios_cities = {}
     for country_code, cities in cities_data.get("cities_by_country", {}).items():
-        # Take up to max_per_country cities (dataset is already reasonably ordered)
-        top_cities = cities[:max_per_country]
+        # Cities are already sorted by population from fetch_cities
         ios_cities[country_code] = [
             {
                 "name": c["name"],
-                "state": c.get("state_code", ""),
+                "pop": c.get("population", 0),
                 "lat": c["latitude"],
                 "lng": c["longitude"],
             }
-            for c in top_cities
+            for c in cities
         ]
 
     IOS_RESOURCES_DIR.mkdir(parents=True, exist_ok=True)
@@ -323,6 +330,13 @@ def create_ios_cities_json(cities_data: dict, max_per_country: int = 100):
     print(f"  Countries included: {len(ios_cities)}")
     total_cities = sum(len(v) for v in ios_cities.values())
     print(f"  Total cities: {total_cities}")
+
+    # Show distribution
+    city_counts = [(cc, len(cities)) for cc, cities in ios_cities.items()]
+    city_counts.sort(key=lambda x: x[1], reverse=True)
+    print(f"\n  Top 10 countries:")
+    for cc, count in city_counts[:10]:
+        print(f"    {cc}: {count} cities")
 
 
 def main():
