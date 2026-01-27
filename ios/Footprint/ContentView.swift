@@ -86,15 +86,34 @@ struct SettingsView: View {
             List {
                 // Account Section
                 Section("Account") {
-                    if Task { await APIClient.shared.isAuthenticated } != nil {
+                    if let user = AuthManager.shared.user {
                         HStack {
-                            Image(systemName: "person.circle.fill")
+                            Image(systemName: user.authProvider == "google" ? "g.circle.fill" : "apple.logo")
                                 .font(.title)
                                 .foregroundStyle(.tint)
                             VStack(alignment: .leading) {
-                                Text("Signed In")
+                                Text(user.displayName ?? "Signed In")
                                     .font(.headline)
-                                Text("Apple ID")
+                                if let email = user.email {
+                                    Text(email)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Text("Signed in with \(user.authProvider == "google" ? "Google" : "Apple")")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    } else if AuthManager.shared.isOfflineMode {
+                        HStack {
+                            Image(systemName: "person.circle")
+                                .font(.title)
+                                .foregroundStyle(.secondary)
+                            VStack(alignment: .leading) {
+                                Text("Offline Mode")
+                                    .font(.headline)
+                                Text("Data stored locally only")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

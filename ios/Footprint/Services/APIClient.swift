@@ -178,6 +178,7 @@ actor APIClient {
         let appleUserId: String?
         let email: String?
         let displayName: String?
+        let authProvider: String?
         let createdAt: Date?
         let countriesVisited: Int?
         let usStatesVisited: Int?

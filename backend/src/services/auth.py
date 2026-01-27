@@ -242,35 +242,50 @@ class AuthService:
         return user, tokens
 
     async def verify_google_token(self, id_token: str) -> GoogleTokenPayload | None:
-        """Verify Google ID token and return payload."""
+        """Verify Google ID token using Google's tokeninfo endpoint."""
+        import httpx
+
         try:
-            # Get Google's public keys
-            google_keys = await self._get_google_public_keys()
+            google_client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
+            print("[GoogleAuth] Verifying token with Google tokeninfo endpoint")
+            print(f"[GoogleAuth] Expected client ID: {google_client_id}")
 
-            # Decode token header to get key ID
-            unverified_header = jwt.get_unverified_header(id_token)
-            kid = unverified_header.get("kid")
+            # Use Google's tokeninfo endpoint for verification
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    "https://oauth2.googleapis.com/tokeninfo",
+                    params={"id_token": id_token},
+                    timeout=10.0,
+                )
 
-            # Find the matching key
-            google_key = next((k for k in google_keys if k.get("kid") == kid), None)
-            if not google_key:
+            if response.status_code != 200:
+                print(
+                    f"[GoogleAuth] Token verification failed: {response.status_code} - {response.text}"
+                )
                 return None
 
-            # Get allowed client ID (same for iOS and web)
-            google_client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
+            payload = response.json()
+            print(f"[GoogleAuth] Token info received for: {payload.get('email')}")
 
-            # Verify and decode the token
-            payload = jwt.decode(
-                id_token,
-                google_key,
-                algorithms=["RS256"],
-                audience=google_client_id,
-                issuer=self.GOOGLE_ISSUERS,
+            # Verify audience matches our client ID
+            if payload.get("aud") != google_client_id:
+                print(
+                    f"[GoogleAuth] Audience mismatch: {payload.get('aud')} != {google_client_id}"
+                )
+                return None
+
+            # Verify issuer
+            if payload.get("iss") not in self.GOOGLE_ISSUERS:
+                print(f"[GoogleAuth] Invalid issuer: {payload.get('iss')}")
+                return None
+
+            print(
+                f"[GoogleAuth] Token verified successfully for: {payload.get('email')}"
             )
-
             return GoogleTokenPayload(**payload)
 
-        except JWTError:
+        except Exception as e:
+            print(f"[GoogleAuth] Token verification error: {e}")
             return None
 
     async def authenticate_google(
@@ -295,8 +310,13 @@ class AuthService:
             # Existing user - create tokens
             user_id = user["user_id"]
             # Update profile picture if available
-            if google_payload.picture and user.get("profile_picture_url") != google_payload.picture:
-                user = db_service.update_user(user_id, {"profile_picture_url": google_payload.picture})
+            if (
+                google_payload.picture
+                and user.get("profile_picture_url") != google_payload.picture
+            ):
+                user = db_service.update_user(
+                    user_id, {"profile_picture_url": google_payload.picture}
+                )
         else:
             # New user - create account
             user_id = str(uuid.uuid4())
