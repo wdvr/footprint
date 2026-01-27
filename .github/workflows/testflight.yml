@@ -266,8 +266,9 @@ jobs:
 
         # Get beta groups for the app
         echo "Getting TestFlight beta groups..."
-        GROUPS_RESPONSE=$(curl -s -H "Authorization: Bearer $JWT" \
+        GROUPS_RESPONSE=$(curl -g -s -H "Authorization: Bearer $JWT" \
           "https://api.appstoreconnect.apple.com/v1/apps/$APP_ID/betaGroups")
+        echo "Beta groups response: $GROUPS_RESPONSE"
 
         # Add build to all internal beta groups (isInternalGroup = true)
         echo "$GROUPS_RESPONSE" | python3 -c "
