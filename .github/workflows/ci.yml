@@ -11,6 +11,11 @@ on:
       - main
       - develop
 
+# Permissions for reading files and PRs
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   # Detect which files changed to conditionally run jobs
   changes:
