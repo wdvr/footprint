@@ -56,18 +56,13 @@ jobs:
       run: |
         cd ios
         # Get current build number and increment
-        CURRENT_BUILD=$(grep -A1 'CFBundleVersion' Footprint/Info.plist | tail -1 | sed 's/[^0-9]*//g' || echo "1")
-        if [ -z "$CURRENT_BUILD" ]; then
-          CURRENT_BUILD=1
-        fi
+        CURRENT_BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" Footprint/Info.plist 2>/dev/null || echo "1")
         NEW_BUILD=$((CURRENT_BUILD + ${{ github.event.inputs.build_number_increment || 1 }}))
         echo "Incrementing build number from $CURRENT_BUILD to $NEW_BUILD"
 
-        # Update Info.plist if it exists and has the key
-        if [ -f "Footprint/Info.plist" ]; then
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $NEW_BUILD" Footprint/Info.plist 2>/dev/null || \
-          /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $NEW_BUILD" Footprint/Info.plist
-        fi
+        # Update Info.plist
+        /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $NEW_BUILD" Footprint/Info.plist 2>/dev/null || \
+        /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $NEW_BUILD" Footprint/Info.plist
 
         # Also update widget if exists
         if [ -f "FootprintWidget/Info.plist" ]; then
@@ -78,7 +73,8 @@ jobs:
     - name: Setup App Store Connect API Key
       run: |
         mkdir -p ~/.private_keys
-        echo "${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}" > ~/.private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8
+        echo "${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}" | tr -d '\r' > ~/.private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8
+        chmod 600 ~/.private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8
 
     - name: Archive app
       run: |
