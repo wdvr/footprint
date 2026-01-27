@@ -161,12 +161,209 @@ jobs:
           -authenticationKeyID ${{ secrets.APP_STORE_CONNECT_KEY_ID }} \
           -authenticationKeyIssuerID ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
 
+    - name: Get App Version and Build Number
+      id: app_version
+      run: |
+        VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" ios/Footprint/Info.plist)
+        BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" ios/Footprint/Info.plist)
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "build=$BUILD" >> $GITHUB_OUTPUT
+        echo "Uploaded version $VERSION ($BUILD)"
+
+    - name: Wait for Build Processing and Distribute to TestFlight
+      env:
+        APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+        APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      run: |
+        # Generate JWT token for App Store Connect API
+        generate_jwt() {
+          local key_id="$APP_STORE_CONNECT_KEY_ID"
+          local issuer_id="$APP_STORE_CONNECT_ISSUER_ID"
+          local key_file="$HOME/.private_keys/AuthKey_${key_id}.p8"
+
+          local header=$(echo -n '{"alg":"ES256","kid":"'"$key_id"'","typ":"JWT"}' | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+          local now=$(date +%s)
+          local exp=$((now + 1200))
+          local payload=$(echo -n '{"iss":"'"$issuer_id"'","iat":'"$now"',"exp":'"$exp"',"aud":"appstoreconnect-v1"}' | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+
+          local signature=$(echo -n "${header}.${payload}" | openssl dgst -sha256 -sign "$key_file" | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+
+          echo "${header}.${payload}.${signature}"
+        }
+
+        JWT=$(generate_jwt)
+        APP_BUNDLE_ID="com.wouterdevriendt.footprint"
+        VERSION="${{ steps.app_version.outputs.version }}"
+        BUILD="${{ steps.app_version.outputs.build }}"
+
+        echo "Looking for build $VERSION ($BUILD)..."
+
+        # Get the app ID
+        APP_RESPONSE=$(curl -s -H "Authorization: Bearer $JWT" \
+          "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=$APP_BUNDLE_ID")
+        APP_ID=$(echo "$APP_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data'][0]['id'])" 2>/dev/null)
+
+        if [ -z "$APP_ID" ]; then
+          echo "Error: Could not find app with bundle ID $APP_BUNDLE_ID"
+          exit 1
+        fi
+        echo "Found app ID: $APP_ID"
+
+        # Wait for the build to appear and be processed (up to 30 minutes)
+        MAX_ATTEMPTS=60
+        ATTEMPT=0
+        BUILD_ID=""
+
+        while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+          ATTEMPT=$((ATTEMPT + 1))
+          echo "Checking for build (attempt $ATTEMPT/$MAX_ATTEMPTS)..."
+
+          # Refresh JWT if needed (every 15 minutes)
+          if [ $((ATTEMPT % 30)) -eq 0 ]; then
+            JWT=$(generate_jwt)
+          fi
+
+          # Get builds for this app version
+          BUILDS_RESPONSE=$(curl -s -H "Authorization: Bearer $JWT" \
+            "https://api.appstoreconnect.apple.com/v1/builds?filter[app]=$APP_ID&filter[version]=$BUILD&include=preReleaseVersion")
+
+          BUILD_ID=$(echo "$BUILDS_RESPONSE" | python3 -c "
+        import sys, json
+        data = json.load(sys.stdin)
+        builds = data.get('data', [])
+        for build in builds:
+          if build.get('attributes', {}).get('version') == '$BUILD':
+            print(build['id'])
+            break
+        " 2>/dev/null)
+
+          if [ -n "$BUILD_ID" ]; then
+            # Check if build is processed
+            PROCESSING_STATE=$(echo "$BUILDS_RESPONSE" | python3 -c "
+        import sys, json
+        data = json.load(sys.stdin)
+        for build in data.get('data', []):
+          if build['id'] == '$BUILD_ID':
+            print(build.get('attributes', {}).get('processingState', 'UNKNOWN'))
+            break
+        " 2>/dev/null)
+
+            echo "Build $BUILD_ID found, processing state: $PROCESSING_STATE"
+
+            if [ "$PROCESSING_STATE" = "VALID" ]; then
+              echo "Build is processed and valid!"
+              break
+            elif [ "$PROCESSING_STATE" = "INVALID" ]; then
+              echo "Error: Build processing failed"
+              exit 1
+            fi
+          fi
+
+          echo "Build not ready yet, waiting 30 seconds..."
+          sleep 30
+        done
+
+        if [ -z "$BUILD_ID" ]; then
+          echo "Error: Build not found after $MAX_ATTEMPTS attempts"
+          exit 1
+        fi
+
+        # Get beta groups for the app
+        echo "Getting TestFlight beta groups..."
+        GROUPS_RESPONSE=$(curl -s -H "Authorization: Bearer $JWT" \
+          "https://api.appstoreconnect.apple.com/v1/apps/$APP_ID/betaGroups")
+
+        # Add build to all internal beta groups (isInternalGroup = true)
+        echo "$GROUPS_RESPONSE" | python3 -c "
+        import sys, json
+        data = json.load(sys.stdin)
+        groups = data.get('data', [])
+        for group in groups:
+          attrs = group.get('attributes', {})
+          if attrs.get('isInternalGroup', False):
+            print(f\"{group['id']}|{attrs.get('name', 'Unknown')}\")
+        " 2>/dev/null | while IFS='|' read -r GROUP_ID GROUP_NAME; do
+          if [ -n "$GROUP_ID" ]; then
+            echo "Adding build to internal group: $GROUP_NAME ($GROUP_ID)"
+            curl -s -X POST \
+              -H "Authorization: Bearer $JWT" \
+              -H "Content-Type: application/json" \
+              -d "{\"data\":[{\"type\":\"builds\",\"id\":\"$BUILD_ID\"}]}" \
+              "https://api.appstoreconnect.apple.com/v1/betaGroups/$GROUP_ID/relationships/builds"
+          fi
+        done
+
+        # Submit for beta review (for external testers) if there are external groups
+        EXTERNAL_GROUPS=$(echo "$GROUPS_RESPONSE" | python3 -c "
+        import sys, json
+        data = json.load(sys.stdin)
+        groups = data.get('data', [])
+        external = [g for g in groups if not g.get('attributes', {}).get('isInternalGroup', False)]
+        print(len(external))
+        " 2>/dev/null)
+
+        if [ "$EXTERNAL_GROUPS" -gt 0 ]; then
+          echo "Submitting build for external beta review..."
+
+          # First add beta build localization (required for external testing)
+          curl -s -X POST \
+            -H "Authorization: Bearer $JWT" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"data\": {
+                \"type\": \"betaBuildLocalizations\",
+                \"attributes\": {
+                  \"locale\": \"en-US\",
+                  \"whatsNew\": \"Bug fixes and improvements.\"
+                },
+                \"relationships\": {
+                  \"build\": {
+                    \"data\": {
+                      \"type\": \"builds\",
+                      \"id\": \"$BUILD_ID\"
+                    }
+                  }
+                }
+              }
+            }" \
+            "https://api.appstoreconnect.apple.com/v1/betaBuildLocalizations"
+
+          # Submit for beta review
+          curl -s -X POST \
+            -H "Authorization: Bearer $JWT" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"data\": {
+                \"type\": \"betaAppReviewSubmissions\",
+                \"relationships\": {
+                  \"build\": {
+                    \"data\": {
+                      \"type\": \"builds\",
+                      \"id\": \"$BUILD_ID\"
+                    }
+                  }
+                }
+              }
+            }" \
+            "https://api.appstoreconnect.apple.com/v1/betaAppReviewSubmissions"
+
+          echo "Build submitted for beta review"
+        fi
+
+        echo "TestFlight distribution complete!"
+
     - name: Upload to TestFlight Summary
       run: |
         echo "## TestFlight Upload Summary" >> $GITHUB_STEP_SUMMARY
         echo "- **Scheme**: ${{ env.SCHEME }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version**: ${{ steps.app_version.outputs.version }} (${{ steps.app_version.outputs.build }})" >> $GITHUB_STEP_SUMMARY
         echo "- **Commit**: ${{ github.event.workflow_run.head_sha || github.sha }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Uploaded at**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Distribution Status" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Build uploaded to App Store Connect" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Build distributed to internal TestFlight groups" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Build submitted for external beta review (if external groups exist)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "Check [App Store Connect](https://appstoreconnect.apple.com) for the build status." >> $GITHUB_STEP_SUMMARY
 
