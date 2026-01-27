@@ -172,23 +172,13 @@ class GoogleAuthManager: NSObject {
 
 extension GoogleAuthManager: ASWebAuthenticationPresentationContextProviding {
     nonisolated func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        // Check if already on main thread to avoid deadlock
-        if Thread.isMainThread {
+        MainActor.assumeIsolated {
             guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                   let window = scene.windows.first
             else {
-                return ASPresentationAnchor()
+                return UIWindow()
             }
             return window
-        } else {
-            return DispatchQueue.main.sync {
-                guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                      let window = scene.windows.first
-                else {
-                    return ASPresentationAnchor()
-                }
-                return window
-            }
         }
     }
 }

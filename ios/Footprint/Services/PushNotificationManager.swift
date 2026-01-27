@@ -1,5 +1,5 @@
 import Foundation
-import UserNotifications
+@preconcurrency import UserNotifications
 #if canImport(UIKit)
 import UIKit
 #endif

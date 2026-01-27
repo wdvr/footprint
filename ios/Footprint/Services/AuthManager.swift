@@ -233,23 +233,27 @@ class AuthManager: NSObject {
 
 extension AuthManager: ASAuthorizationControllerPresentationContextProviding {
     nonisolated func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = scene.windows.first
-        else {
-            return ASPresentationAnchor()
+        MainActor.assumeIsolated {
+            guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = scene.windows.first
+            else {
+                return UIWindow()
+            }
+            return window
         }
-        return window
     }
 }
 
 extension AuthManager: ASWebAuthenticationPresentationContextProviding {
     nonisolated func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = scene.windows.first
-        else {
-            return ASPresentationAnchor()
+        MainActor.assumeIsolated {
+            guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = scene.windows.first
+            else {
+                return UIWindow()
+            }
+            return window
         }
-        return window
     }
 }
 

@@ -299,14 +299,16 @@ private struct CollectingView: View {
         // Animate quickly - roughly 50 updates to reach target
         let steps = min(difference, 50)
         let increment = max(1, difference / steps)
-        let interval = 0.02 // 20ms per step = ~1 second total
 
+        // Cancel any existing animation
         animationTimer?.invalidate()
-        animationTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
-            if displayedCount < target {
+        animationTimer = nil
+
+        // Use Task-based animation for Swift 6 concurrency compatibility
+        Task { @MainActor in
+            while displayedCount < target {
                 displayedCount = min(displayedCount + increment, target)
-            } else {
-                timer.invalidate()
+                try? await Task.sleep(nanoseconds: 20_000_000) // 20ms
             }
         }
     }

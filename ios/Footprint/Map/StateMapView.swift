@@ -130,17 +130,18 @@ struct StateMapView: UIViewRepresentable {
         }
 
         func loadStateBoundaries(for mapView: MKMapView) {
+            let countryCode = parent.countryCode
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 guard let self = self else { return }
 
                 let boundaries: [GeoJSONParser.StateBoundary]
-                if self.parent.countryCode == "US" {
+                if countryCode == "US" {
                     boundaries = GeoJSONParser.parseUSStates()
                 } else {
                     boundaries = GeoJSONParser.parseCanadianProvinces()
                 }
 
-                print("StateMapView: Parsed \(boundaries.count) boundaries for \(self.parent.countryCode)")
+                print("StateMapView: Parsed \(boundaries.count) boundaries for \(countryCode)")
 
                 DispatchQueue.main.async {
                     for boundary in boundaries {
