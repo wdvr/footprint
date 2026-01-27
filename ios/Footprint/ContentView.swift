@@ -164,6 +164,35 @@ struct SettingsView: View {
                     }
                 }
 
+                // Location Tracking Section
+                Section {
+                    Toggle(isOn: Binding(
+                        get: { LocationManager.shared.isBackgroundTrackingEnabled },
+                        set: { enabled in
+                            if enabled {
+                                LocationManager.shared.enableBackgroundTracking()
+                            } else {
+                                LocationManager.shared.disableBackgroundTracking()
+                            }
+                        }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Background Location Tracking")
+                            Text("Get notified when you visit new places")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Location")
+                } footer: {
+                    if LocationManager.shared.authorizationStatus != .authorizedAlways {
+                        Text("Requires 'Always' location permission. Go to Settings > Privacy > Location Services to enable.")
+                    } else {
+                        Text("Uses significant location changes for battery efficiency.")
+                    }
+                }
+
                 // App Info Section
                 Section("About") {
                     HStack {
@@ -495,7 +524,6 @@ struct WorldMapView: View {
     @State private var showingStateMap = false
     @State private var stateMapCountry: String?
     @State private var showListView = false
-    @State private var locationManager = LocationManager()
     @State private var centerOnUserLocation = false
 
     private var visitedCountryCodes: Set<String> {
@@ -555,7 +583,7 @@ struct WorldMapView: View {
                         onCountryTapped: { countryCode in
                             selectedCountry = countryCode
                         },
-                        showUserLocation: locationManager.isTracking
+                        showUserLocation: LocationManager.shared.isTracking
                     )
                     .ignoresSafeArea(edges: .bottom)
                     .onChange(of: selectedCountry) { _, newValue in
@@ -588,20 +616,20 @@ struct WorldMapView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
-                        if locationManager.authorizationStatus == .notDetermined {
-                            locationManager.requestPermission()
-                        } else if locationManager.isTracking {
+                        if LocationManager.shared.authorizationStatus == .notDetermined {
+                            LocationManager.shared.requestPermission()
+                        } else if LocationManager.shared.isTracking {
                             // When already tracking, center on user location
                             centerOnUserLocation = true
                         } else {
                             // Start tracking
-                            locationManager.startTracking()
+                            LocationManager.shared.startTracking()
                         }
                     } label: {
-                        Image(systemName: locationManager.isTracking ? "location.fill" : "location")
-                            .foregroundStyle(locationManager.isTracking ? .blue : .primary)
+                        Image(systemName: LocationManager.shared.isTracking ? "location.fill" : "location")
+                            .foregroundStyle(LocationManager.shared.isTracking ? .blue : .primary)
                     }
-                    .accessibilityLabel(locationManager.isTracking ? "Center on current location" : "Start tracking location")
+                    .accessibilityLabel(LocationManager.shared.isTracking ? "Center on current location" : "Start tracking location")
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -721,7 +749,7 @@ struct WorldMapView: View {
     }
 
     private func setupLocationCallbacks() {
-        locationManager.onCountryDetected = { countryCode in
+        LocationManager.shared.onCountryDetected = { countryCode in
             // Check if country is not already visited
             let isVisited = visitedPlaces.contains {
                 $0.regionType == VisitedPlace.RegionType.country.rawValue
@@ -746,7 +774,7 @@ struct WorldMapView: View {
             }
         }
 
-        locationManager.onStateDetected = { countryCode, stateCode in
+        LocationManager.shared.onStateDetected = { countryCode, stateCode in
             let regionType: VisitedPlace.RegionType = countryCode == "US" ? .usState : .canadianProvince
             let isVisited = visitedPlaces.contains {
                 $0.regionType == regionType.rawValue

@@ -1,30 +1,44 @@
 import CoreLocation
 import MapKit
 import SwiftUI
+import UserNotifications
 
 /// Manages location services for the app
 @MainActor
 @Observable
 final class LocationManager: NSObject, CLLocationManagerDelegate {
+    static let shared = LocationManager()
+
     private let locationManager = CLLocationManager()
 
     var currentLocation: CLLocationCoordinate2D?
     var authorizationStatus: CLAuthorizationStatus = .notDetermined
     var isTracking = false
+    var isBackgroundTrackingEnabled = false
     var currentCountryCode: String?
     var currentStateCode: String?
+    var currentCity: String?
 
     /// Callback when user enters a new country
     var onCountryDetected: ((String) -> Void)?
     /// Callback when user enters a new state (US/CA)
     var onStateDetected: ((String, String) -> Void)? // (countryCode, stateCode)
+    /// Callback when user enters a new city
+    var onCityDetected: ((String, String, String?) -> Void)? // (city, countryCode, stateCode)
 
-    override init() {
+    private override init() {
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
         locationManager.distanceFilter = 1000 // Update every 1km
+        #if os(iOS)
+        locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.pausesLocationUpdatesAutomatically = true
+        #endif
         authorizationStatus = locationManager.authorizationStatus
+
+        // Load saved tracking preference
+        isBackgroundTrackingEnabled = UserDefaults.standard.bool(forKey: "backgroundLocationTracking")
     }
 
     /// Request location permission (always for background tracking)
@@ -70,7 +84,72 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    /// Reverse geocode to get country/state from coordinates
+    // MARK: - Background Location Tracking
+
+    /// Enable background location tracking using significant location changes
+    /// This is battery efficient and works even when app is terminated
+    func enableBackgroundTracking() {
+        #if os(iOS)
+        guard authorizationStatus == .authorizedAlways else {
+            print("[Location] Need 'Always' permission for background tracking")
+            requestPermission()
+            return
+        }
+
+        locationManager.startMonitoringSignificantLocationChanges()
+        isBackgroundTrackingEnabled = true
+        UserDefaults.standard.set(true, forKey: "backgroundLocationTracking")
+        print("[Location] Background tracking enabled")
+        #endif
+    }
+
+    /// Disable background location tracking
+    func disableBackgroundTracking() {
+        #if os(iOS)
+        locationManager.stopMonitoringSignificantLocationChanges()
+        isBackgroundTrackingEnabled = false
+        UserDefaults.standard.set(false, forKey: "backgroundLocationTracking")
+        print("[Location] Background tracking disabled")
+        #endif
+    }
+
+    /// Toggle background tracking
+    func toggleBackgroundTracking() {
+        if isBackgroundTrackingEnabled {
+            disableBackgroundTracking()
+        } else {
+            enableBackgroundTracking()
+        }
+    }
+
+    /// Resume background tracking if it was enabled (call on app launch)
+    func resumeBackgroundTrackingIfEnabled() {
+        #if os(iOS)
+        if isBackgroundTrackingEnabled && authorizationStatus == .authorizedAlways {
+            locationManager.startMonitoringSignificantLocationChanges()
+            print("[Location] Resumed background tracking")
+        }
+        #endif
+    }
+
+    /// Send notification for new location detected
+    func notifyNewLocation(city: String?, stateName: String?, countryName: String, regionType: String) {
+        let locationName: String
+        if let city = city {
+            locationName = city
+        } else if let state = stateName {
+            locationName = state
+        } else {
+            locationName = countryName
+        }
+
+        PushNotificationManager.shared.notifyNewLocationDetected(
+            regionName: locationName,
+            regionType: regionType
+        )
+    }
+
+    /// Reverse geocode to get country/state/city from coordinates
     private func reverseGeocode(_ location: CLLocation) {
         let geocoder = CLGeocoder()
         geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
@@ -88,17 +167,30 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
                         self.onCountryDetected?(countryCode)
                     }
 
+                    var stateCode: String?
+
                     // Check for US states or Canadian provinces
                     if countryCode == "US" || countryCode == "CA" {
                         if let stateName = placemark.administrativeArea {
                             // Convert state name to code
                             let code = self.stateNameToCode(stateName, country: countryCode)
+                            stateCode = code
                             let previousState = self.currentStateCode
                             self.currentStateCode = code
 
                             if previousState != code {
                                 self.onStateDetected?(countryCode, code)
                             }
+                        }
+                    }
+
+                    // Track city changes
+                    if let city = placemark.locality {
+                        let previousCity = self.currentCity
+                        self.currentCity = city
+
+                        if previousCity != city {
+                            self.onCityDetected?(city, countryCode, stateCode)
                         }
                     }
                 }

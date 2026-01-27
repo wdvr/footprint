@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Photos
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -48,6 +49,17 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
         // Set up notification categories
         PushNotificationManager.shared.setupNotificationCategories()
+
+        // Resume background location tracking if it was enabled
+        Task { @MainActor in
+            LocationManager.shared.resumeBackgroundTrackingIfEnabled()
+
+            // Start observing photo library if we have permission
+            let photoStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+            if photoStatus == .authorized || photoStatus == .limited {
+                PhotoImportManager.shared.startObservingPhotoLibrary()
+            }
+        }
 
         return true
     }

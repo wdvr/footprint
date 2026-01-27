@@ -63,9 +63,10 @@ private struct PhotoScanProgress: Codable {
 /// Manages importing location data from the Photos library
 @MainActor
 @Observable
-final class PhotoImportManager {
+final class PhotoImportManager: NSObject {
 
     static let backgroundTaskIdentifier = "com.wouterdevriendt.footprint.photo-import"
+    private static let lastScannedPhotoDateKey = "lastScannedPhotoDate"
 
     /// Shared instance for background scanning support
     static let shared = PhotoImportManager()
@@ -92,17 +93,75 @@ final class PhotoImportManager {
         loadScanProgress() != nil
     }
 
+    /// Number of new photos detected since last scan
+    var newPhotosAvailable: Int = 0
+
     private let geocoder = CLGeocoder()
     private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
     private var currentScanTask: Task<Void, Never>?
+    private var isObservingPhotoLibrary = false
 
     // Grid cell size in degrees (~1km at equator, preserves city-level granularity)
     private let gridCellSize: Double = 0.009
 
     private let progressKey = "PhotoImportScanProgress"
 
-    private init() {
+    private override init() {
+        super.init()
         authorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+    }
+
+    /// Last date when photos were fully scanned
+    var lastScannedPhotoDate: Date? {
+        get { UserDefaults.standard.object(forKey: Self.lastScannedPhotoDateKey) as? Date }
+        set { UserDefaults.standard.set(newValue, forKey: Self.lastScannedPhotoDateKey) }
+    }
+
+    /// Start observing photo library for changes
+    func startObservingPhotoLibrary() {
+        guard !isObservingPhotoLibrary else { return }
+        guard authorizationStatus == .authorized || authorizationStatus == .limited else { return }
+
+        PHPhotoLibrary.shared().register(self)
+        isObservingPhotoLibrary = true
+        print("[PhotoImport] Started observing photo library for changes")
+
+        // Check for new photos immediately
+        Task {
+            await checkForNewPhotos()
+        }
+    }
+
+    /// Stop observing photo library
+    func stopObservingPhotoLibrary() {
+        guard isObservingPhotoLibrary else { return }
+        PHPhotoLibrary.shared().unregisterChangeObserver(self)
+        isObservingPhotoLibrary = false
+    }
+
+    /// Check how many new photos have been added since last scan
+    func checkForNewPhotos() async {
+        guard authorizationStatus == .authorized || authorizationStatus == .limited else { return }
+
+        let fetchOptions = PHFetchOptions()
+
+        // Only fetch photos newer than last scan
+        if let lastDate = lastScannedPhotoDate {
+            fetchOptions.predicate = NSPredicate(format: "creationDate > %@", lastDate as NSDate)
+        }
+
+        let assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+
+        // Count only photos with location data
+        var count = 0
+        assets.enumerateObjects { asset, _, _ in
+            if asset.location != nil {
+                count += 1
+            }
+        }
+
+        newPhotosAvailable = count
+        print("[PhotoImport] Found \(count) new photos with location since last scan")
     }
 
     /// Minimize the import view while continuing scan
@@ -267,6 +326,8 @@ final class PhotoImportManager {
         switch status {
         case .authorized, .limited:
             state = .idle
+            // Start observing for new photos
+            startObservingPhotoLibrary()
             return true
         case .denied, .restricted:
             state = .error("Photo library access denied. Please enable access in Settings.")
@@ -782,8 +843,12 @@ final class PhotoImportManager {
             )
             modelContext.insert(place)
         }
-        // Save the last sync date
+        // Save the last sync date and mark scan complete
         UserDefaults.standard.set(Date(), forKey: "lastPhotoSync")
+        markScanComplete()
+
+        // Schedule next periodic background scan
+        schedulePeriodicBackgroundTask()
     }
 
     /// Reset the import state
@@ -831,5 +896,45 @@ final class PhotoImportManager {
             return caProvinces[name] ?? name
         }
         return name
+    }
+
+    /// Mark scan as complete and save the date
+    func markScanComplete() {
+        lastScannedPhotoDate = Date()
+        newPhotosAvailable = 0
+    }
+
+    /// Schedule periodic background task for automatic photo monitoring
+    func schedulePeriodicBackgroundTask() {
+        #if canImport(UIKit) && !targetEnvironment(macCatalyst)
+        let request = BGProcessingTaskRequest(identifier: Self.backgroundTaskIdentifier)
+        request.requiresNetworkConnectivity = true // Geocoding needs network
+        request.requiresExternalPower = false
+        // Schedule for early morning when user is likely asleep
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 6 * 60 * 60) // 6 hours from now
+
+        do {
+            try BGTaskScheduler.shared.submit(request)
+            print("[PhotoImport] Scheduled periodic background task")
+        } catch {
+            print("[PhotoImport] Failed to schedule periodic task: \(error)")
+        }
+        #endif
+    }
+}
+
+// MARK: - PHPhotoLibraryChangeObserver
+
+extension PhotoImportManager: PHPhotoLibraryChangeObserver {
+    nonisolated func photoLibraryDidChange(_ changeInstance: PHChange) {
+        // Check if new photos were added
+        Task { @MainActor in
+            await self.checkForNewPhotos()
+
+            // If significant number of new photos, schedule background scan
+            if self.newPhotosAvailable >= 5 {
+                self.schedulePeriodicBackgroundTask()
+            }
+        }
     }
 }
