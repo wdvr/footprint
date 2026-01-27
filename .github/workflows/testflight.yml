@@ -204,13 +204,11 @@ jobs:
 
         # Get the app ID
         echo "Fetching app info for bundle ID: $APP_BUNDLE_ID"
-        APP_RESPONSE=$(curl -s --show-error -w "\nHTTP_CODE:%{http_code}" -H "Authorization: Bearer $JWT" \
-          "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=$APP_BUNDLE_ID")
-        echo "Full API Response: $APP_RESPONSE"
-        HTTP_CODE=$(echo "$APP_RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
-        APP_RESPONSE=$(echo "$APP_RESPONSE" | grep -v "HTTP_CODE:")
-        echo "HTTP Code: $HTTP_CODE"
-        echo "API Body: $APP_RESPONSE"
+        echo "JWT length: ${#JWT}"
+        curl -v -H "Authorization: Bearer $JWT" "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=$APP_BUNDLE_ID" > /tmp/api_response.json 2>&1 || true
+        echo "API Response:"
+        cat /tmp/api_response.json
+        APP_RESPONSE=$(cat /tmp/api_response.json | grep -v "^[*<>]" | tail -1)
 
         APP_ID=$(echo "$APP_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data'][0]['id'])" 2>/dev/null)
 
