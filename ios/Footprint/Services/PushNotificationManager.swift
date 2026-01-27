@@ -138,6 +138,108 @@ class PushNotificationManager: NSObject {
             errorCategory,
         ])
     }
+
+    // MARK: - Local Notifications
+
+    /// Send local notification when photo import finds new locations
+    func notifyPhotoImportComplete(newLocationsCount: Int, totalProcessed: Int) {
+        guard newLocationsCount > 0 else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "New Places Discovered"
+        content.body = newLocationsCount == 1
+            ? "Found 1 new place in your photos!"
+            : "Found \(newLocationsCount) new places in your photos!"
+        content.sound = .default
+        content.categoryIdentifier = "IMPORT_REVIEW"
+        content.userInfo = [
+            "action": "review_import",
+            "source": "photos",
+            "count": newLocationsCount
+        ]
+
+        let request = UNNotificationRequest(
+            identifier: "photo-import-complete",
+            content: content,
+            trigger: nil // Deliver immediately
+        )
+
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    /// Send local notification when location tracking finds a new place
+    func notifyNewLocationDetected(regionName: String, regionType: String) {
+        let content = UNMutableNotificationContent()
+        content.title = "New Place Detected"
+        content.body = "You're in \(regionName)! Add it to your map?"
+        content.sound = .default
+        content.categoryIdentifier = "NEW_LOCATION"
+        content.userInfo = [
+            "action": "new_location",
+            "region_name": regionName,
+            "region_type": regionType
+        ]
+
+        let request = UNNotificationRequest(
+            identifier: "new-location-\(regionName)",
+            content: content,
+            trigger: nil
+        )
+
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    /// Send local notification for Gmail/Calendar import results
+    func notifyGoogleImportComplete(newCountriesCount: Int, source: String) {
+        guard newCountriesCount > 0 else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "Import Complete"
+        content.body = newCountriesCount == 1
+            ? "Found 1 country in your \(source)!"
+            : "Found \(newCountriesCount) countries in your \(source)!"
+        content.sound = .default
+        content.categoryIdentifier = "IMPORT_REVIEW"
+        content.userInfo = [
+            "action": "review_import",
+            "source": source,
+            "count": newCountriesCount
+        ]
+
+        let request = UNNotificationRequest(
+            identifier: "google-import-complete",
+            content: content,
+            trigger: nil
+        )
+
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    /// Send local notification for background photo scan finding new places
+    func notifyBackgroundScanComplete(newLocationsCount: Int) {
+        guard newLocationsCount > 0 else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "Background Scan Complete"
+        content.body = newLocationsCount == 1
+            ? "Found 1 new place in recent photos!"
+            : "Found \(newLocationsCount) new places in recent photos!"
+        content.sound = .default
+        content.categoryIdentifier = "IMPORT_REVIEW"
+        content.userInfo = [
+            "action": "review_import",
+            "source": "background_scan",
+            "count": newLocationsCount
+        ]
+
+        let request = UNNotificationRequest(
+            identifier: "background-scan-complete",
+            content: content,
+            trigger: nil
+        )
+
+        UNUserNotificationCenter.current().add(request)
+    }
 }
 
 // MARK: - UNUserNotificationCenterDelegate

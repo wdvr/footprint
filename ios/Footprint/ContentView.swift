@@ -737,6 +737,11 @@ struct WorldMapView: View {
                         regionName: country.name
                     )
                     modelContext.insert(place)
+                    // Notify user
+                    PushNotificationManager.shared.notifyNewLocationDetected(
+                        regionName: country.name,
+                        regionType: "country"
+                    )
                 }
             }
         }
@@ -757,6 +762,11 @@ struct WorldMapView: View {
                     regionName: stateName
                 )
                 modelContext.insert(place)
+                // Notify user
+                PushNotificationManager.shared.notifyNewLocationDetected(
+                    regionName: stateName,
+                    regionType: regionType == .usState ? "US state" : "Canadian province"
+                )
             }
         }
     }
