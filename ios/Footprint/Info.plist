@@ -16,10 +16,10 @@
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.wouterdevriendt.footprint</string>
+				<string>com.googleusercontent.apps.269334695221-sek2s7nqal8hmt2latimle4f8kgesg6l</string>
 			</array>
 			<key>CFBundleURLName</key>
-			<string>Google OAuth Callback</string>
+			<string>Google Sign-In</string>
 		</dict>
 	</array>
 	<key>NSPhotoLibraryUsageDescription</key>

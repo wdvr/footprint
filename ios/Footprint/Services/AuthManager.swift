@@ -235,9 +235,10 @@ extension AuthManager: ASAuthorizationControllerDelegate {
 
 enum GoogleSignInConfig {
     // iOS client ID (no secret required for mobile apps with implicit flow)
-    static let clientId = "269334695221-0h0nbiimdobmjefsi13dhvgpsidhk5hf.apps.googleusercontent.com"
-    static let callbackScheme = "com.wouterdevriendt.footprint"
-    static let redirectUri = "com.wouterdevriendt.footprint:/oauth2callback"
+    static let clientId = "269334695221-sek2s7nqal8hmt2latimle4f8kgesg6l.apps.googleusercontent.com"
+    // Google-provided URL scheme (reversed client ID)
+    static let callbackScheme = "com.googleusercontent.apps.269334695221-sek2s7nqal8hmt2latimle4f8kgesg6l"
+    static let redirectUri = "com.googleusercontent.apps.269334695221-sek2s7nqal8hmt2latimle4f8kgesg6l:/oauth2callback"
     static let scopes = [
         "openid",
         "email",

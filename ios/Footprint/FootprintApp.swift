@@ -189,20 +189,23 @@ struct SignInWithGoogleButton: View {
         Button(action: {
             authManager.signInWithGoogle()
         }) {
-            HStack(spacing: 8) {
-                // Google "G" logo colors approximation
-                Image(systemName: "g.circle.fill")
-                    .font(.title2)
+            HStack(spacing: 12) {
+                // Official Google "G" logo
+                Image("GoogleLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 20, height: 20)
                 Text("Sign in with Google")
+                    .fontWeight(.medium)
             }
             .frame(maxWidth: .infinity)
             .padding()
             .background(.white)
-            .foregroundStyle(.black.opacity(0.87))
+            .foregroundStyle(Color(red: 0.26, green: 0.26, blue: 0.26)) // Google's dark gray
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                    .stroke(Color.gray.opacity(0.4), lineWidth: 1)
             )
         }
     }
