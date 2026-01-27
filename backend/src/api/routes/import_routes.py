@@ -1,11 +1,15 @@
 """Import API routes for Gmail/Calendar integration."""
 
+import logging
 import time
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import RedirectResponse
 
 from src.api.routes.auth import get_current_user
 from src.models.google_tokens import (
+    CalendarScanResponse,
+    GmailScanResponse,
     GoogleConnectionStatus,
     GoogleConnectRequest,
     GoogleConnectResponse,
@@ -32,7 +36,48 @@ from src.services.email_parser import aggregate_email_countries, parse_emails
 from src.services.google_service import google_service
 from src.services.import_processor import start_import_job
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 router = APIRouter(prefix="/import/google", tags=["import"])
+
+# App URL scheme for OAuth callback redirect
+APP_URL_SCHEME = "com.wouterdevriendt.footprint"
+
+
+@router.get("/oauth/callback")
+async def oauth_callback(
+    code: str | None = Query(None),
+    error: str | None = Query(None),
+    error_description: str | None = Query(None),
+):
+    """
+    OAuth callback endpoint for Google Sign-In.
+
+    Google redirects here after user authenticates. This endpoint then
+    redirects to the iOS app using its custom URL scheme, passing along
+    the authorization code.
+    """
+    logger.info(f"[OAuth Callback] Received - code: {code is not None}, error: {error}")
+
+    if error:
+        # Redirect to app with error
+        logger.error(
+            f"[OAuth Callback] Error from Google: {error} - {error_description}"
+        )
+        redirect_url = f"{APP_URL_SCHEME}://oauth?error={error}"
+        if error_description:
+            redirect_url += f"&error_description={error_description}"
+        return RedirectResponse(url=redirect_url)
+
+    if not code:
+        logger.error("[OAuth Callback] No code received")
+        return RedirectResponse(url=f"{APP_URL_SCHEME}://oauth?error=no_code")
+
+    # Redirect to app with the authorization code
+    logger.info("[OAuth Callback] Redirecting to app with code")
+    redirect_url = f"{APP_URL_SCHEME}://oauth?code={code}"
+    return RedirectResponse(url=redirect_url)
 
 
 @router.get("/status", response_model=GoogleConnectionStatus)
@@ -194,6 +239,208 @@ async def scan_google_imports(current_user: dict = Depends(get_current_user)):
     return ImportScanResponse(
         candidates=candidates,
         scanned_emails=scanned_emails,
+        scanned_events=scanned_events,
+        scan_duration_seconds=round(scan_duration, 2),
+    )
+
+
+@router.post("/scan/gmail", response_model=GmailScanResponse)
+async def scan_gmail_only(current_user: dict = Depends(get_current_user)):
+    """
+    Scan Gmail only for travel history.
+
+    Searches for flight bookings, hotel reservations, train tickets, etc.
+    Returns country candidates found in emails.
+    """
+    user_id = current_user["user_id"]
+    start_time = time.time()
+    logger.info(f"[Gmail Scan] Starting for user {user_id}")
+
+    # Check if Google is connected
+    connection_status = google_service.get_connection_status(user_id)
+    logger.info(f"[Gmail Scan] Connection status: {connection_status}")
+    if not connection_status["is_connected"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google account not connected",
+        )
+
+    # Get existing visited places to exclude
+    existing_places = db_service.get_user_visited_places(user_id, region_type="country")
+    existing_countries = {place["region_code"] for place in existing_places}
+    logger.info(f"[Gmail Scan] User has {len(existing_countries)} existing countries")
+
+    # Parse emails
+    scanned_emails = 0
+    email_countries = {}
+    try:
+        gmail_service = google_service.get_gmail_service(user_id)
+        logger.info("[Gmail Scan] Got Gmail service, starting parse...")
+        emails = parse_emails(gmail_service, max_emails=500)
+        scanned_emails = len(emails)
+        logger.info(f"[Gmail Scan] Parsed {scanned_emails} emails")
+        email_countries = aggregate_email_countries(emails)
+        logger.info(f"[Gmail Scan] Found {len(email_countries)} countries")
+    except Exception as e:
+        logger.error(f"[Gmail Scan] Error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to scan Gmail: {str(e)}",
+        ) from e
+
+    # Filter out already visited countries
+    new_countries = set(email_countries.keys()) - existing_countries
+
+    # Build candidates
+    candidates = []
+    for country_code in new_countries:
+        country_name = get_country_name(country_code)
+        if not country_name:
+            continue
+
+        email_data = email_countries.get(country_code, {"count": 0, "samples": []})
+        email_count = email_data["count"]
+
+        samples = []
+        for sample in email_data.get("samples", [])[:5]:
+            samples.append(
+                SourceSample(
+                    id=sample["id"],
+                    source_type="email",
+                    title=sample["title"],
+                    date=sample.get("date"),
+                    snippet=sample.get("snippet"),
+                )
+            )
+
+        confidence = get_confidence_score(
+            email_count,
+            0,  # No calendar events
+            has_flight="flight" in " ".join(s.title.lower() for s in samples),
+        )
+
+        candidates.append(
+            ImportCandidate(
+                country_code=country_code,
+                country_name=country_name,
+                email_count=email_count,
+                calendar_event_count=0,
+                sample_sources=samples,
+                confidence=confidence,
+            )
+        )
+
+    candidates.sort(key=lambda c: c.email_count, reverse=True)
+    scan_duration = time.time() - start_time
+    logger.info(
+        f"[Gmail Scan] Complete in {scan_duration:.2f}s, {len(candidates)} candidates"
+    )
+
+    return GmailScanResponse(
+        candidates=candidates,
+        scanned_emails=scanned_emails,
+        scan_duration_seconds=round(scan_duration, 2),
+    )
+
+
+@router.post("/scan/calendar", response_model=CalendarScanResponse)
+async def scan_calendar_only(current_user: dict = Depends(get_current_user)):
+    """
+    Scan Google Calendar only for travel history.
+
+    Searches for events with locations that indicate travel.
+    Returns country candidates found in calendar events.
+    """
+    user_id = current_user["user_id"]
+    start_time = time.time()
+    logger.info(f"[Calendar Scan] Starting for user {user_id}")
+
+    # Check if Google is connected
+    connection_status = google_service.get_connection_status(user_id)
+    logger.info(f"[Calendar Scan] Connection status: {connection_status}")
+    if not connection_status["is_connected"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google account not connected",
+        )
+
+    # Get existing visited places to exclude
+    existing_places = db_service.get_user_visited_places(user_id, region_type="country")
+    existing_countries = {place["region_code"] for place in existing_places}
+    logger.info(
+        f"[Calendar Scan] User has {len(existing_countries)} existing countries"
+    )
+
+    # Parse calendar events
+    scanned_events = 0
+    calendar_countries = {}
+    try:
+        calendar_service = google_service.get_calendar_service(user_id)
+        logger.info("[Calendar Scan] Got Calendar service, starting parse...")
+        events = parse_calendar_events(calendar_service, max_events=1000)
+        scanned_events = len(events)
+        logger.info(f"[Calendar Scan] Parsed {scanned_events} events")
+        calendar_countries = aggregate_calendar_countries(events)
+        logger.info(f"[Calendar Scan] Found {len(calendar_countries)} countries")
+    except Exception as e:
+        logger.error(f"[Calendar Scan] Error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to scan Calendar: {str(e)}",
+        ) from e
+
+    # Filter out already visited countries
+    new_countries = set(calendar_countries.keys()) - existing_countries
+
+    # Build candidates
+    candidates = []
+    for country_code in new_countries:
+        country_name = get_country_name(country_code)
+        if not country_name:
+            continue
+
+        calendar_data = calendar_countries.get(
+            country_code, {"count": 0, "samples": []}
+        )
+        calendar_count = calendar_data["count"]
+
+        samples = []
+        for sample in calendar_data.get("samples", [])[:5]:
+            samples.append(
+                SourceSample(
+                    id=sample["id"],
+                    source_type="calendar",
+                    title=sample["title"],
+                    date=sample.get("date"),
+                    snippet=sample.get("snippet"),
+                )
+            )
+
+        confidence = get_confidence_score(
+            0,  # No emails
+            calendar_count,
+            has_flight=False,
+        )
+
+        candidates.append(
+            ImportCandidate(
+                country_code=country_code,
+                country_name=country_name,
+                email_count=0,
+                calendar_event_count=calendar_count,
+                sample_sources=samples,
+                confidence=confidence,
+            )
+        )
+
+    candidates.sort(key=lambda c: c.calendar_event_count, reverse=True)
+    scan_duration = time.time() - start_time
+    logger.info(
+        f"[Calendar Scan] Complete in {scan_duration:.2f}s, {len(candidates)} candidates"
+    )
+
+    return CalendarScanResponse(
+        candidates=candidates,
         scanned_events=scanned_events,
         scan_duration_seconds=round(scan_duration, 2),
     )

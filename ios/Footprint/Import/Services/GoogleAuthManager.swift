@@ -217,7 +217,7 @@ enum GoogleAuthError: LocalizedError {
 enum GoogleOAuthConfig {
     // Web app client ID (has secret for code exchange)
     static let clientId = "269334695221-0h0nbiimdobmjefsi13dhvgpsidhk5hf.apps.googleusercontent.com"
-    static let callbackScheme = "com.wd.footprint.app"
+    static let callbackScheme = "com.wouterdevriendt.footprint"
     // HTTPS redirect goes to our backend, which redirects to the app scheme
     static let redirectUri = "https://api.footprintmaps.com/import/google/oauth/callback"
     static let scopes = [

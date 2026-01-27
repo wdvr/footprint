@@ -1,11 +1,15 @@
 """DynamoDB service for data persistence."""
 
+import logging
 import os
 from datetime import UTC, datetime
 from typing import Any
 
 import boto3
 from boto3.dynamodb.conditions import Key
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Initialize DynamoDB resource
 dynamodb = boto3.resource(
@@ -442,8 +446,12 @@ class DynamoDBService:
     ) -> dict[str, Any]:
         """Store Google OAuth tokens for a user."""
         now = datetime.now(UTC).isoformat()
+        pk = self._get_user_pk(user_id)
+        logger.info(
+            f"[DynamoDB] Storing tokens for pk={pk}, sk={self.GOOGLE_TOKENS_SK}"
+        )
         item = {
-            "pk": self._get_user_pk(user_id),
+            "pk": pk,
             "sk": self.GOOGLE_TOKENS_SK,
             "entity_type": "google_tokens",
             "user_id": user_id,
@@ -456,14 +464,19 @@ class DynamoDBService:
             "updated_at": now,
         }
         table.put_item(Item=item)
+        logger.info(f"[DynamoDB] Tokens stored successfully for user {user_id}")
         return item
 
     def get_google_tokens(self, user_id: str) -> dict[str, Any] | None:
         """Get Google OAuth tokens for a user."""
-        response = table.get_item(
-            Key={"pk": self._get_user_pk(user_id), "sk": self.GOOGLE_TOKENS_SK}
+        pk = self._get_user_pk(user_id)
+        logger.info(
+            f"[DynamoDB] Getting tokens for pk={pk}, sk={self.GOOGLE_TOKENS_SK}"
         )
-        return response.get("Item")
+        response = table.get_item(Key={"pk": pk, "sk": self.GOOGLE_TOKENS_SK})
+        item = response.get("Item")
+        logger.info(f"[DynamoDB] Found tokens: {item is not None}")
+        return item
 
     def update_google_tokens(
         self, user_id: str, updates: dict[str, Any]

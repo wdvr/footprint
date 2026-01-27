@@ -1,23 +1,27 @@
 import SwiftUI
 
 struct ImportReviewView: View {
-    let response: ImportScanResponse
+    let candidates: [ImportCandidate]
+    let scannedEmails: Int
+    let scannedEvents: Int
     @Bindable var selection: ImportSelection
     let onConfirm: () -> Void
 
     @State private var expandedCountry: String?
 
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         VStack(spacing: 0) {
-            // Header stats
+            // Header stats - subtle styling
             scanStats
-                .padding()
-                .background(Color(.secondarySystemBackground))
+                .padding(.vertical, 12)
+                .padding(.horizontal)
 
             // Disclaimer
             disclaimer
                 .padding(.horizontal)
-                .padding(.top, 12)
+                .padding(.top, 4)
 
             // Country list
             List {
@@ -49,13 +53,13 @@ struct ImportReviewView: View {
     }
 
     private var sortedCandidates: [ImportCandidate] {
-        response.candidates.sorted { $0.totalSources > $1.totalSources }
+        candidates.sorted { $0.totalSources > $1.totalSources }
     }
 
     private var scanStats: some View {
         HStack(spacing: 24) {
             VStack(spacing: 4) {
-                Text("\(response.scannedEmails)")
+                Text("\(scannedEmails)")
                     .font(.title2)
                     .fontWeight(.semibold)
                 Text("Emails")
@@ -67,7 +71,7 @@ struct ImportReviewView: View {
                 .frame(height: 30)
 
             VStack(spacing: 4) {
-                Text("\(response.scannedEvents)")
+                Text("\(scannedEvents)")
                     .font(.title2)
                     .fontWeight(.semibold)
                 Text("Events")
@@ -79,7 +83,7 @@ struct ImportReviewView: View {
                 .frame(height: 30)
 
             VStack(spacing: 4) {
-                Text("\(response.candidates.count)")
+                Text("\(candidates.count)")
                     .font(.title2)
                     .fontWeight(.semibold)
                 Text("Countries")
@@ -109,13 +113,13 @@ struct ImportReviewView: View {
 
             HStack {
                 Button(action: {
-                    if selection.selectedCountries.count == response.candidates.count {
+                    if selection.selectedCountries.count == candidates.count {
                         selection.deselectAll()
                     } else {
-                        selection.selectAll(from: response.candidates)
+                        selection.selectAll(from: candidates)
                     }
                 }) {
-                    Text(selection.selectedCountries.count == response.candidates.count ? "Deselect All" : "Select All")
+                    Text(selection.selectedCountries.count == candidates.count ? "Deselect All" : "Select All")
                         .font(.subheadline)
                 }
 
@@ -127,17 +131,29 @@ struct ImportReviewView: View {
             }
             .padding(.horizontal)
 
-            Button(action: onConfirm) {
-                Text("Import \(selection.selectedCountries.count) \(selection.selectedCountries.count == 1 ? "Country" : "Countries")")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(selection.selectedCountries.isEmpty ? Color.gray : Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
+            if selection.selectedCountries.isEmpty {
+                Button(action: { dismiss() }) {
+                    Text("Done")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                }
+                .padding(.horizontal)
+                .padding(.bottom)
+            } else {
+                Button(action: onConfirm) {
+                    Text("Import \(selection.selectedCountries.count) \(selection.selectedCountries.count == 1 ? "Country" : "Countries")")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                }
+                .padding(.horizontal)
+                .padding(.bottom)
             }
-            .disabled(selection.selectedCountries.isEmpty)
-            .padding(.horizontal)
-            .padding(.bottom)
         }
         .background(Color(.systemBackground))
     }
@@ -245,31 +261,9 @@ struct ImportCandidateRow: View {
 
 #Preview {
     ImportReviewView(
-        response: ImportScanResponse(
-            candidates: [
-                ImportCandidate(
-                    countryCode: "FR",
-                    countryName: "France",
-                    emailCount: 20,
-                    calendarEventCount: 5,
-                    sampleSources: [
-                        SourceSample(id: "1", sourceType: .email, title: "Your Air France booking", date: nil, snippet: "Flight to Paris CDG")
-                    ],
-                    confidence: 0.95
-                ),
-                ImportCandidate(
-                    countryCode: "SE",
-                    countryName: "Sweden",
-                    emailCount: 7,
-                    calendarEventCount: 3,
-                    sampleSources: [],
-                    confidence: 0.85
-                )
-            ],
-            scannedEmails: 1500,
-            scannedEvents: 200,
-            scanDurationSeconds: 12.5
-        ),
+        candidates: [],
+        scannedEmails: 1500,
+        scannedEvents: 200,
         selection: ImportSelection(),
         onConfirm: {}
     )

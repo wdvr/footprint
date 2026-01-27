@@ -1,5 +1,6 @@
 """Google OAuth and API service."""
 
+import logging
 import os
 from datetime import UTC, datetime, timedelta
 
@@ -10,12 +11,17 @@ from googleapiclient.discovery import build
 
 from src.services.dynamodb import db_service
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 # Google OAuth configuration (loaded from .env)
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "")
 
 SCOPES = [
+    "openid",
+    "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/calendar.readonly",
 ]
@@ -41,20 +47,44 @@ class GoogleService:
 
         Returns the connected Google email.
         """
-        flow = Flow.from_client_config(
-            self.client_config,
-            scopes=SCOPES,
-            redirect_uri=GOOGLE_REDIRECT_URI,
+        logger.info(f"[GoogleService] Exchanging auth code for user {user_id}")
+        logger.info(
+            f"[GoogleService] Config: client_id={GOOGLE_CLIENT_ID[:20]}..., redirect_uri={GOOGLE_REDIRECT_URI}"
         )
 
-        # Exchange the auth code for tokens
-        flow.fetch_token(code=auth_code)
-        credentials = flow.credentials
+        if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+            logger.error(
+                "[GoogleService] Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET"
+            )
+            raise ValueError("Google OAuth not configured: missing client credentials")
+
+        if not GOOGLE_REDIRECT_URI:
+            logger.error("[GoogleService] Missing GOOGLE_REDIRECT_URI")
+            raise ValueError("Google OAuth not configured: missing redirect URI")
+
+        try:
+            flow = Flow.from_client_config(
+                self.client_config,
+                scopes=SCOPES,
+                redirect_uri=GOOGLE_REDIRECT_URI,
+            )
+
+            # Exchange the auth code for tokens
+            logger.info("[GoogleService] Calling fetch_token...")
+            flow.fetch_token(code=auth_code)
+            credentials = flow.credentials
+            logger.info("[GoogleService] Got credentials from auth code")
+        except Exception as e:
+            logger.error(
+                f"[GoogleService] Token exchange failed: {type(e).__name__}: {e}"
+            )
+            raise
 
         # Get user info to get email
         service = build("oauth2", "v2", credentials=credentials)
         user_info = service.userinfo().get().execute()
         email = user_info.get("email", "")
+        logger.info(f"[GoogleService] Got email: {email}")
 
         # Calculate token expiry
         expiry = credentials.expiry or (datetime.now(UTC) + timedelta(hours=1))
@@ -69,6 +99,7 @@ class GoogleService:
         }
 
         db_service.store_google_tokens(user_id, token_data)
+        logger.info(f"[GoogleService] Stored tokens for user {user_id}")
 
         return {"email": email, "connected": True}
 
@@ -122,7 +153,9 @@ class GoogleService:
 
     def get_connection_status(self, user_id: str) -> dict:
         """Check if user has a connected Google account."""
+        logger.info(f"[GoogleService] Checking connection for user {user_id}")
         token_data = db_service.get_google_tokens(user_id)
+        logger.info(f"[GoogleService] Token data found: {token_data is not None}")
         if not token_data:
             return {"is_connected": False, "email": None}
 

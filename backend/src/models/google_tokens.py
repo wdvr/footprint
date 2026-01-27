@@ -64,6 +64,22 @@ class ImportScanResponse(BaseModel):
     scan_duration_seconds: float
 
 
+class GmailScanResponse(BaseModel):
+    """Response from scanning Gmail only."""
+
+    candidates: list[ImportCandidate]
+    scanned_emails: int
+    scan_duration_seconds: float
+
+
+class CalendarScanResponse(BaseModel):
+    """Response from scanning Calendar only."""
+
+    candidates: list[ImportCandidate]
+    scanned_events: int
+    scan_duration_seconds: float
+
+
 class ImportConfirmRequest(BaseModel):
     """Request to confirm import of selected countries."""
 

@@ -39,7 +39,7 @@ struct FootprintProvider: TimelineProvider {
 
     private func loadEntry() -> FootprintEntry {
         // Load from shared UserDefaults (App Group)
-        let defaults = UserDefaults(suiteName: "group.com.wd.footprint") ?? UserDefaults.standard
+        let defaults = UserDefaults(suiteName: "group.com.wouterdevriendt.footprint") ?? UserDefaults.standard
         let countriesVisited = defaults.integer(forKey: "countriesVisited")
         let statesVisited = defaults.integer(forKey: "statesVisited")
         let totalCountries = 195

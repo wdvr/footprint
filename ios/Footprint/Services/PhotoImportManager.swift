@@ -65,21 +65,29 @@ private struct PhotoScanProgress: Codable {
 @Observable
 final class PhotoImportManager {
 
-    static let backgroundTaskIdentifier = "com.wd.footprint.photo-import"
+    static let backgroundTaskIdentifier = "com.wouterdevriendt.footprint.photo-import"
+
+    /// Shared instance for background scanning support
+    static let shared = PhotoImportManager()
 
     enum ImportState: Equatable {
         case idle
         case requestingPermission
         case collecting(photosProcessed: Int)
-        case scanning(progress: Double, clustersProcessed: Int, totalClusters: Int)
-        case backgrounded(progress: Double, clustersProcessed: Int, totalClusters: Int)
-        case completed(locations: [DiscoveredLocation])
+        case scanning(progress: Double, clustersProcessed: Int, totalClusters: Int, locationsFound: Int)
+        case backgrounded(progress: Double, clustersProcessed: Int, totalClusters: Int, locationsFound: Int)
+        case completed(locations: [DiscoveredLocation], totalFound: Int, alreadyVisited: Int)
         case error(String)
     }
+
+    /// Dev mode: limit photos to process (0 = no limit)
+    static var devPhotoLimit: Int = 0
 
     var state: ImportState = .idle
     var authorizationStatus: PHAuthorizationStatus = .notDetermined
     var isRunningInBackground = false
+    var isMinimized = false  // User dismissed but scan continues
+    var totalPhotosToProcess = 0  // For progress display when minimized
     var hasPendingScan: Bool {
         loadScanProgress() != nil
     }
@@ -93,8 +101,18 @@ final class PhotoImportManager {
 
     private let progressKey = "PhotoImportScanProgress"
 
-    init() {
+    private init() {
         authorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+    }
+
+    /// Minimize the import view while continuing scan
+    func minimize() {
+        isMinimized = true
+    }
+
+    /// Restore from minimized state
+    func restore() {
+        isMinimized = false
     }
 
     /// Register background task handler - call from app delegate
@@ -165,8 +183,8 @@ final class PhotoImportManager {
         isRunningInBackground = true
 
         // Update state to show backgrounded
-        if case .scanning(let progress, let processed, let total) = state {
-            state = .backgrounded(progress: progress, clustersProcessed: processed, totalClusters: total)
+        if case .scanning(let progress, let processed, let total, let locations) = state {
+            state = .backgrounded(progress: progress, clustersProcessed: processed, totalClusters: total, locationsFound: locations)
         }
 
         // Start background task to get extended execution time
@@ -184,8 +202,8 @@ final class PhotoImportManager {
         isRunningInBackground = false
 
         // Update state back to scanning if we were backgrounded
-        if case .backgrounded(let progress, let processed, let total) = state {
-            state = .scanning(progress: progress, clustersProcessed: processed, totalClusters: total)
+        if case .backgrounded(let progress, let processed, let total, let locations) = state {
+            state = .scanning(progress: progress, clustersProcessed: processed, totalClusters: total, locationsFound: locations)
         }
 
         // Remove any pending notifications
@@ -263,7 +281,7 @@ final class PhotoImportManager {
     }
 
     /// Convert coordinate to grid key for clustering
-    private func gridKey(for coordinate: CLLocationCoordinate2D) -> String {
+    private nonisolated func gridKey(for coordinate: CLLocationCoordinate2D) -> String {
         let latCell = Int(floor(coordinate.latitude / gridCellSize))
         let lonCell = Int(floor(coordinate.longitude / gridCellSize))
         return "\(latCell),\(lonCell)"
@@ -286,55 +304,134 @@ final class PhotoImportManager {
 
         state = .collecting(photosProcessed: 0)
 
-        // Fetch all photos with location data
+        // Fetch all photos - we'll filter by location during enumeration
+        // Note: PHFetchOptions doesn't support location predicate filtering
         let fetchOptions = PHFetchOptions()
-        fetchOptions.predicate = NSPredicate(format: "location != nil")
         fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
 
         let assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
-        let totalPhotos = assets.count
+        var totalPhotos = assets.count
+
+        // Apply dev limit if set
+        if Self.devPhotoLimit > 0 {
+            totalPhotos = min(totalPhotos, Self.devPhotoLimit)
+            print("[PhotoImport] DEV MODE: Limiting to \(totalPhotos) photos")
+        }
+
+        totalPhotosToProcess = totalPhotos
 
         if totalPhotos == 0 {
-            state = .completed(locations: [])
+            state = .completed(locations: [], totalFound: 0, alreadyVisited: 0)
             return
         }
 
-        // Phase 1: Quick enumeration and clustering (very fast, no geocoding)
-        var clusters: [String: PhotoCluster] = [:]
-        var photosProcessed = 0
-
-        assets.enumerateObjects { [self] asset, _, _ in
-            photosProcessed += 1
-            if photosProcessed % 1000 == 0 {
-                // Update UI periodically during enumeration
-                Task { @MainActor in
-                    self.state = .collecting(photosProcessed: photosProcessed)
-                }
-            }
-
-            guard let location = asset.location else { return }
-            let key = self.gridKey(for: location.coordinate)
-
-            if var existing = clusters[key] {
-                existing.photoCount += 1
-                if let date = asset.creationDate {
-                    if existing.earliestDate == nil || date < existing.earliestDate! {
-                        existing.earliestDate = date
-                    }
-                }
-                clusters[key] = existing
-            } else {
-                clusters[key] = PhotoCluster(
-                    gridKey: key,
-                    representativeLocation: location,
-                    photoCount: 1,
-                    earliestDate: asset.creationDate
-                )
-            }
-        }
+        // Phase 1: Enumerate photos on background thread to avoid blocking UI
+        let cellSize = self.gridCellSize
+        let clusters = await collectPhotoClusters(assets: assets, totalPhotos: totalPhotos, cellSize: cellSize)
 
         // Phase 2: Geocode unique clusters (much fewer API calls)
         await geocodeClusters(Array(clusters.values), existingPlaces: existingPlaces)
+    }
+
+    /// Collect photo clusters on a background thread with progress updates
+    private func collectPhotoClusters(
+        assets: PHFetchResult<PHAsset>,
+        totalPhotos: Int,
+        cellSize: Double
+    ) async -> [String: PhotoCluster] {
+        // Use AsyncStream to receive progress updates from background thread
+        let (stream, continuation) = AsyncStream.makeStream(of: (clusters: [String: PhotoCluster]?, progress: Int).self)
+
+        // Start background enumeration
+        Task.detached {
+            await Self.enumeratePhotosInBackgroundWithProgress(
+                assets: assets,
+                totalPhotos: totalPhotos,
+                cellSize: cellSize,
+                progressCallback: { processed in
+                    continuation.yield((clusters: nil, progress: processed))
+                },
+                completion: { clusters in
+                    continuation.yield((clusters: clusters, progress: totalPhotos))
+                    continuation.finish()
+                }
+            )
+        }
+
+        // Process stream and update UI
+        var finalClusters: [String: PhotoCluster] = [:]
+        for await update in stream {
+            if let clusters = update.clusters {
+                finalClusters = clusters
+            } else {
+                // Update progress on main actor
+                state = .collecting(photosProcessed: update.progress)
+            }
+        }
+        return finalClusters
+    }
+
+    /// Nonisolated helper that runs photo enumeration on a background thread with progress updates
+    private nonisolated static func enumeratePhotosInBackgroundWithProgress(
+        assets: PHFetchResult<PHAsset>,
+        totalPhotos: Int,
+        cellSize: Double,
+        progressCallback: @Sendable @escaping (Int) -> Void,
+        completion: @Sendable @escaping ([String: PhotoCluster]) -> Void
+    ) async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.global(qos: .userInitiated).async {
+                var clusters: [String: PhotoCluster] = [:]
+                var photosWithLocation = 0
+                let batchSize = 500
+                var processedTotal = 0
+
+                // Use smaller batches for smoother progress updates
+                let smallBatchSize = 100
+
+                for batchStart in stride(from: 0, to: totalPhotos, by: smallBatchSize) {
+                    let batchEnd = min(batchStart + smallBatchSize, totalPhotos)
+
+                    autoreleasepool {
+                        let range = NSRange(location: batchStart, length: batchEnd - batchStart)
+                        let indices = IndexSet(integersIn: Range(range)!)
+
+                        assets.enumerateObjects(at: indices, options: []) { asset, _, _ in
+                            guard let location = asset.location else { return }
+                            photosWithLocation += 1
+                            let latCell = Int(floor(location.coordinate.latitude / cellSize))
+                            let lonCell = Int(floor(location.coordinate.longitude / cellSize))
+                            let key = "\(latCell),\(lonCell)"
+
+                            if var existing = clusters[key] {
+                                existing.photoCount += 1
+                                if let date = asset.creationDate {
+                                    if existing.earliestDate == nil || date < existing.earliestDate! {
+                                        existing.earliestDate = date
+                                    }
+                                }
+                                clusters[key] = existing
+                            } else {
+                                clusters[key] = PhotoCluster(
+                                    gridKey: key,
+                                    representativeLocation: location,
+                                    photoCount: 1,
+                                    earliestDate: asset.creationDate
+                                )
+                            }
+                        }
+                    }
+
+                    // Update progress after each small batch - clean sequential updates
+                    processedTotal = batchEnd
+                    progressCallback(processedTotal)
+                }
+
+                print("[PhotoImport] Enumeration complete: \(totalPhotos) photos, \(photosWithLocation) with location, \(clusters.count) clusters")
+                completion(clusters)
+                continuation.resume()
+            }
+        }
     }
 
     /// Resume a previously interrupted scan
@@ -348,35 +445,22 @@ final class PhotoImportManager {
         await requestNotificationPermission()
 
         // Re-fetch photos and rebuild clusters
+        // Note: PHFetchOptions doesn't support location predicate filtering
         let fetchOptions = PHFetchOptions()
-        fetchOptions.predicate = NSPredicate(format: "location != nil")
         let assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+        let totalPhotos = assets.count
 
-        var clusters: [String: PhotoCluster] = [:]
-        assets.enumerateObjects { [self] asset, _, _ in
-            guard let location = asset.location else { return }
-            let key = self.gridKey(for: location.coordinate)
+        state = .collecting(photosProcessed: 0)
 
-            // Skip already processed clusters
-            if progress.processedGridKeys.contains(key) { return }
-
-            if var existing = clusters[key] {
-                existing.photoCount += 1
-                if let date = asset.creationDate {
-                    if existing.earliestDate == nil || date < existing.earliestDate! {
-                        existing.earliestDate = date
-                    }
-                }
-                clusters[key] = existing
-            } else {
-                clusters[key] = PhotoCluster(
-                    gridKey: key,
-                    representativeLocation: location,
-                    photoCount: 1,
-                    earliestDate: asset.creationDate
-                )
-            }
-        }
+        // Process in batches on background thread
+        let cellSize = self.gridCellSize
+        let processedGridKeys = progress.processedGridKeys
+        let clusters = await collectPhotoClustersForResume(
+            assets: assets,
+            totalPhotos: totalPhotos,
+            cellSize: cellSize,
+            processedGridKeys: processedGridKeys
+        )
 
         // Continue geocoding remaining clusters
         await geocodeClusters(
@@ -384,6 +468,73 @@ final class PhotoImportManager {
             existingPlaces: existingPlaces,
             existingProgress: progress
         )
+    }
+
+    /// Collect photo clusters for resume on a background thread
+    private func collectPhotoClustersForResume(
+        assets: PHFetchResult<PHAsset>,
+        totalPhotos: Int,
+        cellSize: Double,
+        processedGridKeys: Set<String>
+    ) async -> [String: PhotoCluster] {
+        await Self.enumeratePhotosForResumeInBackground(
+            assets: assets,
+            totalPhotos: totalPhotos,
+            cellSize: cellSize,
+            processedGridKeys: processedGridKeys
+        )
+    }
+
+    /// Nonisolated helper for resume enumeration
+    private nonisolated static func enumeratePhotosForResumeInBackground(
+        assets: PHFetchResult<PHAsset>,
+        totalPhotos: Int,
+        cellSize: Double,
+        processedGridKeys: Set<String>
+    ) async -> [String: PhotoCluster] {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                var clusters: [String: PhotoCluster] = [:]
+                let batchSize = 500
+
+                for batchStart in stride(from: 0, to: totalPhotos, by: batchSize) {
+                    autoreleasepool {
+                        let batchEnd = min(batchStart + batchSize, totalPhotos)
+                        let range = NSRange(location: batchStart, length: batchEnd - batchStart)
+                        let indices = IndexSet(integersIn: Range(range)!)
+
+                        assets.enumerateObjects(at: indices, options: []) { asset, _, _ in
+                            guard let location = asset.location else { return }
+                            let latCell = Int(floor(location.coordinate.latitude / cellSize))
+                            let lonCell = Int(floor(location.coordinate.longitude / cellSize))
+                            let key = "\(latCell),\(lonCell)"
+
+                            // Skip already processed clusters
+                            if processedGridKeys.contains(key) { return }
+
+                            if var existing = clusters[key] {
+                                existing.photoCount += 1
+                                if let date = asset.creationDate {
+                                    if existing.earliestDate == nil || date < existing.earliestDate! {
+                                        existing.earliestDate = date
+                                    }
+                                }
+                                clusters[key] = existing
+                            } else {
+                                clusters[key] = PhotoCluster(
+                                    gridKey: key,
+                                    representativeLocation: location,
+                                    photoCount: 1,
+                                    earliestDate: asset.creationDate
+                                )
+                            }
+                        }
+                    }
+                }
+
+                continuation.resume(returning: clusters)
+            }
+        }
     }
 
     /// Geocode clusters and discover locations
@@ -394,9 +545,12 @@ final class PhotoImportManager {
     ) async {
         let totalClusters = clusters.count + (existingProgress?.processedGridKeys.count ?? 0)
 
+        print("[PhotoImport] Starting geocoding: \(clusters.count) clusters to process")
+
         if clusters.isEmpty {
+            print("[PhotoImport] No clusters to geocode")
             let locations = existingProgress?.discoveredLocations ?? []
-            state = .completed(locations: locations)
+            state = .completed(locations: locations, totalFound: 0, alreadyVisited: 0)
             clearScanProgress()
             if isRunningInBackground {
                 showCompletionNotification(locationsFound: locations.count)
@@ -408,14 +562,20 @@ final class PhotoImportManager {
         state = .scanning(
             progress: 0,
             clustersProcessed: existingProgress?.processedGridKeys.count ?? 0,
-            totalClusters: totalClusters
+            totalClusters: totalClusters,
+            locationsFound: 0
         )
 
         // Get existing place codes for filtering
         let existingCodes = Set(existingPlaces.filter { !$0.isDeleted }.map { "\($0.regionType):\($0.regionCode)" })
+        print("[PhotoImport] Existing places to filter: \(existingCodes.count) - \(existingCodes)")
 
-        // Track discovered locations
+        // Track discovered locations (new ones only)
         var locationCounts: [String: (type: VisitedPlace.RegionType, code: String, name: String, count: Int, earliestDate: Date?)] = [:]
+
+        // Track ALL found locations (including already visited) for stats
+        var allFoundLocations: Set<String> = []
+        var alreadyVisitedCount = 0
 
         // Restore previous discoveries
         if let progress = existingProgress {
@@ -453,10 +613,11 @@ final class PhotoImportManager {
 
                 // Update progress
                 let progress = Double(processedCount) / Double(totalClusters)
+                let uniqueLocations = allFoundLocations.count
                 if isRunningInBackground {
-                    state = .backgrounded(progress: progress, clustersProcessed: processedCount, totalClusters: totalClusters)
+                    state = .backgrounded(progress: progress, clustersProcessed: processedCount, totalClusters: totalClusters, locationsFound: uniqueLocations)
                 } else {
-                    state = .scanning(progress: progress, clustersProcessed: processedCount, totalClusters: totalClusters)
+                    state = .scanning(progress: progress, clustersProcessed: processedCount, totalClusters: totalClusters, locationsFound: uniqueLocations)
                 }
 
                 // Geocode
@@ -464,9 +625,21 @@ final class PhotoImportManager {
                     let placemarks = try await geocoder.reverseGeocodeLocation(cluster.representativeLocation)
 
                     if let placemark = placemarks.first, let countryCode = placemark.isoCountryCode {
+                        if processedCount <= 5 {
+                            print("[PhotoImport] Geocoded cluster \(processedCount): \(countryCode) - \(placemark.country ?? "?")")
+                        }
                         // Check if country exists in our data
                         if let country = GeographicData.countries.first(where: { $0.id == countryCode }) {
                             let key = "country:\(countryCode)"
+
+                            // Track this as a found location
+                            if !allFoundLocations.contains(key) {
+                                allFoundLocations.insert(key)
+                                if existingCodes.contains(key) {
+                                    alreadyVisitedCount += 1
+                                }
+                            }
+
                             if !existingCodes.contains(key) {
                                 var entry = locationCounts[key] ?? (.country, countryCode, country.name, 0, nil)
                                 entry.count += cluster.photoCount
@@ -476,7 +649,14 @@ final class PhotoImportManager {
                                     }
                                 }
                                 locationCounts[key] = entry
+                                if processedCount <= 5 {
+                                    print("[PhotoImport] Added new location: \(country.name)")
+                                }
+                            } else if processedCount <= 5 {
+                                print("[PhotoImport] Country \(countryCode) already exists, skipping")
                             }
+                        } else if processedCount <= 5 {
+                            print("[PhotoImport] Country \(countryCode) not found in GeographicData")
                         }
 
                         // Check for US states or Canadian provinces
@@ -485,6 +665,14 @@ final class PhotoImportManager {
                                 let stateCode = stateNameToCode(adminArea, country: countryCode)
                                 let regionType: VisitedPlace.RegionType = countryCode == "US" ? .usState : .canadianProvince
                                 let key = "\(regionType.rawValue):\(stateCode)"
+
+                                // Track this as a found location
+                                if !allFoundLocations.contains(key) {
+                                    allFoundLocations.insert(key)
+                                    if existingCodes.contains(key) {
+                                        alreadyVisitedCount += 1
+                                    }
+                                }
 
                                 if !existingCodes.contains(key) {
                                     let stateName = GeographicData.states(for: countryCode)
@@ -501,6 +689,8 @@ final class PhotoImportManager {
                                 }
                             }
                         }
+                    } else if processedCount <= 5 {
+                        print("[PhotoImport] No country code in placemark")
                     }
 
                     // Small delay to avoid geocoder rate limiting
@@ -508,6 +698,9 @@ final class PhotoImportManager {
 
                 } catch {
                     // Geocoding failed, continue with next cluster
+                    if processedCount <= 5 {
+                        print("[PhotoImport] Geocoding error for cluster \(processedCount): \(error)")
+                    }
                     continue
                 }
 
@@ -524,7 +717,12 @@ final class PhotoImportManager {
 
             // Complete
             let discoveredLocations = buildDiscoveredLocations(from: locationCounts)
-            state = .completed(locations: discoveredLocations)
+            let totalFound = allFoundLocations.count
+            print("[PhotoImport] Geocoding complete: \(totalFound) total locations found, \(alreadyVisitedCount) already visited, \(discoveredLocations.count) new")
+            for loc in discoveredLocations.prefix(10) {
+                print("[PhotoImport]   - \(loc.regionName) (\(loc.regionCode)): \(loc.photoCount) photos")
+            }
+            state = .completed(locations: discoveredLocations, totalFound: totalFound, alreadyVisited: alreadyVisitedCount)
             clearScanProgress()
 
             // Notify if in background

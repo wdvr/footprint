@@ -1,6 +1,7 @@
 """Async import job processor for Gmail/Calendar scanning."""
 
 import asyncio
+import logging
 import time
 import uuid
 from datetime import UTC, datetime
@@ -17,6 +18,10 @@ from src.services.push_notifications import (
     import_completed_notification,
     import_failed_notification,
 )
+
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 class ImportJobProcessor:
@@ -59,10 +64,12 @@ class ImportJobProcessor:
 
     async def process(self) -> None:
         """Process the import job."""
+        logger.info(f"[Import] Starting job {self.job_id} for user {self.user_id}")
         try:
             # Check Google connection
             connection_status = google_service.get_connection_status(self.user_id)
             if not connection_status["is_connected"]:
+                logger.warning(f"[Import] Google not connected for user {self.user_id}")
                 await self._fail("Google account not connected")
                 return
 
@@ -71,12 +78,23 @@ class ImportJobProcessor:
                 self.user_id, region_type="country"
             )
             existing_countries = {place["region_code"] for place in existing_places}
+            logger.info(
+                f"[Import] User has {len(existing_countries)} existing countries"
+            )
 
             # Scan emails
+            logger.info("[Import] Starting email scan...")
             email_countries = await self._scan_emails()
+            logger.info(
+                f"[Import] Email scan complete. Found {len(email_countries)} countries"
+            )
 
             # Scan calendar
+            logger.info("[Import] Starting calendar scan...")
             calendar_countries = await self._scan_calendar()
+            logger.info(
+                f"[Import] Calendar scan complete. Found {len(calendar_countries)} countries"
+            )
 
             # Process results
             self._update_status(JobStatus.PROCESSING)
@@ -87,6 +105,7 @@ class ImportJobProcessor:
             candidates = self._build_candidates(
                 email_countries, calendar_countries, existing_countries
             )
+            logger.info(f"[Import] Built {len(candidates)} candidates (new countries)")
 
             # Store results
             results = {
@@ -109,6 +128,7 @@ class ImportJobProcessor:
                     "progress": self.progress.model_dump(),
                 },
             )
+            logger.info(f"[Import] Job {self.job_id} completed successfully")
 
             # Send push notification
             country_names = [c.country_name for c in candidates]
@@ -116,6 +136,9 @@ class ImportJobProcessor:
             await apns_service.send_to_user(self.user_id, notification)
 
         except Exception as e:
+            logger.error(
+                f"[Import] Job {self.job_id} failed with error: {e}", exc_info=True
+            )
             await self._fail(str(e))
 
     async def _scan_emails(self) -> dict:
@@ -126,13 +149,17 @@ class ImportJobProcessor:
 
         email_countries = {}
         try:
+            logger.info("[Import] Getting Gmail service...")
             gmail_service = google_service.get_gmail_service(self.user_id)
 
             def on_email_progress(scanned: int, total: int):
                 self.progress.emails_scanned = scanned
                 self.progress.emails_total = total
                 self._update_progress()
+                if scanned % 100 == 0:
+                    logger.info(f"[Import] Email progress: {scanned}/{total}")
 
+            logger.info("[Import] Starting email parsing...")
             emails = await asyncio.to_thread(
                 parse_emails_with_progress,
                 gmail_service,
@@ -142,11 +169,15 @@ class ImportJobProcessor:
 
             self.progress.emails_scanned = len(emails)
             self._update_progress(force=True)
+            logger.info(f"[Import] Parsed {len(emails)} emails")
 
             email_countries = aggregate_email_countries(emails)
+            logger.info(
+                f"[Import] Aggregated {len(email_countries)} countries from emails"
+            )
 
         except Exception as e:
-            print(f"[Import] Email scan error: {e}")
+            logger.error(f"[Import] Email scan error: {e}", exc_info=True)
             # Continue without emails
 
         return email_countries
@@ -159,6 +190,7 @@ class ImportJobProcessor:
 
         calendar_countries = {}
         try:
+            logger.info("[Import] Getting Calendar service...")
             calendar_service = google_service.get_calendar_service(self.user_id)
 
             def on_calendar_progress(year: int, scanned: int, total: int):
@@ -166,7 +198,11 @@ class ImportJobProcessor:
                 self.progress.events_scanned = scanned
                 self.progress.events_total = total
                 self._update_progress()
+                logger.info(
+                    f"[Import] Calendar progress: year={year}, {scanned}/{total}"
+                )
 
+            logger.info("[Import] Starting calendar parsing...")
             events = await asyncio.to_thread(
                 parse_calendar_events_with_progress,
                 calendar_service,
@@ -176,11 +212,15 @@ class ImportJobProcessor:
 
             self.progress.events_scanned = len(events)
             self._update_progress(force=True)
+            logger.info(f"[Import] Parsed {len(events)} calendar events")
 
             calendar_countries = aggregate_calendar_countries(events)
+            logger.info(
+                f"[Import] Aggregated {len(calendar_countries)} countries from calendar"
+            )
 
         except Exception as e:
-            print(f"[Import] Calendar scan error: {e}")
+            logger.error(f"[Import] Calendar scan error: {e}", exc_info=True)
             # Continue without calendar
 
         return calendar_countries
@@ -324,8 +364,14 @@ def aggregate_calendar_countries(events: list) -> dict[str, dict]:
 
 
 async def start_import_job(user_id: str) -> str:
-    """Start a new async import job."""
+    """Start a new import job and process it.
+
+    Note: In Lambda, we can't use asyncio.create_task() because Lambda
+    returns after the handler completes. Instead, we await the processor
+    directly. The client should use a long timeout or poll for status.
+    """
     job_id = str(uuid.uuid4())
+    logger.info(f"[Import] Creating job {job_id} for user {user_id}")
 
     # Create job record
     db_service.create_import_job(
@@ -337,8 +383,9 @@ async def start_import_job(user_id: str) -> str:
         },
     )
 
-    # Start processing in background
+    # Process the job directly (not in background - Lambda doesn't support it)
     processor = ImportJobProcessor(user_id, job_id)
-    asyncio.create_task(processor.process())
+    await processor.process()
 
+    logger.info(f"[Import] Job {job_id} processing complete")
     return job_id

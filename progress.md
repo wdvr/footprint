@@ -1,7 +1,7 @@
 # Footprint Travel Tracker - Progress & Tasks
 
 ## Project Status: MVP DEVELOPMENT
-**Last Updated**: 2026-01-24
+**Last Updated**: 2026-01-25
 
 ## Source of Truth: GitHub Issues
 
@@ -17,13 +17,17 @@ https://github.com/wdvr/footprint/issues
 ### In Progress Features
 | Issue | Title | Labels |
 |-------|-------|--------|
-| [#13](https://github.com/wdvr/footprint/issues/13) | Gmail/Calendar import feature | feature, ios, backend |
 | [#15](https://github.com/wdvr/footprint/issues/15) | Apple Sign In - waiting for approval | blocked, ios |
+
+### Recently Completed
+| Issue | Title | Labels |
+|-------|-------|--------|
+| [#13](https://github.com/wdvr/footprint/issues/13) | Gmail/Calendar import feature | feature, ios, backend |
+| [#14](https://github.com/wdvr/footprint/issues/14) | In-app feedback and feature requests | feature, ios, backend |
 
 ### Planned Features
 | Issue | Title | Labels |
 |-------|-------|--------|
-| [#14](https://github.com/wdvr/footprint/issues/14) | In-app feedback and feature requests | feature, ios, backend |
 | [#16](https://github.com/wdvr/footprint/issues/16) | Deploy production AWS environment | infrastructure |
 | [#17](https://github.com/wdvr/footprint/issues/17) | States/provinces for other countries | feature |
 | [#18](https://github.com/wdvr/footprint/issues/18) | Cities & Landmarks tracking | feature |
@@ -123,12 +127,12 @@ pulumi up --yes
 | # | Feature | Description | Status |
 |---|---------|-------------|--------|
 | 18 | **Friends leaderboard** | Compare travel stats with friends, rankings, friendly competition | 🔲 TODO (long-term) |
-| 19 | **Feature requests & feedback** | In-app feedback form that saves to DynamoDB for async review | 🔲 TODO |
+| 19 | **Feature requests & feedback** | In-app feedback form that saves to DynamoDB for async review | ✅ DONE |
 
 ### Future Ideas
 | # | Feature | Description | Status |
 |---|---------|-------------|--------|
-| 20 | **Gmail/Calendar import** | Read travel confirmations from email/calendar, suggest locations to add | 🔲 TODO |
+| 20 | **Gmail/Calendar import** | Read travel confirmations from email/calendar, suggest locations to add | ✅ DONE |
 | 21 | **Annual travel summary** | Year-end recap like "Spotify Wrapped" for travel | 🔲 TODO |
 | 22 | **UNESCO World Heritage Sites** | Track 1,199 heritage sites visited | 🔲 TODO |
 | 23 | **Siri Shortcuts** | "Hey Siri, add Japan to my visited places" | 🔲 TODO |

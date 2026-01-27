@@ -96,12 +96,11 @@ function HomePage() {
               <div className="iphone-mockup">
                 <div className="iphone-screen">
                   <div className="iphone-notch"></div>
-                  <div className="iphone-placeholder">
-                    <div className="iphone-placeholder-icon">
-                      <FiGlobe size={64} />
-                    </div>
-                    <p>App Screenshot<br />Coming Soon</p>
-                  </div>
+                  <img
+                    src="/screenshot-iphone.png"
+                    alt="Footprint app showing world map with visited countries"
+                    className="iphone-screenshot"
+                  />
                 </div>
               </div>
             </div>

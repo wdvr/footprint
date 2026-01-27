@@ -56,7 +56,7 @@ struct ContentView: View {
         }.count
 
         // Save to shared UserDefaults for widget
-        if let defaults = UserDefaults(suiteName: "group.com.wd.footprint") {
+        if let defaults = UserDefaults(suiteName: "group.com.wouterdevriendt.footprint") {
             defaults.set(countriesVisited, forKey: "countriesVisited")
             defaults.set(statesVisited, forKey: "statesVisited")
         }
@@ -69,12 +69,17 @@ struct ContentView: View {
 // MARK: - Settings View
 
 struct SettingsView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(filter: #Predicate<VisitedPlace> { !$0.isDeleted })
+    private var visitedPlaces: [VisitedPlace]
+
     @State private var showingSignOutAlert = false
     @State private var showingDeleteAccountAlert = false
-    @State private var showingImportSheet = false
-    @State private var showingPhotoImport = false
-
-    private let googleAuth = GoogleAuthManager.shared
+    @State private var showingClearAllAlert = false
+    @State private var showingBackupSuccess = false
+    @State private var showingRestoreAlert = false
+    @State private var showingRestoreSuccess = false
+    @State private var backupError: String?
 
     var body: some View {
         NavigationStack {
@@ -119,47 +124,24 @@ struct SettingsView: View {
 
                 // Import Section
                 Section("Import") {
-                    Button {
-                        showingPhotoImport = true
+                    NavigationLink {
+                        ImportSourcesView()
                     } label: {
-                        Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Import from Photos")
-                                Text("Discover places from your photo library")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        } icon: {
-                            Image(systemName: "photo.on.rectangle.angled")
-                        }
-                    }
-
-                    Button {
-                        showingImportSheet = true
-                    } label: {
-                        Label("Import from Gmail/Calendar", systemImage: "envelope.badge.fill")
-                    }
-
-                    if googleAuth.isConnected, let email = googleAuth.connectedEmail {
                         HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.green)
-                            VStack(alignment: .leading) {
-                                Text("Google Connected")
-                                    .font(.subheadline)
-                                Text(email)
+                            Image(systemName: "square.and.arrow.down")
+                                .font(.title2)
+                                .foregroundStyle(.tint)
+                                .frame(width: 32)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Import Sources")
+                                    .font(.body)
+                                Text("Gmail, Calendar, Photos")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
-                            Spacer()
-                            Button("Disconnect") {
-                                Task {
-                                    await googleAuth.disconnect()
-                                }
-                            }
-                            .font(.caption)
-                            .foregroundStyle(.red)
                         }
+                        .padding(.vertical, 4)
                     }
                 }
 
@@ -179,6 +161,48 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+
+                // Data Management
+                Section("Data") {
+                    Button(role: .destructive) {
+                        showingClearAllAlert = true
+                    } label: {
+                        Label("Clear All Visited Places", systemImage: "trash")
+                    }
+                }
+
+                #if DEBUG
+                // Developer Section (Debug only)
+                Section("Developer") {
+                    HStack {
+                        Text("Photo limit")
+                        Spacer()
+                        Text(PhotoImportManager.devPhotoLimit > 0 ? "\(PhotoImportManager.devPhotoLimit)" : "None")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Button {
+                        PhotoImportManager.devPhotoLimit = PhotoImportManager.devPhotoLimit > 0 ? 0 : 1000
+                    } label: {
+                        Label(
+                            PhotoImportManager.devPhotoLimit > 0 ? "Remove Photo Limit" : "Limit to 1000 Photos",
+                            systemImage: "photo.stack"
+                        )
+                    }
+
+                    Button {
+                        backupData()
+                    } label: {
+                        Label("Backup Data", systemImage: "square.and.arrow.up")
+                    }
+
+                    Button {
+                        showingRestoreAlert = true
+                    } label: {
+                        Label("Restore Backup", systemImage: "square.and.arrow.down")
+                    }
+                }
+                #endif
 
                 // Danger Zone
                 Section {
@@ -208,11 +232,36 @@ struct SettingsView: View {
             } message: {
                 Text("This will permanently delete your account and all associated data. This action cannot be undone.")
             }
-            .sheet(isPresented: $showingImportSheet) {
-                ImportView()
+            .alert("Clear All Data", isPresented: $showingClearAllAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Clear All", role: .destructive) {
+                    clearAllData()
+                }
+            } message: {
+                Text("This will remove all \(visitedPlaces.count) visited places. This action cannot be undone.")
             }
-            .sheet(isPresented: $showingPhotoImport) {
-                PhotoImportView()
+            .alert("Backup Saved", isPresented: $showingBackupSuccess) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Your data has been backed up to Documents/footprint_backup.json")
+            }
+            .alert("Restore Backup", isPresented: $showingRestoreAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Restore", role: .destructive) {
+                    restoreBackup()
+                }
+            } message: {
+                Text("This will replace all current data with the backup. Continue?")
+            }
+            .alert("Restore Complete", isPresented: $showingRestoreSuccess) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Your data has been restored from backup.")
+            }
+            .alert("Error", isPresented: .init(get: { backupError != nil }, set: { if !$0 { backupError = nil } })) {
+                Button("OK", role: .cancel) { backupError = nil }
+            } message: {
+                Text(backupError ?? "Unknown error")
             }
         }
     }
@@ -230,6 +279,97 @@ struct SettingsView: View {
         // For now, just sign out
         signOut()
     }
+
+    private func clearAllData() {
+        for place in visitedPlaces {
+            place.isDeleted = true
+            place.lastModifiedAt = Date()
+        }
+    }
+
+    #if DEBUG
+    private func backupData() {
+        struct BackupPlace: Codable {
+            let regionType: String
+            let regionCode: String
+            let regionName: String
+            let markedAt: Date
+            let visitedDate: Date?
+        }
+
+        let backupPlaces = visitedPlaces.map { place in
+            BackupPlace(
+                regionType: place.regionType,
+                regionCode: place.regionCode,
+                regionName: place.regionName,
+                markedAt: place.markedAt,
+                visitedDate: place.visitedDate
+            )
+        }
+
+        do {
+            let data = try JSONEncoder().encode(backupPlaces)
+            let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            let backupURL = documentsURL.appendingPathComponent("footprint_backup.json")
+            try data.write(to: backupURL)
+            showingBackupSuccess = true
+        } catch {
+            backupError = error.localizedDescription
+        }
+    }
+
+    private func restoreBackup() {
+        struct BackupPlace: Codable {
+            let regionType: String
+            let regionCode: String
+            let regionName: String
+            let markedAt: Date
+            let visitedDate: Date?
+        }
+
+        do {
+            let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            let backupURL = documentsURL.appendingPathComponent("footprint_backup.json")
+
+            guard FileManager.default.fileExists(atPath: backupURL.path) else {
+                backupError = "No backup file found"
+                return
+            }
+
+            let data = try Data(contentsOf: backupURL)
+            let backupPlaces = try JSONDecoder().decode([BackupPlace].self, from: data)
+
+            // Clear existing data
+            for place in visitedPlaces {
+                modelContext.delete(place)
+            }
+
+            // Restore from backup
+            for backup in backupPlaces {
+                let regionType: VisitedPlace.RegionType
+                switch backup.regionType {
+                case "country": regionType = .country
+                case "us_state": regionType = .usState
+                case "canadian_province": regionType = .canadianProvince
+                default: continue
+                }
+
+                let place = VisitedPlace(
+                    regionType: regionType,
+                    regionCode: backup.regionCode,
+                    regionName: backup.regionName,
+                    visitedDate: backup.visitedDate,
+                    markedAt: backup.markedAt
+                )
+                modelContext.insert(place)
+            }
+
+            showingRestoreSuccess = true
+        } catch {
+            backupError = error.localizedDescription
+        }
+    }
+    #endif
 }
 
 // MARK: - Sync Status Row

@@ -7,7 +7,6 @@ struct ImportView: View {
 
     @State private var flowState: ImportFlowState = .intro
     @State private var selection = ImportSelection()
-    @State private var pollTask: Task<Void, Never>?
 
     private let googleAuth = GoogleAuthManager.shared
 
@@ -19,14 +18,10 @@ struct ImportView: View {
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") {
-                            pollTask?.cancel()
                             dismiss()
                         }
                     }
                 }
-        }
-        .onDisappear {
-            pollTask?.cancel()
         }
     }
 
@@ -40,12 +35,25 @@ struct ImportView: View {
             ProgressView("Connecting to Google...")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-        case .scanning(let progress):
-            ImportScanningView(progress: progress)
+        case .scanningGmail:
+            ScanProgressView(
+                icon: "envelope.fill",
+                title: "Scanning Gmail",
+                subtitle: "Looking for flight bookings, hotel reservations, train tickets..."
+            )
 
-        case .reviewing(let response):
+        case .scanningCalendar(let gmailCandidates, let emailCount):
+            ScanProgressView(
+                icon: "calendar",
+                title: "Scanning Calendar",
+                subtitle: "Found \(gmailCandidates.count) countries in \(emailCount) emails.\nNow checking calendar events..."
+            )
+
+        case .reviewing(let candidates, let emailCount, let eventCount):
             ImportReviewView(
-                response: response,
+                candidates: candidates,
+                scannedEmails: emailCount,
+                scannedEvents: eventCount,
                 selection: selection,
                 onConfirm: confirmImport
             )
@@ -74,7 +82,7 @@ struct ImportView: View {
                 if !googleAuth.isConnected {
                     try await googleAuth.signIn()
                 }
-                await startAsyncScan()
+                await startSplitScan()
             } catch GoogleAuthError.cancelled {
                 flowState = .intro
             } catch {
@@ -83,60 +91,79 @@ struct ImportView: View {
         }
     }
 
-    private func startAsyncScan() async {
-        flowState = .scanning(ScanProgress())
+    private func startSplitScan() async {
+        // Step 1: Scan Gmail
+        flowState = .scanningGmail
+
+        var gmailCandidates: [ImportCandidate] = []
+        var emailCount = 0
 
         do {
-            // Start the async job
-            let startResponse = try await APIClient.shared.startAsyncScan()
-            let progress = ScanProgress(jobId: startResponse.jobId, status: startResponse.status)
-            flowState = .scanning(progress)
-
-            // Start polling for status
-            pollTask = Task {
-                await pollJobStatus(jobId: startResponse.jobId)
-            }
+            let gmailResponse = try await APIClient.shared.scanGmail()
+            gmailCandidates = gmailResponse.candidates
+            emailCount = gmailResponse.scannedEmails
         } catch {
-            flowState = .error("Failed to start scan: \(error.localizedDescription)")
+            // Continue even if Gmail fails
+            print("[Import] Gmail scan failed: \(error)")
         }
+
+        // Step 2: Scan Calendar
+        flowState = .scanningCalendar(gmailCandidates: gmailCandidates, emailCount: emailCount)
+
+        var calendarCandidates: [ImportCandidate] = []
+        var eventCount = 0
+
+        do {
+            let calendarResponse = try await APIClient.shared.scanCalendar()
+            calendarCandidates = calendarResponse.candidates
+            eventCount = calendarResponse.scannedEvents
+        } catch {
+            // Continue even if Calendar fails
+            print("[Import] Calendar scan failed: \(error)")
+        }
+
+        // Step 3: Merge results
+        let mergedCandidates = mergeCandidates(gmail: gmailCandidates, calendar: calendarCandidates)
+
+        if mergedCandidates.isEmpty && emailCount == 0 && eventCount == 0 {
+            flowState = .error("Could not scan Gmail or Calendar. Please try again.")
+            return
+        }
+
+        selection.selectAll(from: mergedCandidates)
+        flowState = .reviewing(candidates: mergedCandidates, emailCount: emailCount, eventCount: eventCount)
     }
 
-    private func pollJobStatus(jobId: String) async {
-        let pollInterval: UInt64 = 1_500_000_000 // 1.5 seconds
+    private func mergeCandidates(gmail: [ImportCandidate], calendar: [ImportCandidate]) -> [ImportCandidate] {
+        var merged: [String: ImportCandidate] = [:]
 
-        while !Task.isCancelled {
-            do {
-                let status = try await APIClient.shared.getScanStatus(jobId: jobId)
+        // Add Gmail candidates
+        for candidate in gmail {
+            merged[candidate.countryCode] = candidate
+        }
 
-                // Update progress in UI
-                let progress = ScanProgress(
-                    jobId: jobId,
-                    status: status.status,
-                    progress: status.progress
+        // Merge Calendar candidates
+        for candidate in calendar {
+            if let existing = merged[candidate.countryCode] {
+                // Combine counts and samples
+                var combinedSamples = existing.sampleSources
+                combinedSamples.append(contentsOf: candidate.sampleSources.prefix(2))
+
+                merged[candidate.countryCode] = ImportCandidate(
+                    countryCode: candidate.countryCode,
+                    countryName: candidate.countryName,
+                    emailCount: existing.emailCount,
+                    calendarEventCount: candidate.calendarEventCount,
+                    sampleSources: combinedSamples,
+                    confidence: max(existing.confidence, candidate.confidence)
                 )
-                flowState = .scanning(progress)
-
-                // Check if done
-                if status.status == .completed {
-                    // Fetch results
-                    let results = try await APIClient.shared.getScanResults(jobId: jobId)
-                    selection.selectAll(from: results.candidates)
-                    flowState = .reviewing(results)
-                    return
-                } else if status.status == .failed {
-                    flowState = .error(status.errorMessage ?? "Scan failed")
-                    return
-                }
-
-                // Wait before next poll
-                try await Task.sleep(nanoseconds: pollInterval)
-            } catch {
-                if !Task.isCancelled {
-                    flowState = .error("Failed to check scan status: \(error.localizedDescription)")
-                }
-                return
+            } else {
+                merged[candidate.countryCode] = candidate
             }
         }
+
+        // Sort by total evidence
+        return merged.values.sorted { $0.totalSources > $1.totalSources }
     }
 
     private func confirmImport() {
@@ -162,10 +189,64 @@ struct ImportView: View {
 
                 try modelContext.save()
 
+                // Save last imported dates
+                let now = Date()
+                UserDefaults.standard.set(now, forKey: "lastGmailImport")
+                UserDefaults.standard.set(now, forKey: "lastCalendarImport")
+
                 flowState = .success(response.imported)
             } catch {
                 flowState = .error("Failed to import: \(error.localizedDescription)")
             }
+        }
+    }
+}
+
+// MARK: - Scan Progress View
+
+private struct ScanProgressView: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            ZStack {
+                Circle()
+                    .stroke(Color.blue.opacity(0.2), lineWidth: 4)
+                    .frame(width: 80, height: 80)
+
+                Circle()
+                    .trim(from: 0, to: 0.7)
+                    .stroke(Color.blue, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .frame(width: 80, height: 80)
+                    .rotationEffect(.degrees(-90))
+                    .modifier(RotatingModifier())
+
+                Image(systemName: icon)
+                    .font(.system(size: 30))
+                    .foregroundStyle(.blue)
+            }
+
+            VStack(spacing: 8) {
+                Text(title)
+                    .font(.headline)
+
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+            }
+
+            Spacer()
+
+            Text("This may take a minute for large mailboxes.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .padding(.bottom)
         }
     }
 }
@@ -404,14 +485,17 @@ private struct ImportSuccessView: View {
 
             Spacer()
 
-            Button("Done", action: onDone)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(12)
-                .padding(.horizontal)
-                .padding(.bottom)
+            Button(action: onDone) {
+                Text("Done")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+            }
+            .padding(.horizontal)
+            .padding(.bottom)
         }
     }
 }
