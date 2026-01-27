@@ -2,6 +2,7 @@ import Foundation
 import SwiftData
 
 /// Helper class for creating sample data for UI testing and screenshots
+@MainActor
 struct SampleDataHelper {
 
     /// Adds sample visited places to the container for attractive screenshots
