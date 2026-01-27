@@ -36,34 +36,20 @@ jobs:
 
     - name: Select Xcode 26
       run: |
-        # List available Xcode versions for debugging
-        ls -la /Applications/ | grep -i xcode || true
-
-        # Select Xcode 26 (required for iOS 26 SDK - Apple requirement as of April 2026)
-        if [ -d "/Applications/Xcode_26.app" ]; then
-          sudo xcode-select -s /Applications/Xcode_26.app/Contents/Developer
-        elif [ -d "/Applications/Xcode-26.app" ]; then
-          sudo xcode-select -s /Applications/Xcode-26.app/Contents/Developer
-        elif [ -d "/Applications/Xcode.app" ]; then
-          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-        fi
-
-        # Verify we have Xcode 26+
-        xcode-select -p
-        XCODE_VERSION=$(xcodebuild -version | head -1)
-        echo "Using: $XCODE_VERSION"
-
-        SDK_VERSION=$(xcrun --show-sdk-version --sdk iphoneos)
-        echo "iOS SDK: $SDK_VERSION"
-
-        # Fail if SDK is too old (requires iOS 26+)
-        if [[ ! "$SDK_VERSION" =~ ^26 ]]; then
-          echo "ERROR: iOS SDK 26+ required, but found $SDK_VERSION"
-          echo "The macos-latest runner may need to be updated."
+        # Find and select the latest Xcode 26.x
+        XCODE_PATH=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+        if [ -n "$XCODE_PATH" ]; then
+          echo "Found Xcode 26: $XCODE_PATH"
+          sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+        else
+          echo "ERROR: No Xcode 26.x found in /Applications"
+          ls -la /Applications/ | grep -i xcode
           exit 1
         fi
 
-        xcodebuild -showsdks | grep iOS || true
+        # Verify
+        xcodebuild -version
+        xcrun --show-sdk-version --sdk iphoneos
 
     - name: Install XcodeGen
       run: brew install xcodegen

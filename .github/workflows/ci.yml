@@ -119,22 +119,18 @@ jobs:
 
     - name: Select Xcode 26
       run: |
-        # List available Xcode versions for debugging
-        ls -la /Applications/ | grep -i xcode || true
-
-        # Select Xcode 26 (required for iOS 26 SDK)
-        if [ -d "/Applications/Xcode_26.app" ]; then
-          sudo xcode-select -s /Applications/Xcode_26.app/Contents/Developer
-        elif [ -d "/Applications/Xcode-26.app" ]; then
-          sudo xcode-select -s /Applications/Xcode-26.app/Contents/Developer
-        elif [ -d "/Applications/Xcode_26.0.app" ]; then
-          sudo xcode-select -s /Applications/Xcode_26.0.app/Contents/Developer
-        elif [ -d "/Applications/Xcode.app" ]; then
-          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+        # Find and select the latest Xcode 26.x
+        XCODE_PATH=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+        if [ -n "$XCODE_PATH" ]; then
+          echo "Found Xcode 26: $XCODE_PATH"
+          sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+        else
+          echo "ERROR: No Xcode 26.x found in /Applications"
+          ls -la /Applications/ | grep -i xcode
+          exit 1
         fi
 
-        # Verify Xcode version
-        xcode-select -p
+        # Verify
         xcodebuild -version
         xcrun --show-sdk-version --sdk iphoneos
 
