@@ -1,4 +1,5 @@
 import AuthenticationServices
+import CommonCrypto
 import SwiftUI
 
 @MainActor
@@ -85,20 +86,33 @@ class AuthManager: NSObject {
         let redirectUri = GoogleSignInConfig.redirectUri
         let scopes = GoogleSignInConfig.scopes.joined(separator: " ")
 
-        // Build OAuth URL
+        // Generate PKCE code verifier and challenge
+        let codeVerifier = generateCodeVerifier()
+        let codeChallenge = generateCodeChallenge(from: codeVerifier)
+
+        // Build OAuth URL with PKCE
         var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
         components.queryItems = [
             URLQueryItem(name: "client_id", value: clientId),
             URLQueryItem(name: "redirect_uri", value: redirectUri),
-            URLQueryItem(name: "response_type", value: "id_token"),
+            URLQueryItem(name: "response_type", value: "code"),
             URLQueryItem(name: "scope", value: scopes),
-            URLQueryItem(name: "nonce", value: UUID().uuidString)
+            URLQueryItem(name: "code_challenge", value: codeChallenge),
+            URLQueryItem(name: "code_challenge_method", value: "S256")
         ]
 
         guard let authURL = components.url else {
             throw GoogleSignInError.invalidURL
         }
 
+        // Get authorization code
+        let authCode = try await getAuthorizationCode(from: authURL)
+
+        // Exchange code for tokens using PKCE
+        return try await exchangeCodeForIdToken(authCode: authCode, codeVerifier: codeVerifier)
+    }
+
+    private func getAuthorizationCode(from authURL: URL) async throws -> String {
         return try await withCheckedThrowingContinuation { continuation in
             let session = ASWebAuthenticationSession(
                 url: authURL,
@@ -120,16 +134,14 @@ class AuthManager: NSObject {
                 }
 
                 guard let callbackURL = callbackURL,
-                      let fragment = callbackURL.fragment,
-                      let idToken = fragment.components(separatedBy: "&")
-                          .first(where: { $0.hasPrefix("id_token=") })?
-                          .replacingOccurrences(of: "id_token=", with: "")
+                      let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
+                      let code = components.queryItems?.first(where: { $0.name == "code" })?.value
                 else {
                     continuation.resume(throwing: GoogleSignInError.noIdToken)
                     return
                 }
 
-                continuation.resume(returning: idToken)
+                continuation.resume(returning: code)
             }
 
             session.presentationContextProvider = self
@@ -143,6 +155,62 @@ class AuthManager: NSObject {
                 continuation.resume(throwing: GoogleSignInError.sessionFailed)
             }
         }
+    }
+
+    private func exchangeCodeForIdToken(authCode: String, codeVerifier: String) async throws -> String {
+        let tokenURL = URL(string: "https://oauth2.googleapis.com/token")!
+
+        var request = URLRequest(url: tokenURL)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+
+        let bodyParams = [
+            "client_id": GoogleSignInConfig.clientId,
+            "code": authCode,
+            "code_verifier": codeVerifier,
+            "grant_type": "authorization_code",
+            "redirect_uri": GoogleSignInConfig.redirectUri
+        ]
+
+        request.httpBody = bodyParams
+            .map { "\($0.key)=\($0.value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? $0.value)" }
+            .joined(separator: "&")
+            .data(using: .utf8)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw GoogleSignInError.tokenExchangeFailed(errorBody)
+        }
+
+        struct TokenResponse: Decodable {
+            let id_token: String
+        }
+
+        let tokenResponse = try JSONDecoder().decode(TokenResponse.self, from: data)
+        return tokenResponse.id_token
+    }
+
+    private func generateCodeVerifier() -> String {
+        var buffer = [UInt8](repeating: 0, count: 32)
+        _ = SecRandomCopyBytes(kSecRandomDefault, buffer.count, &buffer)
+        return Data(buffer).base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
+
+    private func generateCodeChallenge(from verifier: String) -> String {
+        guard let data = verifier.data(using: .utf8) else { return "" }
+        var hash = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
+        data.withUnsafeBytes {
+            _ = CC_SHA256($0.baseAddress, CC_LONG(data.count), &hash)
+        }
+        return Data(hash).base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 
     func signOut() async {
@@ -253,6 +321,7 @@ enum GoogleSignInError: LocalizedError {
     case invalidURL
     case noIdToken
     case sessionFailed
+    case tokenExchangeFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -264,6 +333,8 @@ enum GoogleSignInError: LocalizedError {
             return "Failed to get ID token"
         case .sessionFailed:
             return "Failed to start authentication session"
+        case .tokenExchangeFailed(let details):
+            return "Token exchange failed: \(details)"
         }
     }
 }
