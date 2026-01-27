@@ -317,79 +317,89 @@ api_gateway_permission = aws.lambda_.Permission(
 # Custom Domain (footprintmaps.com)
 # =============================================================================
 
+# Cross-account domain setup:
+# - Domain + Hosted Zone: default account (954800154782)
+# - Infrastructure (Lambda, API GW, etc.): personal account (383757231925)
+#
+# Set enable_custom_domain=true to create certificates and custom domains
+# DNS records must be created manually in the default account's hosted zone
+enable_custom_domain = config.get_bool("enable_custom_domain") or False
+
 domain_name = config.get("domain_name") or "footprintmaps.com"
 api_subdomain = f"api.{domain_name}"
 
-# Get the hosted zone (created automatically with domain registration)
-hosted_zone = aws.route53.get_zone(name=domain_name)
+# Note: hosted_zone is in a DIFFERENT account, so we can't manage DNS records from here
+# DNS records must be added manually or via a separate Pulumi stack in the default account
+hosted_zone = None  # Cross-account - cannot access from here
 
 # ACM Certificate for the domain (regional, for API Gateway)
-certificate = aws.acm.Certificate(
-    resource_name("certificate"),
-    domain_name=domain_name,
-    subject_alternative_names=[f"*.{domain_name}"],
-    validation_method="DNS",
-    tags=common_tags,
-)
+# Note: DNS validation records must be added manually to the hosted zone in the default account
+certificate = None
+cert_validation = None
 
-# DNS validation record (same record validates both domain and wildcard)
-cert_validation_record = aws.route53.Record(
-    resource_name("cert-validation-record"),
-    zone_id=hosted_zone.zone_id,
-    name=certificate.domain_validation_options[0].resource_record_name,
-    type=certificate.domain_validation_options[0].resource_record_type,
-    records=[certificate.domain_validation_options[0].resource_record_value],
-    ttl=300,
-    allow_overwrite=True,
-    opts=ResourceOptions(depends_on=[certificate]),
-)
+if enable_custom_domain:
+    certificate = aws.acm.Certificate(
+        resource_name("certificate"),
+        domain_name=domain_name,
+        subject_alternative_names=[f"*.{domain_name}"],
+        validation_method="DNS",
+        tags=common_tags,
+    )
 
-# Wait for certificate validation
-cert_validation = aws.acm.CertificateValidation(
-    resource_name("cert-validation"),
-    certificate_arn=certificate.arn,
-    validation_record_fqdns=[cert_validation_record.fqdn],
-)
+    # Export validation records for manual addition to default account's hosted zone
+    export(
+        "cert_validation_name",
+        certificate.domain_validation_options[0].resource_record_name,
+    )
+    export(
+        "cert_validation_type",
+        certificate.domain_validation_options[0].resource_record_type,
+    )
+    export(
+        "cert_validation_value",
+        certificate.domain_validation_options[0].resource_record_value,
+    )
+
+    # Certificate validation - will succeed once DNS records are added to default account
+    cert_validation = aws.acm.CertificateValidation(
+        resource_name("cert-validation"),
+        certificate_arn=certificate.arn,
+    )
 
 # =============================================================================
 # API Gateway Custom Domain (api.footprintmaps.com)
 # =============================================================================
 
-# API Gateway custom domain - now on api subdomain
-api_domain = aws.apigatewayv2.DomainName(
-    resource_name("api-domain"),
-    domain_name=api_subdomain,
-    domain_name_configuration=aws.apigatewayv2.DomainNameDomainNameConfigurationArgs(
-        certificate_arn=cert_validation.certificate_arn,
-        endpoint_type="REGIONAL",
-        security_policy="TLS_1_2",
-    ),
-    tags=common_tags,
-)
+api_domain = None
+api_mapping = None
 
-# API mapping to connect domain to API (no path prefix needed now)
-api_mapping = aws.apigatewayv2.ApiMapping(
-    resource_name("api-mapping"),
-    api_id=api_gateway.id,
-    domain_name=api_domain.domain_name,
-    stage=api_stage.name,
-    # No api_mapping_key - API is at root of api.footprintmaps.com
-)
+if enable_custom_domain and cert_validation:
+    # API Gateway custom domain - now on api subdomain
+    api_domain = aws.apigatewayv2.DomainName(
+        resource_name("api-domain"),
+        domain_name=api_subdomain,
+        domain_name_configuration=aws.apigatewayv2.DomainNameDomainNameConfigurationArgs(
+            certificate_arn=cert_validation.certificate_arn,
+            endpoint_type="REGIONAL",
+            security_policy="TLS_1_2",
+        ),
+        tags=common_tags,
+    )
 
-# Route53 A record for API subdomain
-api_dns_record = aws.route53.Record(
-    resource_name("api-dns"),
-    zone_id=hosted_zone.zone_id,
-    name=api_subdomain,
-    type="A",
-    aliases=[
-        aws.route53.RecordAliasArgs(
-            name=api_domain.domain_name_configuration.target_domain_name,
-            zone_id=api_domain.domain_name_configuration.hosted_zone_id,
-            evaluate_target_health=False,
-        )
-    ],
-)
+    # API mapping to connect domain to API (no path prefix needed now)
+    api_mapping = aws.apigatewayv2.ApiMapping(
+        resource_name("api-mapping"),
+        api_id=api_gateway.id,
+        domain_name=api_domain.domain_name,
+        stage=api_stage.name,
+        # No api_mapping_key - API is at root of api.footprintmaps.com
+    )
+
+    # Export API domain target for manual DNS record in default account
+    export("api_domain_target", api_domain.domain_name_configuration.target_domain_name)
+    export(
+        "api_domain_hosted_zone_id", api_domain.domain_name_configuration.hosted_zone_id
+    )
 
 # =============================================================================
 # Marketing Website (footprintmaps.com) - S3 + CloudFront
@@ -435,136 +445,132 @@ website_oac = aws.cloudfront.OriginAccessControl(
 
 # ACM Certificate for CloudFront (must be in us-east-1)
 # Note: Using the same certificate since we're already in us-east-1
-cloudfront_certificate = aws.acm.Certificate(
-    resource_name("cf-certificate"),
-    domain_name=domain_name,
-    validation_method="DNS",
-    tags=common_tags,
-    opts=ResourceOptions(
-        provider=aws.Provider("us-east-1-provider", region="us-east-1")
-    ),
-)
+cloudfront_certificate = None
+cf_cert_validation = None
+website_distribution = None
+website_bucket_policy = None
 
-# DNS validation for CloudFront cert
-cf_cert_validation_record = aws.route53.Record(
-    resource_name("cf-cert-validation-record"),
-    zone_id=hosted_zone.zone_id,
-    name=cloudfront_certificate.domain_validation_options[0].resource_record_name,
-    type=cloudfront_certificate.domain_validation_options[0].resource_record_type,
-    records=[cloudfront_certificate.domain_validation_options[0].resource_record_value],
-    ttl=300,
-    allow_overwrite=True,
-    opts=ResourceOptions(depends_on=[cloudfront_certificate]),
-)
-
-cf_cert_validation = aws.acm.CertificateValidation(
-    resource_name("cf-cert-validation"),
-    certificate_arn=cloudfront_certificate.arn,
-    validation_record_fqdns=[cf_cert_validation_record.fqdn],
-    opts=ResourceOptions(
-        provider=aws.Provider("us-east-1-provider-validation", region="us-east-1")
-    ),
-)
-
-# CloudFront distribution for marketing website
-website_distribution = aws.cloudfront.Distribution(
-    resource_name("website-cdn"),
-    enabled=True,
-    is_ipv6_enabled=True,
-    default_root_object="index.html",
-    aliases=[domain_name],
-    origins=[
-        aws.cloudfront.DistributionOriginArgs(
-            domain_name=website_bucket.bucket_regional_domain_name,
-            origin_id="S3Origin",
-            origin_access_control_id=website_oac.id,
+if enable_custom_domain:
+    cloudfront_certificate = aws.acm.Certificate(
+        resource_name("cf-certificate"),
+        domain_name=domain_name,
+        validation_method="DNS",
+        tags=common_tags,
+        opts=ResourceOptions(
+            provider=aws.Provider("us-east-1-provider", region="us-east-1")
         ),
-    ],
-    default_cache_behavior=aws.cloudfront.DistributionDefaultCacheBehaviorArgs(
-        allowed_methods=["GET", "HEAD", "OPTIONS"],
-        cached_methods=["GET", "HEAD"],
-        target_origin_id="S3Origin",
-        viewer_protocol_policy="redirect-to-https",
-        compress=True,
-        forwarded_values=aws.cloudfront.DistributionDefaultCacheBehaviorForwardedValuesArgs(
-            query_string=False,
-            cookies=aws.cloudfront.DistributionDefaultCacheBehaviorForwardedValuesCookiesArgs(
-                forward="none",
+    )
+
+    # Export CloudFront cert validation records for manual addition to default account
+    export(
+        "cf_cert_validation_name",
+        cloudfront_certificate.domain_validation_options[0].resource_record_name,
+    )
+    export(
+        "cf_cert_validation_type",
+        cloudfront_certificate.domain_validation_options[0].resource_record_type,
+    )
+    export(
+        "cf_cert_validation_value",
+        cloudfront_certificate.domain_validation_options[0].resource_record_value,
+    )
+
+    cf_cert_validation = aws.acm.CertificateValidation(
+        resource_name("cf-cert-validation"),
+        certificate_arn=cloudfront_certificate.arn,
+        opts=ResourceOptions(
+            provider=aws.Provider("us-east-1-provider-validation", region="us-east-1")
+        ),
+    )
+
+    # CloudFront distribution for marketing website
+    website_distribution = aws.cloudfront.Distribution(
+        resource_name("website-cdn"),
+        enabled=True,
+        is_ipv6_enabled=True,
+        default_root_object="index.html",
+        aliases=[domain_name],
+        origins=[
+            aws.cloudfront.DistributionOriginArgs(
+                domain_name=website_bucket.bucket_regional_domain_name,
+                origin_id="S3Origin",
+                origin_access_control_id=website_oac.id,
+            ),
+        ],
+        default_cache_behavior=aws.cloudfront.DistributionDefaultCacheBehaviorArgs(
+            allowed_methods=["GET", "HEAD", "OPTIONS"],
+            cached_methods=["GET", "HEAD"],
+            target_origin_id="S3Origin",
+            viewer_protocol_policy="redirect-to-https",
+            compress=True,
+            forwarded_values=aws.cloudfront.DistributionDefaultCacheBehaviorForwardedValuesArgs(
+                query_string=False,
+                cookies=aws.cloudfront.DistributionDefaultCacheBehaviorForwardedValuesCookiesArgs(
+                    forward="none",
+                ),
+            ),
+            min_ttl=0,
+            default_ttl=86400,
+            max_ttl=31536000,
+        ),
+        custom_error_responses=[
+            # SPA routing - return index.html for 404s
+            aws.cloudfront.DistributionCustomErrorResponseArgs(
+                error_code=404,
+                response_code=200,
+                response_page_path="/index.html",
+            ),
+            aws.cloudfront.DistributionCustomErrorResponseArgs(
+                error_code=403,
+                response_code=200,
+                response_page_path="/index.html",
+            ),
+        ],
+        restrictions=aws.cloudfront.DistributionRestrictionsArgs(
+            geo_restriction=aws.cloudfront.DistributionRestrictionsGeoRestrictionArgs(
+                restriction_type="none",
             ),
         ),
-        min_ttl=0,
-        default_ttl=86400,
-        max_ttl=31536000,
-    ),
-    custom_error_responses=[
-        # SPA routing - return index.html for 404s
-        aws.cloudfront.DistributionCustomErrorResponseArgs(
-            error_code=404,
-            response_code=200,
-            response_page_path="/index.html",
+        viewer_certificate=aws.cloudfront.DistributionViewerCertificateArgs(
+            acm_certificate_arn=cf_cert_validation.certificate_arn,
+            ssl_support_method="sni-only",
+            minimum_protocol_version="TLSv1.2_2021",
         ),
-        aws.cloudfront.DistributionCustomErrorResponseArgs(
-            error_code=403,
-            response_code=200,
-            response_page_path="/index.html",
-        ),
-    ],
-    restrictions=aws.cloudfront.DistributionRestrictionsArgs(
-        geo_restriction=aws.cloudfront.DistributionRestrictionsGeoRestrictionArgs(
-            restriction_type="none",
-        ),
-    ),
-    viewer_certificate=aws.cloudfront.DistributionViewerCertificateArgs(
-        acm_certificate_arn=cf_cert_validation.certificate_arn,
-        ssl_support_method="sni-only",
-        minimum_protocol_version="TLSv1.2_2021",
-    ),
-    tags=common_tags,
-)
+        tags=common_tags,
+    )
 
-# S3 bucket policy to allow CloudFront access
-website_bucket_policy = aws.s3.BucketPolicy(
-    resource_name("website-policy"),
-    bucket=website_bucket.id,
-    policy=pulumi.Output.all(website_bucket.arn, website_distribution.arn).apply(
-        lambda args: json.dumps(
-            {
-                "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Sid": "AllowCloudFrontServicePrincipal",
-                        "Effect": "Allow",
-                        "Principal": {"Service": "cloudfront.amazonaws.com"},
-                        "Action": "s3:GetObject",
-                        "Resource": f"{args[0]}/*",
-                        "Condition": {"StringEquals": {"AWS:SourceArn": args[1]}},
-                    }
-                ],
-            }
-        )
-    ),
-)
+    # S3 bucket policy to allow CloudFront access
+    website_bucket_policy = aws.s3.BucketPolicy(
+        resource_name("website-policy"),
+        bucket=website_bucket.id,
+        policy=pulumi.Output.all(website_bucket.arn, website_distribution.arn).apply(
+            lambda args: json.dumps(
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "AllowCloudFrontServicePrincipal",
+                            "Effect": "Allow",
+                            "Principal": {"Service": "cloudfront.amazonaws.com"},
+                            "Action": "s3:GetObject",
+                            "Resource": f"{args[0]}/*",
+                            "Condition": {"StringEquals": {"AWS:SourceArn": args[1]}},
+                        }
+                    ],
+                }
+            )
+        ),
+    )
 
-# Route53 A record for main domain pointing to CloudFront
-website_dns_record = aws.route53.Record(
-    resource_name("website-dns"),
-    zone_id=hosted_zone.zone_id,
-    name=domain_name,
-    type="A",
-    allow_overwrite=True,
-    aliases=[
-        aws.route53.RecordAliasArgs(
-            name=website_distribution.domain_name,
-            zone_id=website_distribution.hosted_zone_id,
-            evaluate_target_health=False,
-        )
-    ],
-)
+    # Export CloudFront domain for manual DNS record in default account
+    export("cloudfront_domain_name", website_distribution.domain_name)
+    export("cloudfront_hosted_zone_id", website_distribution.hosted_zone_id)
 
 # =============================================================================
 # Exports
 # =============================================================================
 
+# Core infrastructure exports
 export("dynamodb_table_name", dynamodb_table.name)
 export("dynamodb_table_arn", dynamodb_table.arn)
 export("geo_data_bucket_name", geo_data_bucket.bucket)
@@ -573,15 +579,33 @@ export("lambda_function_name", api_lambda.name)
 export("lambda_function_arn", api_lambda.arn)
 export("api_gateway_id", api_gateway.id)
 export("api_url", api_stage.invoke_url)
-export("api_domain_url", pulumi.Output.concat("https://", api_subdomain))
 export("website_bucket_name", website_bucket.bucket)
-export("website_url", pulumi.Output.concat("https://", domain_name))
-export("cloudfront_distribution_id", website_distribution.id)
 export("environment", environment)
 export("app_name", app_name)
+export("custom_domain_enabled", enable_custom_domain)
+
+# Domain-dependent exports (only when custom domain is enabled)
+if enable_custom_domain and website_distribution:
+    export("api_domain_url", pulumi.Output.concat("https://", api_subdomain))
+    export("website_url", pulumi.Output.concat("https://", domain_name))
+    export("cloudfront_distribution_id", website_distribution.id)
+else:
+    export("api_domain_url", api_stage.invoke_url)  # Use API Gateway URL directly
+    export(
+        "website_url",
+        website_bucket.website_endpoint.apply(lambda e: f"http://{e}" if e else "N/A"),
+    )
 
 # Output deployment information
 pulumi.log.info(f"Deploying Footprint infrastructure for environment: {environment}")
 pulumi.log.info(f"DynamoDB Table: {resource_name('table')}")
-pulumi.log.info(f"API will be available at: https://{api_subdomain}")
-pulumi.log.info(f"Website will be available at: https://{domain_name}")
+if enable_custom_domain:
+    pulumi.log.info(f"API will be available at: https://{api_subdomain}")
+    pulumi.log.info(f"Website will be available at: https://{domain_name}")
+    pulumi.log.info("")
+    pulumi.log.info("=== MANUAL DNS SETUP REQUIRED ===")
+    pulumi.log.info("Add these records to the hosted zone in the DEFAULT AWS account:")
+    pulumi.log.info("See Pulumi outputs for cert_validation_* and cloudfront_* values")
+else:
+    pulumi.log.info("Custom domain DISABLED - using default AWS URLs")
+    pulumi.log.info("Enable with: pulumi config set enable_custom_domain true")
