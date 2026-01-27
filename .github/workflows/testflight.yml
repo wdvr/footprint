@@ -268,7 +268,19 @@ jobs:
         echo "Getting TestFlight beta groups..."
         GROUPS_RESPONSE=$(curl -g -s -H "Authorization: Bearer $JWT" \
           "https://api.appstoreconnect.apple.com/v1/apps/$APP_ID/betaGroups")
-        echo "Beta groups response: $GROUPS_RESPONSE"
+
+        # Check if any groups exist
+        GROUP_COUNT=$(echo "$GROUPS_RESPONSE" | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('data', [])))" 2>/dev/null || echo "0")
+        echo "Found $GROUP_COUNT beta group(s)"
+
+        if [ "$GROUP_COUNT" = "0" ]; then
+          echo "WARNING: No beta groups found!"
+          echo "Please create a beta group in App Store Connect:"
+          echo "  1. Go to App Store Connect > Footprint > TestFlight"
+          echo "  2. Create an internal testing group"
+          echo "  3. Add yourself as a tester"
+          echo "Build is uploaded but NOT distributed to any testers."
+        fi
 
         # Add build to all internal beta groups (isInternalGroup = true)
         echo "$GROUPS_RESPONSE" | python3 -c "
@@ -282,7 +294,7 @@ jobs:
         " 2>/dev/null | while IFS='|' read -r GROUP_ID GROUP_NAME; do
           if [ -n "$GROUP_ID" ]; then
             echo "Adding build to internal group: $GROUP_NAME ($GROUP_ID)"
-            curl -s -X POST \
+            curl -g -s -X POST \
               -H "Authorization: Bearer $JWT" \
               -H "Content-Type: application/json" \
               -d "{\"data\":[{\"type\":\"builds\",\"id\":\"$BUILD_ID\"}]}" \
