@@ -237,6 +237,7 @@ actor APIClient {
         let regionType: String
         let regionCode: String
         let regionName: String
+        let status: String?
         let visitedDate: Date?
         let notes: String?
         let createdAt: Date
@@ -285,6 +286,7 @@ actor APIClient {
         let regionType: String
         let regionCode: String
         let regionName: String
+        let status: String
         let isDeleted: Bool
         let lastModifiedAt: Date
     }

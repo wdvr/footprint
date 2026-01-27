@@ -533,14 +533,42 @@ struct WorldMapView: View {
     private var visitedCountryCodes: Set<String> {
         Set(
             visitedPlaces
-                .filter { $0.regionType == VisitedPlace.RegionType.country.rawValue && !$0.isDeleted }
+                .filter {
+                    $0.regionType == VisitedPlace.RegionType.country.rawValue
+                        && !$0.isDeleted
+                        && $0.isVisited
+                }
+                .map { $0.regionCode }
+        )
+    }
+
+    private var bucketListCountryCodes: Set<String> {
+        Set(
+            visitedPlaces
+                .filter {
+                    $0.regionType == VisitedPlace.RegionType.country.rawValue
+                        && !$0.isDeleted
+                        && $0.isBucketList
+                }
                 .map { $0.regionCode }
         )
     }
 
     private var visitedStateCodes: Set<String> {
         var codes: Set<String> = []
-        for place in visitedPlaces where !place.isDeleted {
+        for place in visitedPlaces where !place.isDeleted && place.isVisited {
+            if place.regionType == VisitedPlace.RegionType.usState.rawValue {
+                codes.insert("US-\(place.regionCode)")
+            } else if place.regionType == VisitedPlace.RegionType.canadianProvince.rawValue {
+                codes.insert("CA-\(place.regionCode)")
+            }
+        }
+        return codes
+    }
+
+    private var bucketListStateCodes: Set<String> {
+        var codes: Set<String> = []
+        for place in visitedPlaces where !place.isDeleted && place.isBucketList {
             if place.regionType == VisitedPlace.RegionType.usState.rawValue {
                 codes.insert("US-\(place.regionCode)")
             } else if place.regionType == VisitedPlace.RegionType.canadianProvince.rawValue {
@@ -558,6 +586,20 @@ struct WorldMapView: View {
     private var isSelectedCountryVisited: Bool {
         guard let code = selectedCountry else { return false }
         return visitedCountryCodes.contains(code)
+    }
+
+    private var isSelectedCountryBucketList: Bool {
+        guard let code = selectedCountry else { return false }
+        return bucketListCountryCodes.contains(code)
+    }
+
+    private var selectedCountryPlace: VisitedPlace? {
+        guard let code = selectedCountry else { return nil }
+        return visitedPlaces.first {
+            $0.regionType == VisitedPlace.RegionType.country.rawValue
+                && $0.regionCode == code
+                && !$0.isDeleted
+        }
     }
 
     private func visitedStateCodes(for countryCode: String) -> Set<String> {
@@ -581,7 +623,9 @@ struct WorldMapView: View {
                     // Use the new CountryMapView with boundary overlays
                     CountryMapView(
                         visitedCountryCodes: visitedCountryCodes,
+                        bucketListCountryCodes: bucketListCountryCodes,
                         visitedStateCodes: visitedStateCodes,
+                        bucketListStateCodes: bucketListStateCodes,
                         selectedCountry: $selectedCountry,
                         centerOnUserLocation: $centerOnUserLocation,
                         onCountryTapped: { countryCode in
@@ -601,11 +645,27 @@ struct WorldMapView: View {
                         Spacer()
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("\(visitedCountryCodes.count) countries")
-                                    .font(.headline)
-                                Text("\(visitedPlaces.count) total places")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                HStack(spacing: 12) {
+                                    HStack(spacing: 4) {
+                                        Circle()
+                                            .fill(.green)
+                                            .frame(width: 8, height: 8)
+                                        Text("\(visitedCountryCodes.count)")
+                                            .font(.headline)
+                                    }
+                                    if !bucketListCountryCodes.isEmpty {
+                                        HStack(spacing: 4) {
+                                            Circle()
+                                                .fill(.orange)
+                                                .frame(width: 8, height: 8)
+                                            Text("\(bucketListCountryCodes.count)")
+                                                .font(.headline)
+                                        }
+                                    }
+                                    Text("countries")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                             .padding()
                             .background(.ultraThinMaterial)
@@ -655,8 +715,15 @@ struct WorldMapView: View {
                     CountryInfoPopup(
                         country: country,
                         isVisited: isSelectedCountryVisited,
-                        onToggle: {
-                            toggleCountryVisited(country)
+                        isBucketList: isSelectedCountryBucketList,
+                        onMarkVisited: {
+                            setCountryStatus(country, status: .visited)
+                        },
+                        onMarkBucketList: {
+                            setCountryStatus(country, status: .bucketList)
+                        },
+                        onRemove: {
+                            removeCountry(country)
                         },
                         onDismiss: {
                             showingCountryPopup = false
@@ -667,7 +734,7 @@ struct WorldMapView: View {
                             showingStateMap = true
                         } : nil
                     )
-                    .presentationDetents([.height(country.hasStates ? 280 : 200)])
+                    .presentationDetents([.height(country.hasStates ? 350 : 280)])
                     .presentationDragIndicator(.visible)
                 } else if let code = selectedCountry {
                     // Territory or region not in our country list (e.g., French Guiana, Greenland)
@@ -706,6 +773,40 @@ struct WorldMapView: View {
                     )
                 }
             }
+        }
+    }
+
+    private func setCountryStatus(_ country: Country, status: VisitedPlace.PlaceStatus) {
+        if let existingPlace = visitedPlaces.first(where: {
+            $0.regionType == VisitedPlace.RegionType.country.rawValue
+                && $0.regionCode == country.id
+                && !$0.isDeleted
+        }) {
+            // Update existing place status
+            existingPlace.status = status.rawValue
+            existingPlace.lastModifiedAt = Date()
+            existingPlace.isSynced = false
+        } else {
+            // Create new place with the status
+            let place = VisitedPlace(
+                regionType: .country,
+                regionCode: country.id,
+                regionName: country.name,
+                status: status
+            )
+            modelContext.insert(place)
+        }
+    }
+
+    private func removeCountry(_ country: Country) {
+        if let place = visitedPlaces.first(where: {
+            $0.regionType == VisitedPlace.RegionType.country.rawValue
+                && $0.regionCode == country.id
+                && !$0.isDeleted
+        }) {
+            place.isDeleted = true
+            place.lastModifiedAt = Date()
+            place.isSynced = false
         }
     }
 
@@ -809,9 +910,16 @@ struct WorldMapView: View {
 struct CountryInfoPopup: View {
     let country: Country
     let isVisited: Bool
-    let onToggle: () -> Void
+    let isBucketList: Bool
+    let onMarkVisited: () -> Void
+    let onMarkBucketList: () -> Void
+    let onRemove: () -> Void
     let onDismiss: () -> Void
     var onViewStates: (() -> Void)?
+
+    private var hasStatus: Bool {
+        isVisited || isBucketList
+    }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -833,24 +941,75 @@ struct CountryInfoPopup: View {
                 }
             }
 
-            // Toggle Button
-            Button(action: {
-                onToggle()
-                onDismiss()
-            }) {
-                HStack {
-                    Image(systemName: isVisited ? "checkmark.circle.fill" : "circle")
-                        .font(.title2)
-                    Text(isVisited ? "Visited" : "Mark as Visited")
-                        .font(.headline)
-                    Spacer()
+            // Status Buttons
+            VStack(spacing: 8) {
+                // Mark as Visited Button
+                Button(action: {
+                    onMarkVisited()
+                    onDismiss()
+                }) {
+                    HStack {
+                        Image(systemName: isVisited ? "checkmark.circle.fill" : "checkmark.circle")
+                            .font(.title2)
+                        Text("Visited")
+                            .font(.headline)
+                        Spacer()
+                        if isVisited {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(.green)
+                        }
+                    }
+                    .padding()
+                    .background(isVisited ? Color.green.opacity(0.2) : Color.secondary.opacity(0.1))
+                    .foregroundStyle(isVisited ? .green : .primary)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .padding()
-                .background(isVisited ? Color.green.opacity(0.2) : Color.secondary.opacity(0.1))
-                .foregroundStyle(isVisited ? .green : .primary)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .buttonStyle(.plain)
+
+                // Mark as Bucket List Button
+                Button(action: {
+                    onMarkBucketList()
+                    onDismiss()
+                }) {
+                    HStack {
+                        Image(systemName: isBucketList ? "star.circle.fill" : "star.circle")
+                            .font(.title2)
+                        Text("Bucket List")
+                            .font(.headline)
+                        Spacer()
+                        if isBucketList {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                    .padding()
+                    .background(isBucketList ? Color.orange.opacity(0.2) : Color.secondary.opacity(0.1))
+                    .foregroundStyle(isBucketList ? .orange : .primary)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+
+                // Remove Button (only show if has status)
+                if hasStatus {
+                    Button(action: {
+                        onRemove()
+                        onDismiss()
+                    }) {
+                        HStack {
+                            Image(systemName: "xmark.circle")
+                                .font(.title2)
+                            Text("Remove")
+                                .font(.headline)
+                            Spacer()
+                        }
+                        .padding()
+                        .background(Color.red.opacity(0.1))
+                        .foregroundStyle(.red)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-            .buttonStyle(.plain)
 
             // View States/Provinces button for US and Canada
             if country.hasStates, let onViewStates = onViewStates {
@@ -1621,17 +1780,50 @@ struct StatsView: View {
     @ScaledMetric(relativeTo: .largeTitle) private var globeSize: CGFloat = 60
     @ScaledMetric(relativeTo: .title) private var totalCountSize: CGFloat = 48
 
-    private var countriesCount: Int {
-        visitedPlaces.filter { $0.regionType == VisitedPlace.RegionType.country.rawValue }.count
+    // Visited counts (only status = visited)
+    private var countriesVisitedCount: Int {
+        visitedPlaces.filter {
+            $0.regionType == VisitedPlace.RegionType.country.rawValue && $0.isVisited
+        }.count
     }
 
-    private var usStatesCount: Int {
-        visitedPlaces.filter { $0.regionType == VisitedPlace.RegionType.usState.rawValue }.count
+    private var usStatesVisitedCount: Int {
+        visitedPlaces.filter {
+            $0.regionType == VisitedPlace.RegionType.usState.rawValue && $0.isVisited
+        }.count
     }
 
-    private var canadianProvincesCount: Int {
-        visitedPlaces.filter { $0.regionType == VisitedPlace.RegionType.canadianProvince.rawValue }
-            .count
+    private var canadianProvincesVisitedCount: Int {
+        visitedPlaces.filter {
+            $0.regionType == VisitedPlace.RegionType.canadianProvince.rawValue && $0.isVisited
+        }.count
+    }
+
+    // Bucket list counts
+    private var countriesBucketListCount: Int {
+        visitedPlaces.filter {
+            $0.regionType == VisitedPlace.RegionType.country.rawValue && $0.isBucketList
+        }.count
+    }
+
+    private var usStatesBucketListCount: Int {
+        visitedPlaces.filter {
+            $0.regionType == VisitedPlace.RegionType.usState.rawValue && $0.isBucketList
+        }.count
+    }
+
+    private var canadianProvincesBucketListCount: Int {
+        visitedPlaces.filter {
+            $0.regionType == VisitedPlace.RegionType.canadianProvince.rawValue && $0.isBucketList
+        }.count
+    }
+
+    private var totalVisited: Int {
+        countriesVisitedCount + usStatesVisitedCount + canadianProvincesVisitedCount
+    }
+
+    private var totalBucketList: Int {
+        countriesBucketListCount + usStatesBucketListCount + canadianProvincesBucketListCount
     }
 
     var body: some View {
@@ -1651,25 +1843,25 @@ struct StatsView: View {
                     }
                     .padding(.top, 20)
 
-                    // Stats Cards
+                    // Visited Stats Cards
                     VStack(spacing: 16) {
                         StatCard(
-                            title: "Countries",
-                            count: countriesCount,
+                            title: "Countries Visited",
+                            count: countriesVisitedCount,
                             total: GeographicData.countries.count,
                             icon: "flag.fill",
                             color: .green
                         )
                         StatCard(
-                            title: "US States",
-                            count: usStatesCount,
+                            title: "US States Visited",
+                            count: usStatesVisitedCount,
                             total: GeographicData.usStates.count,
                             icon: "star.fill",
                             color: .blue
                         )
                         StatCard(
-                            title: "Canadian Provinces",
-                            count: canadianProvincesCount,
+                            title: "Canadian Provinces Visited",
+                            count: canadianProvincesVisitedCount,
                             total: GeographicData.canadianProvinces.count,
                             icon: "leaf.fill",
                             color: .red
@@ -1677,11 +1869,11 @@ struct StatsView: View {
                     }
                     .padding(.horizontal)
 
-                    // Total
+                    // Total Visited
                     VStack(spacing: 4) {
-                        Text("\(countriesCount + usStatesCount + canadianProvincesCount)")
+                        Text("\(totalVisited)")
                             .font(.system(size: totalCountSize, weight: .bold))
-                            .foregroundStyle(.tint)
+                            .foregroundStyle(.green)
 
                         Text("Total Regions Visited")
                             .font(.subheadline)
@@ -1689,13 +1881,70 @@ struct StatsView: View {
                     }
                     .padding(.top, 8)
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Total regions visited: \(countriesCount + usStatesCount + canadianProvincesCount)")
+                    .accessibilityLabel("Total regions visited: \(totalVisited)")
+
+                    // Bucket List Section
+                    if totalBucketList > 0 {
+                        Divider()
+                            .padding(.horizontal)
+
+                        VStack(spacing: 16) {
+                            Text("Bucket List")
+                                .font(.headline)
+                                .foregroundStyle(.orange)
+
+                            HStack(spacing: 24) {
+                                BucketListStat(
+                                    title: "Countries",
+                                    count: countriesBucketListCount,
+                                    icon: "flag"
+                                )
+                                BucketListStat(
+                                    title: "States",
+                                    count: usStatesBucketListCount,
+                                    icon: "star"
+                                )
+                                BucketListStat(
+                                    title: "Provinces",
+                                    count: canadianProvincesBucketListCount,
+                                    icon: "leaf"
+                                )
+                            }
+
+                            Text("\(totalBucketList) places on your bucket list")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.top, 8)
+                    }
 
                     Spacer()
                 }
             }
             .navigationTitle("Statistics")
         }
+    }
+}
+
+struct BucketListStat: View {
+    let title: String
+    let count: Int
+    let icon: String
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundStyle(.orange)
+            Text("\(count)")
+                .font(.title3)
+                .fontWeight(.semibold)
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(count) \(title) on bucket list")
     }
 }
 

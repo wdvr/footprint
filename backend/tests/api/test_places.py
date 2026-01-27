@@ -326,10 +326,10 @@ class TestPlaceStats:
     def test_get_stats(self, client, mock_db_service):
         """Test getting place statistics."""
         mock_db_service.get_user_visited_places.return_value = [
-            {"region_type": "country", "is_deleted": False},
-            {"region_type": "country", "is_deleted": False},
-            {"region_type": "us_state", "is_deleted": False},
-            {"region_type": "canadian_province", "is_deleted": False},
+            {"region_type": "country", "status": "visited", "is_deleted": False},
+            {"region_type": "country", "status": "visited", "is_deleted": False},
+            {"region_type": "us_state", "status": "visited", "is_deleted": False},
+            {"region_type": "canadian_province", "status": "visited", "is_deleted": False},
             {"region_type": "country", "is_deleted": True},  # Should be excluded
         ]
 
@@ -348,6 +348,200 @@ class TestPlaceStats:
         assert data["us_states_total"] == 51
         assert data["canadian_provinces_total"] == 13
 
+    def test_get_stats_with_bucket_list(self, client, mock_db_service):
+        """Test getting place statistics including bucket list items."""
+        mock_db_service.get_user_visited_places.return_value = [
+            {"region_type": "country", "status": "visited", "is_deleted": False},
+            {"region_type": "country", "status": "bucket_list", "is_deleted": False},
+            {"region_type": "country", "status": "bucket_list", "is_deleted": False},
+            {"region_type": "us_state", "status": "visited", "is_deleted": False},
+            {"region_type": "us_state", "status": "bucket_list", "is_deleted": False},
+            {"region_type": "canadian_province", "status": "visited", "is_deleted": False},
+        ]
+
+        response = client.get(
+            "/places/stats",
+            headers={"Authorization": "Bearer test-token"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        # Visited counts
+        assert data["countries_visited"] == 1
+        assert data["us_states_visited"] == 1
+        assert data["canadian_provinces_visited"] == 1
+        assert data["total_regions_visited"] == 3
+        # Bucket list counts
+        assert data["countries_bucket_list"] == 2
+        assert data["us_states_bucket_list"] == 1
+        assert data["canadian_provinces_bucket_list"] == 0
+        assert data["total_bucket_list"] == 3
+
+
+class TestBucketList:
+    """Tests for bucket list functionality."""
+
+    def test_create_bucket_list_place(self, client, mock_db_service):
+        """Test creating a place with bucket_list status."""
+        mock_db_service.get_visited_place.return_value = None
+        mock_db_service.create_visited_place.return_value = {
+            "user_id": "test-user-123",
+            "region_type": "country",
+            "region_code": "JP",
+            "region_name": "Japan",
+            "status": "bucket_list",
+            "created_at": "2024-01-01T00:00:00",
+            "sync_version": 1,
+            "is_deleted": False,
+        }
+
+        response = client.post(
+            "/places",
+            headers={"Authorization": "Bearer test-token"},
+            json={
+                "region_type": "country",
+                "region_code": "JP",
+                "region_name": "Japan",
+                "status": "bucket_list",
+            },
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["region_code"] == "JP"
+        assert data["status"] == "bucket_list"
+
+    def test_update_status_to_bucket_list(self, client, mock_db_service):
+        """Test updating a place status to bucket_list."""
+        mock_db_service.get_visited_place.return_value = {
+            "user_id": "test-user-123",
+            "region_type": "country",
+            "region_code": "JP",
+            "region_name": "Japan",
+            "status": "visited",
+            "sync_version": 1,
+            "is_deleted": False,
+        }
+        mock_db_service.update_visited_place.return_value = {
+            "user_id": "test-user-123",
+            "region_type": "country",
+            "region_code": "JP",
+            "region_name": "Japan",
+            "status": "bucket_list",
+            "created_at": "2024-01-01T00:00:00",
+            "sync_version": 2,
+            "is_deleted": False,
+        }
+
+        response = client.patch(
+            "/places/country/JP",
+            headers={"Authorization": "Bearer test-token"},
+            json={"status": "bucket_list"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "bucket_list"
+
+    def test_update_status_to_visited(self, client, mock_db_service):
+        """Test updating a place status from bucket_list to visited."""
+        mock_db_service.get_visited_place.return_value = {
+            "user_id": "test-user-123",
+            "region_type": "country",
+            "region_code": "JP",
+            "region_name": "Japan",
+            "status": "bucket_list",
+            "sync_version": 1,
+            "is_deleted": False,
+        }
+        mock_db_service.update_visited_place.return_value = {
+            "user_id": "test-user-123",
+            "region_type": "country",
+            "region_code": "JP",
+            "region_name": "Japan",
+            "status": "visited",
+            "created_at": "2024-01-01T00:00:00",
+            "sync_version": 2,
+            "is_deleted": False,
+        }
+
+        response = client.patch(
+            "/places/country/JP",
+            headers={"Authorization": "Bearer test-token"},
+            json={"status": "visited"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "visited"
+
+    def test_list_places_filter_by_status(self, client, mock_db_service):
+        """Test filtering places by status."""
+        mock_db_service.get_user_visited_places.return_value = [
+            {
+                "user_id": "test-user-123",
+                "region_type": "country",
+                "region_code": "US",
+                "region_name": "United States",
+                "status": "visited",
+                "created_at": "2024-01-01T00:00:00",
+                "sync_version": 1,
+                "is_deleted": False,
+            },
+            {
+                "user_id": "test-user-123",
+                "region_type": "country",
+                "region_code": "JP",
+                "region_name": "Japan",
+                "status": "bucket_list",
+                "created_at": "2024-01-02T00:00:00",
+                "sync_version": 1,
+                "is_deleted": False,
+            },
+        ]
+
+        # Filter to bucket_list only
+        response = client.get(
+            "/places?status=bucket_list",
+            headers={"Authorization": "Bearer test-token"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["places"]) == 1
+        assert data["places"][0]["region_code"] == "JP"
+        assert data["places"][0]["status"] == "bucket_list"
+
+    def test_default_status_is_visited(self, client, mock_db_service):
+        """Test that default status for a new place is 'visited'."""
+        mock_db_service.get_visited_place.return_value = None
+        mock_db_service.create_visited_place.return_value = {
+            "user_id": "test-user-123",
+            "region_type": "country",
+            "region_code": "AU",
+            "region_name": "Australia",
+            "status": "visited",
+            "created_at": "2024-01-01T00:00:00",
+            "sync_version": 1,
+            "is_deleted": False,
+        }
+
+        response = client.post(
+            "/places",
+            headers={"Authorization": "Bearer test-token"},
+            json={
+                "region_type": "country",
+                "region_code": "AU",
+                "region_name": "Australia",
+                # status not specified - should default to visited
+            },
+        )
+
+        assert response.status_code == 201
+        # Verify the call included "visited" status
+        call_args = mock_db_service.create_visited_place.call_args
+        assert call_args[0][1]["status"] == "visited"
+
 
 class TestBatchCreate:
     """Tests for POST /places/batch endpoint."""
@@ -360,6 +554,7 @@ class TestBatchCreate:
                 "region_type": "country",
                 "region_code": "DE",
                 "region_name": "Germany",
+                "status": "visited",
                 "created_at": "2024-01-01T00:00:00",
                 "sync_version": 1,
                 "is_deleted": False,
@@ -369,6 +564,7 @@ class TestBatchCreate:
                 "region_type": "country",
                 "region_code": "IT",
                 "region_name": "Italy",
+                "status": "visited",
                 "created_at": "2024-01-01T00:00:00",
                 "sync_version": 1,
                 "is_deleted": False,
@@ -398,3 +594,58 @@ class TestBatchCreate:
         data = response.json()
         assert data["created"] == 2
         assert len(data["places"]) == 2
+
+    def test_batch_create_with_bucket_list(self, client, mock_db_service):
+        """Test batch creating places with mixed statuses."""
+        mock_db_service.batch_create_places.return_value = [
+            {
+                "user_id": "test-user-123",
+                "region_type": "country",
+                "region_code": "DE",
+                "region_name": "Germany",
+                "status": "visited",
+                "created_at": "2024-01-01T00:00:00",
+                "sync_version": 1,
+                "is_deleted": False,
+            },
+            {
+                "user_id": "test-user-123",
+                "region_type": "country",
+                "region_code": "IT",
+                "region_name": "Italy",
+                "status": "bucket_list",
+                "created_at": "2024-01-01T00:00:00",
+                "sync_version": 1,
+                "is_deleted": False,
+            },
+        ]
+
+        response = client.post(
+            "/places/batch",
+            headers={"Authorization": "Bearer test-token"},
+            json={
+                "places": [
+                    {
+                        "region_type": "country",
+                        "region_code": "DE",
+                        "region_name": "Germany",
+                        "status": "visited",
+                    },
+                    {
+                        "region_type": "country",
+                        "region_code": "IT",
+                        "region_name": "Italy",
+                        "status": "bucket_list",
+                    },
+                ]
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["created"] == 2
+        # Verify statuses were passed correctly
+        call_args = mock_db_service.batch_create_places.call_args
+        places_data = call_args[0][1]
+        assert places_data[0]["status"] == "visited"
+        assert places_data[1]["status"] == "bucket_list"

@@ -161,6 +161,7 @@ def _process_place_operation(
             "region_type": region_type,
             "region_code": region_code,
             "region_name": op.entity_data.get("region_name", ""),
+            "status": op.entity_data.get("status", "visited"),
             "visited_date": op.entity_data.get("visited_date"),
             "notes": op.entity_data.get("notes"),
             "sync_version": op.client_version + 1,
@@ -196,6 +197,7 @@ def _process_place_operation(
             # In a more sophisticated system, we'd let the client decide
 
         update_data = {
+            "status": op.entity_data.get("status", "visited"),
             "visited_date": op.entity_data.get("visited_date"),
             "notes": op.entity_data.get("notes"),
             "sync_version": max(server_version, op.client_version) + 1,
@@ -231,6 +233,7 @@ class SimplePlaceChange(BaseModel):
     region_type: str
     region_code: str
     region_name: str
+    status: str = "visited"  # visited or bucket_list
     is_deleted: bool
     last_modified_at: float  # iOS uses Date.timeIntervalSinceReferenceDate
 
@@ -281,6 +284,7 @@ async def sync_simple(
                     "region_type": change.region_type,
                     "region_code": change.region_code,
                     "region_name": change.region_name,
+                    "status": change.status,
                     "is_deleted": False,
                 }
 
@@ -301,6 +305,7 @@ async def sync_simple(
             "region_type": place.get("region_type", ""),
             "region_code": place.get("region_code", ""),
             "region_name": place.get("region_name", ""),
+            "status": place.get("status", "visited"),
             "visited_date": place.get("visited_date"),
             "notes": place.get("notes"),
             "created_at": place.get("created_at", ""),
