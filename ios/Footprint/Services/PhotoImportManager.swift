@@ -782,6 +782,8 @@ final class PhotoImportManager {
             )
             modelContext.insert(place)
         }
+        // Save the last sync date
+        UserDefaults.standard.set(Date(), forKey: "lastPhotoSync")
     }
 
     /// Reset the import state

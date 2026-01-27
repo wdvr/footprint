@@ -14,9 +14,9 @@ from src.services.dynamodb import db_service
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Google OAuth configuration (loaded from .env)
-GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+# Google OAuth configuration for import (Web App client with secret)
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_IMPORT_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_IMPORT_CLIENT_SECRET", "")
 GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "")
 
 SCOPES = [

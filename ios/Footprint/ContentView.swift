@@ -287,9 +287,7 @@ struct SettingsView: View {
 
     private func signOut() {
         Task {
-            await APIClient.shared.clearTokens()
-            // Post notification to reset app state if needed
-            NotificationCenter.default.post(name: .userDidSignOut, object: nil)
+            await AuthManager.shared.signOut()
         }
     }
 

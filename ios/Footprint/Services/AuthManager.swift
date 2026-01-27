@@ -42,6 +42,9 @@ class AuthManager: NSObject {
     }
 
     func signInWithApple() {
+        isLoading = true
+        error = nil
+
         let provider = ASAuthorizationAppleIDProvider()
         let request = provider.createRequest()
         request.requestedScopes = [.email, .fullName]
@@ -218,6 +221,7 @@ class AuthManager: NSObject {
         isAuthenticated = false
         isOfflineMode = false
         user = nil
+        error = nil
         UserDefaults.standard.removeObject(forKey: "offline_mode")
     }
 

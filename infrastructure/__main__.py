@@ -244,10 +244,15 @@ api_lambda = aws.lambda_.Function(
             "GEO_DATA_BUCKET": geo_data_bucket.bucket,
             "JWT_SECRET": config.get_secret("jwt_secret")
             or "dev-secret-change-in-production",
-            "APPLE_BUNDLE_ID": "com.footprint.app",
-            # Google OAuth (for Gmail/Calendar import)
+            "APPLE_BUNDLE_ID": "com.wouterdevriendt.footprint",
+            # Google OAuth for sign-in (iOS client ID, no secret needed)
             "GOOGLE_CLIENT_ID": config.get("google_client_id") or "",
-            "GOOGLE_CLIENT_SECRET": config.get_secret("google_client_secret") or "",
+            # Google OAuth for import (Web App client ID with secret)
+            "GOOGLE_IMPORT_CLIENT_ID": config.get("google_import_client_id") or "",
+            "GOOGLE_IMPORT_CLIENT_SECRET": config.get_secret(
+                "google_import_client_secret"
+            )
+            or "",
             "GOOGLE_REDIRECT_URI": "https://api.footprintmaps.com/import/google/oauth/callback",
         }
     ),

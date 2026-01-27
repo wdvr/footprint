@@ -37,6 +37,7 @@ class UserResponse(BaseModel):
     user_id: str
     email: str | None
     display_name: str | None
+    auth_provider: str | None
     countries_visited: int
     us_states_visited: int
     canadian_provinces_visited: int
@@ -104,6 +105,7 @@ async def authenticate_apple(request: AppleAuthRequest):
         user_id=user["user_id"],
         email=user.get("email"),
         display_name=user.get("display_name"),
+        auth_provider=user.get("auth_provider"),
         countries_visited=user.get("countries_visited", 0),
         us_states_visited=user.get("us_states_visited", 0),
         canadian_provinces_visited=user.get("canadian_provinces_visited", 0),
@@ -134,6 +136,7 @@ async def authenticate_google(request: GoogleAuthRequest):
         user_id=user["user_id"],
         email=user.get("email"),
         display_name=user.get("display_name"),
+        auth_provider=user.get("auth_provider"),
         countries_visited=user.get("countries_visited", 0),
         us_states_visited=user.get("us_states_visited", 0),
         canadian_provinces_visited=user.get("canadian_provinces_visited", 0),
@@ -171,6 +174,7 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
         user_id=current_user["user_id"],
         email=current_user.get("email"),
         display_name=current_user.get("display_name"),
+        auth_provider=current_user.get("auth_provider"),
         countries_visited=current_user.get("countries_visited", 0),
         us_states_visited=current_user.get("us_states_visited", 0),
         canadian_provinces_visited=current_user.get("canadian_provinces_visited", 0),

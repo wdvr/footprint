@@ -282,10 +282,11 @@ final class APIClientTests: XCTestCase {
     func testUserResponseDecoding() throws {
         let json = """
         {
-            "id": "user-123",
+            "user_id": "user-123",
             "apple_user_id": "apple-456",
             "email": "user@example.com",
             "display_name": "John Doe",
+            "auth_provider": "google",
             "created_at": "2024-01-01T00:00:00Z"
         }
         """.data(using: .utf8)!
@@ -299,6 +300,7 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(response.appleUserId, "apple-456")
         XCTAssertEqual(response.email, "user@example.com")
         XCTAssertEqual(response.displayName, "John Doe")
+        XCTAssertEqual(response.authProvider, "google")
         XCTAssertNotNil(response.createdAt)
     }
 
