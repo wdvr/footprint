@@ -55,7 +55,6 @@ jobs:
           github-token: ${{ secrets.RUNNER_PAT }}
           primary-runner: 'self-hosted,macOS,ARM64'
           fallback-runner: 'macos-latest'
-          fallback-on-error: true
 
   build-and-upload:
     name: Build and Upload to TestFlight
