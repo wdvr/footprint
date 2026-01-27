@@ -256,18 +256,15 @@ class AuthService:
             if not google_key:
                 return None
 
-            # Get allowed client IDs (iOS client ID and web client ID)
+            # Get allowed client ID (same for iOS and web)
             google_client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
-            google_ios_client_id = os.environ.get("GOOGLE_IOS_CLIENT_ID", "")
-            allowed_audiences = [google_client_id, google_ios_client_id]
-            allowed_audiences = [aud for aud in allowed_audiences if aud]
 
             # Verify and decode the token
             payload = jwt.decode(
                 id_token,
                 google_key,
                 algorithms=["RS256"],
-                audience=allowed_audiences,
+                audience=google_client_id,
                 issuer=self.GOOGLE_ISSUERS,
             )
 
