@@ -11,6 +11,7 @@ class AuthProvider(str, Enum):
     """Authentication provider types."""
 
     APPLE = "apple"
+    GOOGLE = "google"
     EMAIL = "email"
 
 

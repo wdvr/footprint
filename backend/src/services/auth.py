@@ -1,4 +1,4 @@
-"""Authentication service for Apple Sign In."""
+"""Authentication service for Apple and Google Sign In."""
 
 import os
 import uuid
@@ -27,6 +27,21 @@ class AppleTokenPayload(BaseModel):
     nonce_supported: bool | None = None
 
 
+class GoogleTokenPayload(BaseModel):
+    """Google ID token payload."""
+
+    iss: str  # Issuer (https://accounts.google.com)
+    sub: str  # Subject (Google user ID)
+    aud: str  # Audience (your app's client ID)
+    iat: int  # Issued at
+    exp: int  # Expiration
+    email: str | None = None
+    email_verified: bool | None = None
+    name: str | None = None
+    picture: str | None = None
+    azp: str | None = None  # Authorized party
+
+
 class TokenResponse(BaseModel):
     """JWT token response."""
 
@@ -42,6 +57,9 @@ class AuthService:
     APPLE_KEYS_URL = "https://appleid.apple.com/auth/keys"
     APPLE_ISSUER = "https://appleid.apple.com"
 
+    GOOGLE_KEYS_URL = "https://www.googleapis.com/oauth2/v3/certs"
+    GOOGLE_ISSUERS = ["https://accounts.google.com", "accounts.google.com"]
+
     # JWT settings
     JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-in-production")
     JWT_ALGORITHM = "HS256"
@@ -50,15 +68,17 @@ class AuthService:
 
     def __init__(self):
         self._apple_keys: list[dict[str, Any]] | None = None
-        self._keys_fetched_at: datetime | None = None
+        self._apple_keys_fetched_at: datetime | None = None
+        self._google_keys: list[dict[str, Any]] | None = None
+        self._google_keys_fetched_at: datetime | None = None
 
     async def _get_apple_public_keys(self) -> list[dict[str, Any]]:
         """Fetch Apple's public keys for token verification."""
         # Cache keys for 24 hours
         if (
             self._apple_keys
-            and self._keys_fetched_at
-            and datetime.now(UTC) - self._keys_fetched_at < timedelta(hours=24)
+            and self._apple_keys_fetched_at
+            and datetime.now(UTC) - self._apple_keys_fetched_at < timedelta(hours=24)
         ):
             return self._apple_keys
 
@@ -66,8 +86,25 @@ class AuthService:
             response = await client.get(self.APPLE_KEYS_URL)
             response.raise_for_status()
             self._apple_keys = response.json().get("keys", [])
-            self._keys_fetched_at = datetime.now(UTC)
+            self._apple_keys_fetched_at = datetime.now(UTC)
             return self._apple_keys
+
+    async def _get_google_public_keys(self) -> list[dict[str, Any]]:
+        """Fetch Google's public keys for token verification."""
+        # Cache keys for 24 hours
+        if (
+            self._google_keys
+            and self._google_keys_fetched_at
+            and datetime.now(UTC) - self._google_keys_fetched_at < timedelta(hours=24)
+        ):
+            return self._google_keys
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(self.GOOGLE_KEYS_URL)
+            response.raise_for_status()
+            self._google_keys = response.json().get("keys", [])
+            self._google_keys_fetched_at = datetime.now(UTC)
+            return self._google_keys
 
     async def verify_apple_token(self, identity_token: str) -> AppleTokenPayload | None:
         """Verify Apple identity token and return payload."""
@@ -185,6 +222,91 @@ class AuthService:
                 "auth_provider": "apple",
                 "auth_provider_id": apple_user_id,
                 "email": apple_payload.email,
+                "countries_visited": 0,
+                "us_states_visited": 0,
+                "canadian_provinces_visited": 0,
+                "sync_version": 1,
+            }
+            user = db_service.create_user(user_data)
+
+        # Create tokens
+        access_token = self.create_access_token(user_id)
+        refresh_token = self.create_refresh_token(user_id)
+
+        tokens = TokenResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_in=self.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
+
+        return user, tokens
+
+    async def verify_google_token(self, id_token: str) -> GoogleTokenPayload | None:
+        """Verify Google ID token and return payload."""
+        try:
+            # Get Google's public keys
+            google_keys = await self._get_google_public_keys()
+
+            # Decode token header to get key ID
+            unverified_header = jwt.get_unverified_header(id_token)
+            kid = unverified_header.get("kid")
+
+            # Find the matching key
+            google_key = next((k for k in google_keys if k.get("kid") == kid), None)
+            if not google_key:
+                return None
+
+            # Get allowed client ID (same for iOS and web)
+            google_client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
+
+            # Verify and decode the token
+            payload = jwt.decode(
+                id_token,
+                google_key,
+                algorithms=["RS256"],
+                audience=google_client_id,
+                issuer=self.GOOGLE_ISSUERS,
+            )
+
+            return GoogleTokenPayload(**payload)
+
+        except JWTError:
+            return None
+
+    async def authenticate_google(
+        self, id_token: str
+    ) -> tuple[dict[str, Any], TokenResponse] | None:
+        """
+        Authenticate user with Google Sign In.
+
+        Returns tuple of (user_data, tokens) or None if auth fails.
+        """
+        # Verify the Google ID token
+        google_payload = await self.verify_google_token(id_token)
+        if not google_payload:
+            return None
+
+        google_user_id = google_payload.sub
+
+        # Check if user exists
+        user = db_service.get_user_by_auth("google", google_user_id)
+
+        if user:
+            # Existing user - create tokens
+            user_id = user["user_id"]
+            # Update profile picture if available
+            if google_payload.picture and user.get("profile_picture_url") != google_payload.picture:
+                user = db_service.update_user(user_id, {"profile_picture_url": google_payload.picture})
+        else:
+            # New user - create account
+            user_id = str(uuid.uuid4())
+            user_data = {
+                "user_id": user_id,
+                "auth_provider": "google",
+                "auth_provider_id": google_user_id,
+                "email": google_payload.email,
+                "display_name": google_payload.name,
+                "profile_picture_url": google_payload.picture,
                 "countries_visited": 0,
                 "us_states_visited": 0,
                 "canadian_provinces_visited": 0,
