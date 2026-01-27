@@ -200,6 +200,7 @@ jobs:
 
         if [ -z "$APP_ID" ]; then
           echo "Error: Could not find app with bundle ID $APP_BUNDLE_ID"
+          echo "API Response: $APP_RESPONSE"
           exit 1
         fi
         echo "Found app ID: $APP_ID"
