@@ -184,17 +184,8 @@ jobs:
         APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
         APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
       run: |
-        set +e  # Don't exit on error, we'll handle errors manually
-
         # Generate JWT for App Store Connect API using Python
-        echo "Generating JWT..."
         JWT=$(python3 -c "import jwt,time,os;k=os.environ['APP_STORE_CONNECT_KEY_ID'];i=os.environ['APP_STORE_CONNECT_ISSUER_ID'];print(jwt.encode({'iss':i,'iat':int(time.time()),'exp':int(time.time())+1200,'aud':'appstoreconnect-v1'},open(os.path.expanduser(f'~/.private_keys/AuthKey_{k}.p8')).read(),algorithm='ES256',headers={'kid':k}))")
-        JWT_EXIT=$?
-        if [ $JWT_EXIT -ne 0 ] || [ -z "$JWT" ]; then
-          echo "Error: Failed to generate JWT (exit code: $JWT_EXIT)"
-          exit 1
-        fi
-        echo "JWT generated successfully (length: ${#JWT})"
 
         APP_BUNDLE_ID="com.wouterdevriendt.footprint"
         VERSION="${{ steps.app_version.outputs.version }}"
@@ -202,23 +193,17 @@ jobs:
 
         echo "Looking for build $VERSION ($BUILD)..."
 
-        # Get the app ID
-        echo "Fetching app info for bundle ID: $APP_BUNDLE_ID"
-        echo "JWT length: ${#JWT}"
-        curl -v -H "Authorization: Bearer $JWT" "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=$APP_BUNDLE_ID" > /tmp/api_response.json 2>&1 || true
-        echo "API Response:"
-        cat /tmp/api_response.json
-        APP_RESPONSE=$(cat /tmp/api_response.json | grep -v "^[*<>]" | tail -1)
-
+        # Get the app ID (use -g to disable URL globbing for square brackets)
+        APP_RESPONSE=$(curl -g -s -H "Authorization: Bearer $JWT" \
+          "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=$APP_BUNDLE_ID")
         APP_ID=$(echo "$APP_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data'][0]['id'])" 2>/dev/null)
 
         if [ -z "$APP_ID" ]; then
           echo "Error: Could not find app with bundle ID $APP_BUNDLE_ID"
+          echo "API Response: $APP_RESPONSE"
           exit 1
         fi
         echo "Found app ID: $APP_ID"
-
-        set -e  # Re-enable exit on error
 
         # Wait for the build to appear and be processed (up to 30 minutes)
         MAX_ATTEMPTS=60
@@ -235,7 +220,7 @@ jobs:
           fi
 
           # Get builds for this app version
-          BUILDS_RESPONSE=$(curl -s -H "Authorization: Bearer $JWT" \
+          BUILDS_RESPONSE=$(curl -g -s -H "Authorization: Bearer $JWT" \
             "https://api.appstoreconnect.apple.com/v1/builds?filter[app]=$APP_ID&filter[version]=$BUILD&include=preReleaseVersion")
 
           BUILD_ID=$(echo "$BUILDS_RESPONSE" | python3 -c "
