@@ -62,17 +62,62 @@ platform :ios do
     puts "   4. Submit for review"
   end
 
+  desc "Upload metadata, screenshots, and app icon to App Store Connect"
+  lane :deliver_metadata do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+      key_filepath: ENV["APP_STORE_CONNECT_KEY_PATH"],
+      in_house: false
+    )
+
+    deliver(
+      api_key: api_key,
+      app_identifier: "com.wouterdevriendt.footprint",
+      skip_binary_upload: true,
+      skip_screenshots: false,
+      skip_metadata: false,
+      force: true,
+      precheck_include_in_app_purchases: false,
+      submit_for_review: false,
+      automatic_release: false,
+      run_precheck_before_submit: false
+    )
+  end
+
+  desc "Upload only the app icon"
+  lane :upload_icon do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+      key_filepath: ENV["APP_STORE_CONNECT_KEY_PATH"],
+      in_house: false
+    )
+
+    deliver(
+      api_key: api_key,
+      app_identifier: "com.wouterdevriendt.footprint",
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      skip_metadata: true,
+      app_icon: "./fastlane/metadata/app_icon.png",
+      force: true,
+      submit_for_review: false
+    )
+  end
+
   desc "Upload screenshots to App Store Connect"
   lane :upload_screenshots do |options|
-    api_key_path = options[:api_key_path] || ENV["APP_STORE_CONNECT_API_KEY_PATH"]
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+      key_filepath: ENV["APP_STORE_CONNECT_KEY_PATH"],
+      in_house: false
+    )
 
-    if api_key_path.nil?
-      puts "❌ API key path not provided. Use --api_key_path or set APP_STORE_CONNECT_API_KEY_PATH"
-      next
-    end
-
-    upload_to_app_store(
-      api_key_path: api_key_path,
+    deliver(
+      api_key: api_key,
+      app_identifier: "com.wouterdevriendt.footprint",
       skip_binary_upload: true,
       skip_metadata: true,
       skip_app_version_update: true,
