@@ -96,7 +96,8 @@ final class PhotoImportManager: NSObject {
     /// Number of new photos detected since last scan
     var newPhotosAvailable: Int = 0
 
-    private let geocoder = CLGeocoder()
+    // CLGeocoder is thread-safe internally
+    nonisolated(unsafe) private let geocoder = CLGeocoder()
     private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
     private var currentScanTask: Task<Void, Never>?
     private var isObservingPhotoLibrary = false
