@@ -34,12 +34,19 @@ jobs:
         # For workflow_run, we need to checkout the commit that triggered the workflow
         ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-    - name: Select Xcode version
+    - name: Select Xcode 26
       run: |
-        # List available Xcode versions and use default
-        ls -la /Applications/ | grep Xcode
+        # Select Xcode 26 for iOS 26 SDK
+        if [ -d "/Applications/Xcode_26.app" ]; then
+          sudo xcode-select -s /Applications/Xcode_26.app/Contents/Developer
+        elif [ -d "/Applications/Xcode-26.app" ]; then
+          sudo xcode-select -s /Applications/Xcode-26.app/Contents/Developer
+        else
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+        fi
         xcode-select -p
         xcodebuild -version
+        xcodebuild -showsdks | grep iOS || true
 
     - name: Install XcodeGen
       run: brew install xcodegen
