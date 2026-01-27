@@ -295,7 +295,7 @@ final class APIClientTests: XCTestCase {
         decoder.dateDecodingStrategy = .iso8601
         let response = try decoder.decode(APIClient.UserResponse.self, from: json)
 
-        XCTAssertEqual(response.id, "user-123")
+        XCTAssertEqual(response.userId, "user-123")
         XCTAssertEqual(response.appleUserId, "apple-456")
         XCTAssertEqual(response.email, "user@example.com")
         XCTAssertEqual(response.displayName, "John Doe")

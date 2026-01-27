@@ -170,6 +170,17 @@ extension AuthManager: ASAuthorizationControllerPresentationContextProviding {
     }
 }
 
+extension AuthManager: ASWebAuthenticationPresentationContextProviding {
+    nonisolated func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = scene.windows.first
+        else {
+            return ASPresentationAnchor()
+        }
+        return window
+    }
+}
+
 extension AuthManager: ASAuthorizationControllerDelegate {
     nonisolated func authorizationController(
         controller: ASAuthorizationController,
@@ -225,8 +236,8 @@ extension AuthManager: ASAuthorizationControllerDelegate {
 enum GoogleSignInConfig {
     // iOS client ID (no secret required for mobile apps with implicit flow)
     static let clientId = "269334695221-0h0nbiimdobmjefsi13dhvgpsidhk5hf.apps.googleusercontent.com"
-    static let callbackScheme = "com.wd.footprint.app"
-    static let redirectUri = "com.wd.footprint.app:/oauth2callback"
+    static let callbackScheme = "com.wouterdevriendt.footprint"
+    static let redirectUri = "com.wouterdevriendt.footprint:/oauth2callback"
     static let scopes = [
         "openid",
         "email",
