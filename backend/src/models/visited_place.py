@@ -14,6 +14,13 @@ class RegionType(str, Enum):
     CANADIAN_PROVINCE = "canadian_province"
 
 
+class PlaceStatus(str, Enum):
+    """Status of a place - visited or on bucket list."""
+
+    VISITED = "visited"
+    BUCKET_LIST = "bucket_list"
+
+
 class VisitedPlace(BaseModel):
     """Visited place model with full data."""
 
@@ -28,6 +35,10 @@ class VisitedPlace(BaseModel):
 
     # Metadata
     region_name: str = Field(..., description="Human-readable region name")
+    status: PlaceStatus = Field(
+        default=PlaceStatus.VISITED,
+        description="Status of the place - visited or bucket list",
+    )
     visited_date: datetime | None = Field(
         None, description="When the user visited (optional)"
     )
@@ -58,6 +69,7 @@ class VisitedPlaceCreate(BaseModel):
     region_type: RegionType
     region_code: str
     region_name: str
+    status: PlaceStatus = PlaceStatus.VISITED
     visited_date: datetime | None = None
     notes: str | None = None
 
@@ -65,6 +77,7 @@ class VisitedPlaceCreate(BaseModel):
 class VisitedPlaceUpdate(BaseModel):
     """Model for updating an existing visited place."""
 
+    status: PlaceStatus | None = None
     visited_date: datetime | None = None
     notes: str | None = None
 

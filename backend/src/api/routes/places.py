@@ -4,7 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from src.api.routes.auth import get_current_user
-from src.models.visited_place import RegionType, VisitedPlaceCreate, VisitedPlaceUpdate
+from src.models.visited_place import (
+    PlaceStatus,
+    RegionType,
+    VisitedPlaceCreate,
+    VisitedPlaceUpdate,
+)
 from src.services.dynamodb import db_service
 
 router = APIRouter(prefix="/places", tags=["places"])
@@ -17,6 +22,7 @@ class VisitedPlaceResponse(BaseModel):
     region_type: str
     region_code: str
     region_name: str
+    status: str = "visited"
     visited_date: str | None = None
     notes: str | None = None
     marked_at: str
@@ -50,13 +56,17 @@ class PlaceStatsResponse(BaseModel):
     countries_visited: int
     countries_total: int
     countries_percentage: float
+    countries_bucket_list: int
     us_states_visited: int
     us_states_total: int
     us_states_percentage: float
+    us_states_bucket_list: int
     canadian_provinces_visited: int
     canadian_provinces_total: int
     canadian_provinces_percentage: float
+    canadian_provinces_bucket_list: int
     total_regions_visited: int
+    total_bucket_list: int
 
 
 # Geographic totals
@@ -72,6 +82,7 @@ def _place_to_response(place: dict) -> VisitedPlaceResponse:
         region_type=place.get("region_type", ""),
         region_code=place.get("region_code", ""),
         region_name=place.get("region_name", ""),
+        status=place.get("status", "visited"),
         visited_date=place.get("visited_date"),
         notes=place.get("notes"),
         marked_at=place.get("created_at", ""),
@@ -83,12 +94,14 @@ def _place_to_response(place: dict) -> VisitedPlaceResponse:
 @router.get("", response_model=PlacesListResponse)
 async def list_visited_places(
     region_type: RegionType | None = Query(None, description="Filter by region type"),
+    status: PlaceStatus | None = Query(None, description="Filter by status"),
     current_user: dict = Depends(get_current_user),
 ):
     """
     List all visited places for the current user.
 
-    Optionally filter by region type (country, us_state, canadian_province).
+    Optionally filter by region type (country, us_state, canadian_province)
+    and/or status (visited, bucket_list).
     """
     user_id = current_user["user_id"]
     region_type_str = region_type.value if region_type else None
@@ -96,6 +109,12 @@ async def list_visited_places(
 
     # Filter out soft-deleted places
     active_places = [p for p in places if not p.get("is_deleted", False)]
+
+    # Filter by status if specified
+    if status:
+        active_places = [
+            p for p in active_places if p.get("status", "visited") == status.value
+        ]
 
     return PlacesListResponse(
         places=[_place_to_response(p) for p in active_places],
@@ -133,6 +152,7 @@ async def create_visited_place(
         "region_type": place.region_type.value,
         "region_code": place.region_code,
         "region_name": place.region_name,
+        "status": place.status.value,
         "visited_date": place.visited_date.isoformat() if place.visited_date else None,
         "notes": place.notes,
         "sync_version": 1,
@@ -158,7 +178,7 @@ async def get_place_stats(current_user: dict = Depends(get_current_user)):
     """
     Get user's visited places statistics.
 
-    Returns counts and percentages for each region type.
+    Returns counts and percentages for each region type, including bucket list.
     """
     user_id = current_user["user_id"]
     places = db_service.get_user_visited_places(user_id)
@@ -166,25 +186,62 @@ async def get_place_stats(current_user: dict = Depends(get_current_user)):
     # Count by type (excluding deleted)
     active_places = [p for p in places if not p.get("is_deleted", False)]
 
-    countries = sum(1 for p in active_places if p.get("region_type") == "country")
-    us_states = sum(1 for p in active_places if p.get("region_type") == "us_state")
+    # Helper to check if visited (not bucket_list)
+    def is_visited(p: dict) -> bool:
+        return p.get("status", "visited") == "visited"
+
+    def is_bucket_list(p: dict) -> bool:
+        return p.get("status") == "bucket_list"
+
+    # Visited counts
+    countries = sum(
+        1 for p in active_places if p.get("region_type") == "country" and is_visited(p)
+    )
+    us_states = sum(
+        1 for p in active_places if p.get("region_type") == "us_state" and is_visited(p)
+    )
     canadian_provinces = sum(
-        1 for p in active_places if p.get("region_type") == "canadian_province"
+        1
+        for p in active_places
+        if p.get("region_type") == "canadian_province" and is_visited(p)
+    )
+
+    # Bucket list counts
+    countries_bucket = sum(
+        1
+        for p in active_places
+        if p.get("region_type") == "country" and is_bucket_list(p)
+    )
+    us_states_bucket = sum(
+        1
+        for p in active_places
+        if p.get("region_type") == "us_state" and is_bucket_list(p)
+    )
+    canadian_provinces_bucket = sum(
+        1
+        for p in active_places
+        if p.get("region_type") == "canadian_province" and is_bucket_list(p)
     )
 
     return PlaceStatsResponse(
         countries_visited=countries,
         countries_total=TOTAL_COUNTRIES,
         countries_percentage=round((countries / TOTAL_COUNTRIES) * 100, 2),
+        countries_bucket_list=countries_bucket,
         us_states_visited=us_states,
         us_states_total=TOTAL_US_STATES,
         us_states_percentage=round((us_states / TOTAL_US_STATES) * 100, 2),
+        us_states_bucket_list=us_states_bucket,
         canadian_provinces_visited=canadian_provinces,
         canadian_provinces_total=TOTAL_CANADIAN_PROVINCES,
         canadian_provinces_percentage=round(
             (canadian_provinces / TOTAL_CANADIAN_PROVINCES) * 100, 2
         ),
+        canadian_provinces_bucket_list=canadian_provinces_bucket,
         total_regions_visited=countries + us_states + canadian_provinces,
+        total_bucket_list=countries_bucket
+        + us_states_bucket
+        + canadian_provinces_bucket,
     )
 
 
@@ -233,6 +290,8 @@ async def update_visited_place(
         )
 
     update_data = {}
+    if updates.status is not None:
+        update_data["status"] = updates.status.value
     if updates.visited_date is not None:
         update_data["visited_date"] = updates.visited_date.isoformat()
     if updates.notes is not None:
@@ -244,6 +303,10 @@ async def update_visited_place(
     result = db_service.update_visited_place(
         user_id, region_type.value, region_code, update_data
     )
+
+    # Update user stats if status changed
+    if updates.status is not None:
+        _update_user_stats(user_id)
 
     return _place_to_response(result)
 
@@ -292,6 +355,7 @@ async def batch_create_places(
             "region_type": place.region_type.value,
             "region_code": place.region_code,
             "region_name": place.region_name,
+            "status": place.status.value,
             "visited_date": place.visited_date.isoformat()
             if place.visited_date
             else None,
@@ -317,10 +381,38 @@ def _update_user_stats(user_id: str) -> None:
     places = db_service.get_user_visited_places(user_id)
     active_places = [p for p in places if not p.get("is_deleted", False)]
 
-    countries = sum(1 for p in active_places if p.get("region_type") == "country")
-    us_states = sum(1 for p in active_places if p.get("region_type") == "us_state")
+    # Only count places with "visited" status (not bucket_list)
+    def is_visited(p: dict) -> bool:
+        return p.get("status", "visited") == "visited"
+
+    countries = sum(
+        1 for p in active_places if p.get("region_type") == "country" and is_visited(p)
+    )
+    us_states = sum(
+        1 for p in active_places if p.get("region_type") == "us_state" and is_visited(p)
+    )
     canadian_provinces = sum(
-        1 for p in active_places if p.get("region_type") == "canadian_province"
+        1
+        for p in active_places
+        if p.get("region_type") == "canadian_province" and is_visited(p)
+    )
+
+    # Also track bucket list counts
+    countries_bucket = sum(
+        1
+        for p in active_places
+        if p.get("region_type") == "country" and p.get("status") == "bucket_list"
+    )
+    us_states_bucket = sum(
+        1
+        for p in active_places
+        if p.get("region_type") == "us_state" and p.get("status") == "bucket_list"
+    )
+    canadian_provinces_bucket = sum(
+        1
+        for p in active_places
+        if p.get("region_type") == "canadian_province"
+        and p.get("status") == "bucket_list"
     )
 
     db_service.update_user(
@@ -329,5 +421,8 @@ def _update_user_stats(user_id: str) -> None:
             "countries_visited": countries,
             "us_states_visited": us_states,
             "canadian_provinces_visited": canadian_provinces,
+            "countries_bucket_list": countries_bucket,
+            "us_states_bucket_list": us_states_bucket,
+            "canadian_provinces_bucket_list": canadian_provinces_bucket,
         },
     )

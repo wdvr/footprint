@@ -5,7 +5,9 @@ import UIKit
 /// A map view that displays country boundaries with visited status highlighting
 struct CountryMapView: UIViewRepresentable {
     let visitedCountryCodes: Set<String>
+    let bucketListCountryCodes: Set<String>
     let visitedStateCodes: Set<String>  // Format: "US-CA", "CA-ON", etc.
+    let bucketListStateCodes: Set<String>  // Format: "US-CA", "CA-ON", etc.
     @Binding var selectedCountry: String?
     @Binding var centerOnUserLocation: Bool
     var onCountryTapped: ((String) -> Void)?
@@ -42,7 +44,9 @@ struct CountryMapView: UIViewRepresentable {
     func updateUIView(_ mapView: MKMapView, context: Context) {
         // Update visited countries and states when they change
         context.coordinator.visitedCountryCodes = visitedCountryCodes
+        context.coordinator.bucketListCountryCodes = bucketListCountryCodes
         context.coordinator.visitedStateCodes = visitedStateCodes
+        context.coordinator.bucketListStateCodes = bucketListStateCodes
         context.coordinator.onCountryTapped = onCountryTapped
         mapView.showsUserLocation = showUserLocation
 
@@ -78,7 +82,9 @@ struct CountryMapView: UIViewRepresentable {
         var countryBoundaries: [String: GeoJSONParser.CountryBoundary] = [:]
         var stateBoundaries: [String: GeoJSONParser.StateBoundary] = [:]  // Key: "US-CA", "CA-ON"
         var visitedCountryCodes: Set<String>
+        var bucketListCountryCodes: Set<String>
         var visitedStateCodes: Set<String>
+        var bucketListStateCodes: Set<String>
         var selectedCountryCode: String?
         var onCountryTapped: ((String) -> Void)?
         weak var mapView: MKMapView?
@@ -86,7 +92,9 @@ struct CountryMapView: UIViewRepresentable {
         init(_ parent: CountryMapView) {
             self.parent = parent
             self.visitedCountryCodes = parent.visitedCountryCodes
+            self.bucketListCountryCodes = parent.bucketListCountryCodes
             self.visitedStateCodes = parent.visitedStateCodes
+            self.bucketListStateCodes = parent.bucketListStateCodes
             self.selectedCountryCode = parent.selectedCountry
             self.onCountryTapped = parent.onCountryTapped
             super.init()
@@ -224,11 +232,17 @@ struct CountryMapView: UIViewRepresentable {
                 if isState {
                     // State/Province rendering
                     let isVisited = visitedStateCodes.contains(code)
+                    let isBucketList = bucketListStateCodes.contains(code)
 
                     if isVisited {
                         // Visited states: green
                         renderer.fillColor = UIColor.systemGreen.withAlphaComponent(0.4)
                         renderer.strokeColor = UIColor.systemGreen.withAlphaComponent(0.8)
+                        renderer.lineWidth = 1.0
+                    } else if isBucketList {
+                        // Bucket list states: orange
+                        renderer.fillColor = UIColor.systemOrange.withAlphaComponent(0.4)
+                        renderer.strokeColor = UIColor.systemOrange.withAlphaComponent(0.8)
                         renderer.lineWidth = 1.0
                     } else {
                         // Unvisited states: subtle light red
@@ -240,9 +254,13 @@ struct CountryMapView: UIViewRepresentable {
                     // Don't fill US/Canada - let state overlays show through to base map
                     // But keep green outline to show country is visited
                     let isVisited = visitedCountryCodes.contains(code)
+                    let isBucketList = bucketListCountryCodes.contains(code)
                     renderer.fillColor = .clear
                     if isVisited {
                         renderer.strokeColor = UIColor.systemGreen
+                        renderer.lineWidth = 1.5
+                    } else if isBucketList {
+                        renderer.strokeColor = UIColor.systemOrange
                         renderer.lineWidth = 1.5
                     } else {
                         renderer.strokeColor = UIColor.systemGray.withAlphaComponent(0.3)
@@ -251,6 +269,7 @@ struct CountryMapView: UIViewRepresentable {
                 } else {
                     // Country rendering
                     let isVisited = visitedCountryCodes.contains(code)
+                    let isBucketList = bucketListCountryCodes.contains(code)
                     let isSelected = code == selectedCountryCode
 
                     if isSelected {
@@ -262,6 +281,11 @@ struct CountryMapView: UIViewRepresentable {
                         // Visited countries: green with higher opacity
                         renderer.fillColor = UIColor.systemGreen.withAlphaComponent(0.4)
                         renderer.strokeColor = UIColor.systemGreen.withAlphaComponent(0.8)
+                        renderer.lineWidth = 1.5
+                    } else if isBucketList {
+                        // Bucket list countries: orange
+                        renderer.fillColor = UIColor.systemOrange.withAlphaComponent(0.4)
+                        renderer.strokeColor = UIColor.systemOrange.withAlphaComponent(0.8)
                         renderer.lineWidth = 1.5
                     } else {
                         // Unvisited countries: subtle gray
@@ -287,7 +311,9 @@ struct CountryMapView: UIViewRepresentable {
 #Preview {
     CountryMapView(
         visitedCountryCodes: ["US", "CA", "MX", "GB", "FR"],
+        bucketListCountryCodes: ["JP", "AU", "NZ"],
         visitedStateCodes: ["US-CA", "US-NY", "US-TX", "CA-ON", "CA-BC"],
+        bucketListStateCodes: ["US-HI", "US-AK", "CA-QC"],
         selectedCountry: .constant(nil),
         centerOnUserLocation: .constant(false),
         onCountryTapped: { code in

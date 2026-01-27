@@ -17,10 +17,30 @@ final class VisitedPlace {
         }
     }
 
+    enum PlaceStatus: String, Codable, CaseIterable {
+        case visited = "visited"
+        case bucketList = "bucket_list"
+
+        var displayName: String {
+            switch self {
+            case .visited: return "Visited"
+            case .bucketList: return "Bucket List"
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .visited: return "checkmark.circle.fill"
+            case .bucketList: return "star.circle.fill"
+            }
+        }
+    }
+
     var id: UUID
     var regionType: String
     var regionCode: String
     var regionName: String
+    var status: String
     var visitedDate: Date?
     var notes: String?
     var markedAt: Date
@@ -34,6 +54,7 @@ final class VisitedPlace {
         regionType: RegionType,
         regionCode: String,
         regionName: String,
+        status: PlaceStatus = .visited,
         visitedDate: Date? = nil,
         notes: String? = nil,
         markedAt: Date = Date(),
@@ -46,6 +67,7 @@ final class VisitedPlace {
         self.regionType = regionType.rawValue
         self.regionCode = regionCode
         self.regionName = regionName
+        self.status = status.rawValue
         self.visitedDate = visitedDate
         self.notes = notes
         self.markedAt = markedAt
@@ -57,5 +79,17 @@ final class VisitedPlace {
 
     var regionTypeEnum: RegionType {
         RegionType(rawValue: regionType) ?? .country
+    }
+
+    var statusEnum: PlaceStatus {
+        PlaceStatus(rawValue: status) ?? .visited
+    }
+
+    var isVisited: Bool {
+        statusEnum == .visited
+    }
+
+    var isBucketList: Bool {
+        statusEnum == .bucketList
     }
 }

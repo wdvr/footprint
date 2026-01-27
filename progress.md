@@ -1,7 +1,7 @@
 # Footprint Travel Tracker - Progress & Tasks
 
 ## Project Status: MVP DEVELOPMENT
-**Last Updated**: 2026-01-25
+**Last Updated**: 2026-01-27
 
 ## Source of Truth: GitHub Issues
 
@@ -56,6 +56,7 @@ https://github.com/wdvr/footprint/issues
 - ✅ Live location tracking
 - ✅ iOS Widget (code ready)
 - ✅ Friend lists & sharing
+- ✅ Bucket list mode
 
 ## Technical Stack
 - **Backend**: Python 3.11, FastAPI, AWS Lambda
@@ -96,11 +97,11 @@ pulumi up --yes
 | 1 | **Live location tracking** | Request location permission, show current position on map, auto-detect visited places | ✅ DONE |
 | 2 | **iOS Widget** | Home screen widget showing travel stats (code ready, add target in Xcode) | ✅ DONE |
 | 3 | **Friend lists & sharing** | Connect with friends, share/compare travel lists (backend + iOS UI complete) | ✅ DONE |
+| 4 | **Bucket list mode** | Mark places you WANT to visit, toggle between "visited" and "bucket list" | ✅ DONE |
 
 ### High Priority - Core Features
 | # | Feature | Description | Status |
 |---|---------|-------------|--------|
-| 4 | **Bucket list mode** | Mark places you WANT to visit, toggle between "visited" and "want to visit" | 🔲 TODO |
 | 5 | **Travel timeline** | Add visit dates to places, "When did I visit France?", chronological history | 🔲 TODO |
 | 6 | **Photos & memories** | Attach photos to visited places, integrate with Photos app | 🔲 TODO |
 | 7 | **Photo library import** | Scan photo library GPS metadata, auto-suggest places you've visited | ✅ DONE |

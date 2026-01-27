@@ -57,6 +57,7 @@ class SyncManager {
                     regionType: place.regionType,
                     regionCode: place.regionCode,
                     regionName: place.regionName,
+                    status: place.status,
                     isDeleted: place.isDeleted,
                     lastModifiedAt: place.lastModifiedAt
                 )
@@ -84,16 +85,19 @@ class SyncManager {
                 if let existing {
                     // Update existing
                     existing.regionName = serverPlace.regionName
+                    existing.status = serverPlace.status ?? "visited"
                     existing.visitedDate = serverPlace.visitedDate
                     existing.notes = serverPlace.notes
                     existing.lastModifiedAt = serverPlace.updatedAt
                     existing.isSynced = true
                 } else {
                     // Create new
+                    let status = VisitedPlace.PlaceStatus(rawValue: serverPlace.status ?? "visited") ?? .visited
                     let newPlace = VisitedPlace(
                         regionType: VisitedPlace.RegionType(rawValue: serverPlace.regionType) ?? .country,
                         regionCode: serverPlace.regionCode,
-                        regionName: serverPlace.regionName
+                        regionName: serverPlace.regionName,
+                        status: status
                     )
                     newPlace.visitedDate = serverPlace.visitedDate
                     newPlace.notes = serverPlace.notes
