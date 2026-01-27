@@ -291,6 +291,22 @@ jobs:
           echo "Build is uploaded but NOT distributed to any testers."
         fi
 
+        # Ensure default tester is in all internal beta groups
+        echo "Ensuring default tester is in beta groups..."
+        echo "$GROUPS_RESPONSE" | python3 -c "
+        import sys, json
+        data = json.load(sys.stdin)
+        for group in data.get('data', []):
+          if group.get('attributes', {}).get('isInternalGroup', False):
+            print(group['id'])
+        " 2>/dev/null | while read -r GROUP_ID; do
+          curl -g -s -X POST \
+            -H "Authorization: Bearer $JWT" \
+            -H "Content-Type: application/json" \
+            -d '{"data":{"type":"betaTesters","attributes":{"email":"wouterdevriendt@gmail.com","firstName":"Wouter","lastName":"Devriendt"},"relationships":{"betaGroups":{"data":[{"type":"betaGroups","id":"'"$GROUP_ID"'"}]}}}}' \
+            "https://api.appstoreconnect.apple.com/v1/betaTesters" > /dev/null 2>&1 || true
+        done
+
         # Add build to all internal beta groups (isInternalGroup = true)
         echo "$GROUPS_RESPONSE" | python3 -c "
         import sys, json
