@@ -153,6 +153,17 @@ actor APIClient {
         return response
     }
 
+    struct GoogleAuthRequest: Encodable {
+        let idToken: String
+    }
+
+    func authenticateWithGoogle(idToken: String) async throws -> AuthResponse {
+        let body = GoogleAuthRequest(idToken: idToken)
+        let response: AuthResponse = try await _request("/auth/google", method: "POST", body: body)
+        setTokens(access: response.tokens.accessToken, refresh: response.tokens.refreshToken)
+        return response
+    }
+
     func refreshAccessToken() async throws -> AuthResponse {
         guard let token = refreshToken else {
             throw APIError.unauthorized
@@ -171,24 +182,6 @@ actor APIClient {
     func getCurrentUser() async throws -> UserResponse {
         try await _request("/auth/me", authenticated: true)
     }
-
-    /// Store tokens (for dev mode auth)
-    func storeTokens(accessToken: String, refreshToken: String) {
-        setTokens(access: accessToken, refresh: refreshToken)
-    }
-
-    #if DEBUG
-    /// Dev mode authentication - bypasses Apple Sign In for testing
-    func authDevMode(deviceId: String) async throws -> AuthResponse {
-        struct DevAuthRequest: Encodable {
-            let deviceId: String
-        }
-        let body = DevAuthRequest(deviceId: deviceId)
-        let response: AuthResponse = try await _request("/auth/dev", method: "POST", body: body)
-        setTokens(access: response.tokens.accessToken, refresh: response.tokens.refreshToken)
-        return response
-    }
-    #endif
 
     // MARK: - Places Endpoints
 

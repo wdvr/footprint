@@ -129,23 +129,9 @@ struct LoginView: View {
                         .frame(height: 50)
                         .padding(.horizontal, 40)
 
-                    #if DEBUG
-                    // Dev mode login - bypasses Apple Sign In
-                    Button(action: {
-                        authManager.signInDevMode()
-                    }) {
-                        HStack {
-                            Image(systemName: "hammer.fill")
-                            Text("Dev Mode Login")
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.orange)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                    }
-                    .padding(.horizontal, 40)
-                    #endif
+                    SignInWithGoogleButton()
+                        .frame(height: 50)
+                        .padding(.horizontal, 40)
                 }
 
                 if let error = authManager.error {
@@ -192,6 +178,32 @@ struct SignInWithAppleButton: View {
             .background(.black)
             .foregroundStyle(.white)
             .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+    }
+}
+
+struct SignInWithGoogleButton: View {
+    @Environment(AuthManager.self) private var authManager
+
+    var body: some View {
+        Button(action: {
+            authManager.signInWithGoogle()
+        }) {
+            HStack(spacing: 8) {
+                // Google "G" logo colors approximation
+                Image(systemName: "g.circle.fill")
+                    .font(.title2)
+                Text("Sign in with Google")
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(.white)
+            .foregroundStyle(.black.opacity(0.87))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+            )
         }
     }
 }

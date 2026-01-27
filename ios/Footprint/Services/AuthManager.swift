@@ -12,6 +12,9 @@ class AuthManager: NSObject {
     var user: APIClient.UserResponse?
     var error: String?
 
+    // Retain the auth session to prevent deallocation during OAuth flow
+    private var currentAuthSession: ASWebAuthenticationSession?
+
     private override init() {
         super.init()
         // Check if user previously chose offline mode
@@ -54,32 +57,92 @@ class AuthManager: NSObject {
         UserDefaults.standard.set(true, forKey: "offline_mode")
     }
 
-    /// Dev mode: Sign in with a test user ID for development/testing
-    /// This bypasses Apple Sign In while waiting for approval
-    func signInDevMode() {
-        #if DEBUG
+    func signInWithGoogle() {
         isLoading = true
         error = nil
 
         Task {
             do {
-                // Use a fixed test user for dev mode
-                let response = try await APIClient.shared.authDevMode(
-                    deviceId: UIDevice.current.identifierForVendor?.uuidString ?? "dev-device"
-                )
-                await APIClient.shared.storeTokens(
-                    accessToken: response.tokens.accessToken,
-                    refreshToken: response.tokens.refreshToken
-                )
+                let idToken = try await performGoogleOAuthFlow()
+
+                let response = try await APIClient.shared.authenticateWithGoogle(idToken: idToken)
                 user = response.user
                 isAuthenticated = true
-                isLoading = false
             } catch {
-                self.error = "Dev auth failed: \(error.localizedDescription)"
-                isLoading = false
+                if case GoogleSignInError.cancelled = error {
+                    // User cancelled - don't show error
+                } else {
+                    self.error = "Google sign in failed: \(error.localizedDescription)"
+                }
+            }
+            isLoading = false
+        }
+    }
+
+    private func performGoogleOAuthFlow() async throws -> String {
+        // Google OAuth configuration - uses iOS client ID for Sign In
+        let clientId = GoogleSignInConfig.clientId
+        let redirectUri = GoogleSignInConfig.redirectUri
+        let scopes = GoogleSignInConfig.scopes.joined(separator: " ")
+
+        // Build OAuth URL
+        var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
+        components.queryItems = [
+            URLQueryItem(name: "client_id", value: clientId),
+            URLQueryItem(name: "redirect_uri", value: redirectUri),
+            URLQueryItem(name: "response_type", value: "id_token"),
+            URLQueryItem(name: "scope", value: scopes),
+            URLQueryItem(name: "nonce", value: UUID().uuidString)
+        ]
+
+        guard let authURL = components.url else {
+            throw GoogleSignInError.invalidURL
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let session = ASWebAuthenticationSession(
+                url: authURL,
+                callbackURLScheme: GoogleSignInConfig.callbackScheme
+            ) { [weak self] callbackURL, error in
+                // Clear the retained session
+                Task { @MainActor in
+                    self?.currentAuthSession = nil
+                }
+
+                if let error = error {
+                    let nsError = error as NSError
+                    if nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
+                        continuation.resume(throwing: GoogleSignInError.cancelled)
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                    return
+                }
+
+                guard let callbackURL = callbackURL,
+                      let fragment = callbackURL.fragment,
+                      let idToken = fragment.components(separatedBy: "&")
+                          .first(where: { $0.hasPrefix("id_token=") })?
+                          .replacingOccurrences(of: "id_token=", with: "")
+                else {
+                    continuation.resume(throwing: GoogleSignInError.noIdToken)
+                    return
+                }
+
+                continuation.resume(returning: idToken)
+            }
+
+            session.presentationContextProvider = self
+            session.prefersEphemeralWebBrowserSession = false
+
+            // Retain the session to prevent deallocation
+            self.currentAuthSession = session
+
+            if !session.start() {
+                self.currentAuthSession = nil
+                continuation.resume(throwing: GoogleSignInError.sessionFailed)
             }
         }
-        #endif
     }
 
     func signOut() async {
@@ -153,6 +216,42 @@ extension AuthManager: ASAuthorizationControllerDelegate {
                 return
             }
             self.error = error.localizedDescription
+        }
+    }
+}
+
+// MARK: - Google Sign In Configuration
+
+enum GoogleSignInConfig {
+    // iOS client ID (no secret required for mobile apps with implicit flow)
+    static let clientId = "269334695221-0h0nbiimdobmjefsi13dhvgpsidhk5hf.apps.googleusercontent.com"
+    static let callbackScheme = "com.wd.footprint.app"
+    static let redirectUri = "com.wd.footprint.app:/oauth2callback"
+    static let scopes = [
+        "openid",
+        "email",
+        "profile"
+    ]
+}
+
+// MARK: - Google Sign In Errors
+
+enum GoogleSignInError: LocalizedError {
+    case cancelled
+    case invalidURL
+    case noIdToken
+    case sessionFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .cancelled:
+            return "Sign in was cancelled"
+        case .invalidURL:
+            return "Invalid authentication URL"
+        case .noIdToken:
+            return "Failed to get ID token"
+        case .sessionFailed:
+            return "Failed to start authentication session"
         }
     }
 }

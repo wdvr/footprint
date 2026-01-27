@@ -1,7 +1,5 @@
 """Authentication API routes."""
 
-import os
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
@@ -19,6 +17,12 @@ class AppleAuthRequest(BaseModel):
     identity_token: str
     authorization_code: str | None = None
     user_name: str | None = None  # Optional - only provided on first sign in
+
+
+class GoogleAuthRequest(BaseModel):
+    """Google Sign In authentication request."""
+
+    id_token: str
 
 
 class RefreshTokenRequest(BaseModel):
@@ -108,6 +112,36 @@ async def authenticate_apple(request: AppleAuthRequest):
     return AuthResponse(user=user_response, tokens=tokens)
 
 
+@router.post("/google", response_model=AuthResponse)
+async def authenticate_google(request: GoogleAuthRequest):
+    """
+    Authenticate user with Google Sign In.
+
+    Verifies the Google ID token and creates/retrieves user account.
+    Returns user data and JWT tokens.
+    """
+    result = await auth_service.authenticate_google(request.id_token)
+
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Google ID token",
+        )
+
+    user, tokens = result
+
+    user_response = UserResponse(
+        user_id=user["user_id"],
+        email=user.get("email"),
+        display_name=user.get("display_name"),
+        countries_visited=user.get("countries_visited", 0),
+        us_states_visited=user.get("us_states_visited", 0),
+        canadian_provinces_visited=user.get("canadian_provinces_visited", 0),
+    )
+
+    return AuthResponse(user=user_response, tokens=tokens)
+
+
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(request: RefreshTokenRequest):
     """
@@ -156,63 +190,3 @@ async def delete_account(current_user: dict = Depends(get_current_user)):
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail="Account deletion not yet implemented",
     )
-
-
-# Dev mode authentication - only for development/testing
-
-
-class DevAuthRequest(BaseModel):
-    """Dev mode authentication request."""
-
-    device_id: str
-
-
-@router.post("/dev", response_model=AuthResponse)
-async def authenticate_dev(request: DevAuthRequest):
-    """
-    Dev mode authentication - bypasses Apple Sign In for testing.
-
-    Only available in non-production environments.
-    Creates or retrieves a test user based on device ID.
-    """
-    # Only allow in dev environment
-    if os.environ.get("ENVIRONMENT") == "prod":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Dev auth not available in production",
-        )
-
-    # Create a deterministic user ID from device ID
-    import hashlib
-
-    user_id = f"dev-{hashlib.sha256(request.device_id.encode()).hexdigest()[:16]}"
-
-    # Check if user exists, create if not
-    user = db_service.get_user(user_id)
-    if not user:
-        user = db_service.create_user(
-            {
-                "user_id": user_id,
-                "auth_provider": "dev",
-                "auth_provider_id": request.device_id,
-                "email": f"{user_id}@dev.footprint.app",
-                "display_name": "Dev User",
-                "countries_visited": 0,
-                "us_states_visited": 0,
-                "canadian_provinces_visited": 0,
-            }
-        )
-
-    # Generate tokens
-    tokens = auth_service.create_tokens(user_id)
-
-    user_response = UserResponse(
-        user_id=user["user_id"],
-        email=user.get("email"),
-        display_name=user.get("display_name"),
-        countries_visited=user.get("countries_visited", 0),
-        us_states_visited=user.get("us_states_visited", 0),
-        canadian_provinces_visited=user.get("canadian_provinces_visited", 0),
-    )
-
-    return AuthResponse(user=user_response, tokens=tokens)
