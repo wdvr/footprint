@@ -239,7 +239,9 @@ async def get_place_stats(current_user: dict = Depends(get_current_user)):
         ),
         canadian_provinces_bucket_list=canadian_provinces_bucket,
         total_regions_visited=countries + us_states + canadian_provinces,
-        total_bucket_list=countries_bucket + us_states_bucket + canadian_provinces_bucket,
+        total_bucket_list=countries_bucket
+        + us_states_bucket
+        + canadian_provinces_bucket,
     )
 
 

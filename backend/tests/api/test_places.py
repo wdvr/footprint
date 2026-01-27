@@ -329,7 +329,11 @@ class TestPlaceStats:
             {"region_type": "country", "status": "visited", "is_deleted": False},
             {"region_type": "country", "status": "visited", "is_deleted": False},
             {"region_type": "us_state", "status": "visited", "is_deleted": False},
-            {"region_type": "canadian_province", "status": "visited", "is_deleted": False},
+            {
+                "region_type": "canadian_province",
+                "status": "visited",
+                "is_deleted": False,
+            },
             {"region_type": "country", "is_deleted": True},  # Should be excluded
         ]
 
@@ -356,7 +360,11 @@ class TestPlaceStats:
             {"region_type": "country", "status": "bucket_list", "is_deleted": False},
             {"region_type": "us_state", "status": "visited", "is_deleted": False},
             {"region_type": "us_state", "status": "bucket_list", "is_deleted": False},
-            {"region_type": "canadian_province", "status": "visited", "is_deleted": False},
+            {
+                "region_type": "canadian_province",
+                "status": "visited",
+                "is_deleted": False,
+            },
         ]
 
         response = client.get(
