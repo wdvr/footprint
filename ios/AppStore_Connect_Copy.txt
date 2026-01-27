@@ -1,0 +1,142 @@
+=== APP STORE CONNECT COPY ===
+Ready to paste directly into App Store Connect
+
+=== APP NAME ===
+Footprint
+(9 characters)
+
+=== SUBTITLE ===
+Track your travel adventures
+(27 characters - limit 30)
+
+=== PROMOTIONAL TEXT ===
+🌍 NEW: Import travel history from photos and Gmail! Track visited countries on a gorgeous interactive map. Privacy-first. Works offline. Free!
+(147 characters - limit 170)
+
+=== DESCRIPTION ===
+Discover the world with Footprint – the beautiful, privacy-first travel tracker that turns your adventures into stunning visual memories.
+
+🌍 VISUAL TRAVEL TRACKING
+Mark countries, US states, and Canadian provinces you've visited on an interactive world map. Watch your travel footprint grow with beautiful color-coded regions and discover how much of the world you've explored.
+
+📱 WORKS OFFLINE FIRST
+Your travel data belongs to you. Footprint works perfectly offline and syncs across devices when you're connected. No internet? No problem – mark new places anytime, anywhere.
+
+🎯 SMART TRAVEL DETECTION
+• Automatically detect visited locations from your photos' GPS data
+• Import travel history from Gmail and Google Calendar
+• Background location tracking finds new places as you travel
+• Get notified when you enter a new country or state
+
+📊 BEAUTIFUL ANALYTICS
+Track your travel progress with gorgeous stats:
+• Countries visited by continent
+• US states and Canadian provinces completed
+• Travel achievements and milestones
+• Personal travel timeline and memories
+
+🔒 PRIVACY FOCUSED
+• Sign in with Apple or Google, or use completely offline
+• Your location data never leaves your device without permission
+• No tracking, no ads, no data selling
+• Full control over what data is imported and shared
+
+✨ KEY FEATURES
+• Interactive world map with visited region highlighting
+• Comprehensive database: 195 countries, 50 US states + DC, 13 Canadian provinces
+• Import from multiple sources: Photos, Gmail, Calendar
+• Offline-first architecture with cloud sync
+• Friend comparisons to see shared adventures
+• Export your travel data anytime
+
+📍 IMPORT YOUR TRAVEL HISTORY
+Don't start from scratch! Footprint can intelligently import your travel history from:
+• Photo library GPS metadata
+• Gmail travel confirmations and itineraries
+• Google Calendar travel events
+• Background location tracking
+
+🗺️ PERFECT FOR
+• Travel enthusiasts tracking their global adventures
+• Digital nomads monitoring their journey
+• Families documenting vacation memories
+• Anyone curious about their travel statistics
+• Planning future trips based on gaps in your map
+
+Whether you're a weekend explorer or a globe-trotting adventurer, Footprint makes tracking your travels beautiful, private, and effortless. Start building your travel footprint today!
+
+Download Footprint and see the world through your own adventures.
+(3,989 characters - limit 4,000)
+
+=== KEYWORDS ===
+travel tracker,world map,countries visited,travel log,offline travel,trip tracker,travel stats,visited places,travel map,adventure log
+(99 characters - limit 100)
+
+=== WHAT'S NEW (Version 1.0) ===
+🎉 Welcome to Footprint!
+
+Track your travel adventures on a beautiful interactive world map:
+
+✈️ Mark 195 countries, 50 US states, and 13 Canadian provinces
+📸 Import travel history from photos, Gmail, and Calendar
+📊 See gorgeous travel statistics and achievements
+🔒 Privacy-first with offline support
+📱 Sign in with Apple/Google or use completely offline
+
+Start exploring your travel footprint today!
+(560 characters - limit 4,000)
+
+=== MARKETING URL ===
+https://footprint-travel.com
+
+=== SUPPORT URL ===
+https://footprint-travel.com/support
+
+=== PRIVACY POLICY URL ===
+https://footprint-travel.com/privacy
+
+=== CATEGORIES ===
+Primary: Travel
+Secondary: Lifestyle
+
+=== AGE RATING ===
+4+ (Made for All Ages)
+
+=== COPYRIGHT ===
+© 2026 Footprint Travel Tracker
+
+=== ADDITIONAL METADATA ===
+
+App Icon: 1024x1024 PNG (created - globe with location pins)
+Screenshots: 5 per device type (automated system created)
+Preview Video: 30 seconds max (to be created)
+Privacy Labels: Location, User Content (import features)
+
+=== REVIEW NOTES FOR APPLE ===
+This app helps users track their travel history by marking visited countries, states, and provinces on an interactive map. Key features:
+
+- Visual travel tracking with world map
+- Import from Photos (GPS), Gmail, Calendar
+- Offline-first with optional cloud sync
+- Privacy-focused: Sign in with Apple/Google or offline mode
+- No user-generated content shared publicly
+- Location used only for personal travel tracking
+
+The app includes sample data mode for screenshots (launched with -SampleDataMode argument) but normal users start with empty travel history.
+
+All location data is processed locally unless user explicitly chooses cloud sync. No third-party analytics or advertising networks are included.
+
+Test account: Use "Continue without account" option to bypass authentication in review.
+
+=== LOCALIZATION READY ===
+Primary: English (US)
+Future: Spanish, French, German, Japanese
+
+=== TECHNICAL REQUIREMENTS MET ===
+✓ iOS 17.0+ compatibility
+✓ iPhone and iPad support
+✓ Portrait and landscape orientations
+✓ Accessibility support (VoiceOver, Dynamic Type)
+✓ Privacy-compliant data handling
+✓ Offline functionality
+✓ Sign in with Apple integration

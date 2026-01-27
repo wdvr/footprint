@@ -76,10 +76,12 @@ struct SettingsView: View {
     @State private var showingSignOutAlert = false
     @State private var showingDeleteAccountAlert = false
     @State private var showingClearAllAlert = false
+    #if DEBUG
     @State private var showingBackupSuccess = false
     @State private var showingRestoreAlert = false
     @State private var showingRestoreSuccess = false
     @State private var backupError: String?
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -288,6 +290,7 @@ struct SettingsView: View {
             } message: {
                 Text("This will remove all \(visitedPlaces.count) visited places. This action cannot be undone.")
             }
+            #if DEBUG
             .alert("Backup Saved", isPresented: $showingBackupSuccess) {
                 Button("OK", role: .cancel) {}
             } message: {
@@ -311,6 +314,7 @@ struct SettingsView: View {
             } message: {
                 Text(backupError ?? "Unknown error")
             }
+            #endif
         }
     }
 

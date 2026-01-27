@@ -11,23 +11,53 @@ struct FootprintApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     #endif
 
+    // Check for UI testing and sample data mode
+    private let isUITesting = CommandLine.arguments.contains("-UITestingMode")
+    private let isSampleDataMode = CommandLine.arguments.contains("-SampleDataMode")
+
     init() {
-        // Register background task for photo import
-        PhotoImportManager.registerBackgroundTask()
+        // Register background task for photo import (skip in testing)
+        if !isUITesting {
+            PhotoImportManager.registerBackgroundTask()
+        }
+
+        // Disable animations in testing
+        if CommandLine.arguments.contains("-DisableAnimations") {
+            #if canImport(UIKit)
+            UIView.setAnimationsEnabled(false)
+            UIApplication.shared.keyWindow?.layer.speed = 100
+            #endif
+        }
     }
 
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             VisitedPlace.self,
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+
+        // Use in-memory storage for UI testing to avoid conflicts
+        let isUITesting = CommandLine.arguments.contains("-UITestingMode")
+        let modelConfiguration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: isUITesting
+        )
 
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+
+            // Add sample data if in sample data mode (DEBUG only)
+            #if DEBUG
+            if CommandLine.arguments.contains("-SampleDataMode") {
+                SampleDataHelper.addSampleData(to: container)
+            }
+            #endif
+
+            return container
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
     }()
+
 
     var body: some Scene {
         WindowGroup {
@@ -85,19 +115,25 @@ struct RootView: View {
     @State private var authManager = AuthManager.shared
     @State private var hasRequestedNotifications = false
 
+    // Check if we're in UI testing mode
+    private let isUITesting = CommandLine.arguments.contains("-UITestingMode")
+
     var body: some View {
         Group {
-            if authManager.isAuthenticated {
+            if authManager.isAuthenticated || isUITesting {
                 ContentView()
                     .task {
-                        // Configure sync manager and start sync
-                        SyncManager.shared.configure(modelContext: modelContext)
-                        await SyncManager.shared.sync()
+                        // Skip network operations in UI testing
+                        if !isUITesting {
+                            // Configure sync manager and start sync
+                            SyncManager.shared.configure(modelContext: modelContext)
+                            await SyncManager.shared.sync()
 
-                        // Request push notification permission once
-                        if !hasRequestedNotifications {
-                            hasRequestedNotifications = true
-                            _ = await PushNotificationManager.shared.requestPermission()
+                            // Request push notification permission once
+                            if !hasRequestedNotifications {
+                                hasRequestedNotifications = true
+                                _ = await PushNotificationManager.shared.requestPermission()
+                            }
                         }
                     }
             } else {
