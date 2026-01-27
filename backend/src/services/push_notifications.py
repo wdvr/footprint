@@ -32,7 +32,9 @@ class APNsService:
     def __init__(self):
         self.key_id = os.environ.get("APNS_KEY_ID", "")
         self.team_id = os.environ.get("APNS_TEAM_ID", "")
-        self.bundle_id = os.environ.get("APNS_BUNDLE_ID", "com.wd.footprint.app")
+        self.bundle_id = os.environ.get(
+            "APNS_BUNDLE_ID", "com.wouterdevriendt.footprint"
+        )
         self.key_path = os.environ.get("APNS_KEY_PATH", "")
         self.is_sandbox = os.environ.get("ENVIRONMENT", "dev") != "prod"
         self._private_key: str | None = None

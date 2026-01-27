@@ -56,7 +56,7 @@ struct ContentView: View {
         }.count
 
         // Save to shared UserDefaults for widget
-        if let defaults = UserDefaults(suiteName: "group.com.wd.footprint") {
+        if let defaults = UserDefaults(suiteName: "group.com.wouterdevriendt.footprint") {
             defaults.set(countriesVisited, forKey: "countriesVisited")
             defaults.set(statesVisited, forKey: "statesVisited")
         }

@@ -16,7 +16,7 @@
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.wd.footprint.app</string>
+				<string>com.wouterdevriendt.footprint</string>
 			</array>
 			<key>CFBundleURLName</key>
 			<string>Google OAuth Callback</string>
@@ -30,7 +30,7 @@
 	</array>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>com.wd.footprint.photo-import</string>
+		<string>com.wouterdevriendt.footprint.photo-import</string>
 	</array>
 </dict>
 </plist>

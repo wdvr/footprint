@@ -65,7 +65,7 @@ private struct PhotoScanProgress: Codable {
 @Observable
 final class PhotoImportManager {
 
-    static let backgroundTaskIdentifier = "com.wd.footprint.photo-import"
+    static let backgroundTaskIdentifier = "com.wouterdevriendt.footprint.photo-import"
 
     /// Shared instance for background scanning support
     static let shared = PhotoImportManager()

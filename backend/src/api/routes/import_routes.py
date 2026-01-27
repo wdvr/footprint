@@ -42,7 +42,7 @@ logger.setLevel(logging.INFO)
 router = APIRouter(prefix="/import/google", tags=["import"])
 
 # App URL scheme for OAuth callback redirect
-APP_URL_SCHEME = "com.wd.footprint.app"
+APP_URL_SCHEME = "com.wouterdevriendt.footprint"
 
 
 @router.get("/oauth/callback")
