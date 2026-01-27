@@ -23,7 +23,7 @@ env:
 jobs:
   build-and-upload:
     name: Build and Upload to TestFlight
-    runs-on: macos-15
+    runs-on: macos-latest
     # Only run if CI passed (or if manually triggered)
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
@@ -36,16 +36,33 @@ jobs:
 
     - name: Select Xcode 26
       run: |
-        # Select Xcode 26 for iOS 26 SDK
+        # List available Xcode versions for debugging
+        ls -la /Applications/ | grep -i xcode || true
+
+        # Select Xcode 26 (required for iOS 26 SDK - Apple requirement as of April 2026)
         if [ -d "/Applications/Xcode_26.app" ]; then
           sudo xcode-select -s /Applications/Xcode_26.app/Contents/Developer
         elif [ -d "/Applications/Xcode-26.app" ]; then
           sudo xcode-select -s /Applications/Xcode-26.app/Contents/Developer
-        else
+        elif [ -d "/Applications/Xcode.app" ]; then
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
         fi
+
+        # Verify we have Xcode 26+
         xcode-select -p
-        xcodebuild -version
+        XCODE_VERSION=$(xcodebuild -version | head -1)
+        echo "Using: $XCODE_VERSION"
+
+        SDK_VERSION=$(xcrun --show-sdk-version --sdk iphoneos)
+        echo "iOS SDK: $SDK_VERSION"
+
+        # Fail if SDK is too old (requires iOS 26+)
+        if [[ ! "$SDK_VERSION" =~ ^26 ]]; then
+          echo "ERROR: iOS SDK 26+ required, but found $SDK_VERSION"
+          echo "The macos-latest runner may need to be updated."
+          exit 1
+        fi
+
         xcodebuild -showsdks | grep iOS || true
 
     - name: Install XcodeGen
