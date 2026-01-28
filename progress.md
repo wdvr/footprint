@@ -1,7 +1,7 @@
 # Footprint Travel Tracker - Progress & Tasks
 
 ## Project Status: MVP DEVELOPMENT
-**Last Updated**: 2026-01-27
+**Last Updated**: 2026-01-28
 
 ## Source of Truth: GitHub Issues
 
@@ -11,31 +11,50 @@ https://github.com/wdvr/footprint/issues
 ### Open Bugs
 | Issue | Title | Labels |
 |-------|-------|--------|
-| [#11](https://github.com/wdvr/footprint/issues/11) | Auth token not persisted across app relaunch | bug |
-| [#12](https://github.com/wdvr/footprint/issues/12) | Push notifications not configured for production | bug, infrastructure, ios |
+| [#30](https://github.com/wdvr/footprint/issues/30) | Persist Google connection - avoid re-auth on every import | bug, ios, backend |
+| [#31](https://github.com/wdvr/footprint/issues/31) | Reduce console logging spam on device | ios |
 
 ### In Progress Features
 | Issue | Title | Labels |
 |-------|-------|--------|
-| [#15](https://github.com/wdvr/footprint/issues/15) | Apple Sign In - waiting for approval | blocked, ios |
+| [#16](https://github.com/wdvr/footprint/issues/16) | Deploy production AWS environment | infrastructure |
 
 ### Recently Completed
 | Issue | Title | Labels |
 |-------|-------|--------|
-| [#13](https://github.com/wdvr/footprint/issues/13) | Gmail/Calendar import feature | feature, ios, backend |
+| [#11](https://github.com/wdvr/footprint/issues/11) | Auth token persistence (Keychain-based) | bug |
+| [#12](https://github.com/wdvr/footprint/issues/12) | Push notifications configured | bug, infrastructure, ios |
 | [#14](https://github.com/wdvr/footprint/issues/14) | In-app feedback and feature requests | feature, ios, backend |
+| [#15](https://github.com/wdvr/footprint/issues/15) | Apple Sign In | ios |
+| [#22](https://github.com/wdvr/footprint/issues/22) | iOS UI tests (5 screenshot tests) | ios |
+| [#24](https://github.com/wdvr/footprint/issues/24) | Link Google Account | feature, ios, backend |
+| [#25](https://github.com/wdvr/footprint/issues/25) | Import from Google Calendar | feature, ios, backend |
+| [#26](https://github.com/wdvr/footprint/issues/26) | Import from Gmail | feature, ios, backend |
+| [#33](https://github.com/wdvr/footprint/issues/33) | Bucket list mode | feature, ios |
+| [#38](https://github.com/wdvr/footprint/issues/38) | Push notifications - travel alerts | feature, ios |
 
 ### Planned Features
 | Issue | Title | Labels |
 |-------|-------|--------|
-| [#16](https://github.com/wdvr/footprint/issues/16) | Deploy production AWS environment | infrastructure |
 | [#17](https://github.com/wdvr/footprint/issues/17) | States/provinces for other countries | feature |
 | [#18](https://github.com/wdvr/footprint/issues/18) | Cities & Landmarks tracking | feature |
 | [#19](https://github.com/wdvr/footprint/issues/19) | macOS app (Universal purchase) | feature |
 | [#20](https://github.com/wdvr/footprint/issues/20) | Data export - share travel maps | feature, ios |
 | [#21](https://github.com/wdvr/footprint/issues/21) | Accessibility improvements | feature, ios |
-| [#22](https://github.com/wdvr/footprint/issues/22) | iOS UI tests | ios |
 | [#23](https://github.com/wdvr/footprint/issues/23) | Performance testing | ios, backend |
+| [#28](https://github.com/wdvr/footprint/issues/28) | Pretty splash screen with animated world map | feature, ios |
+| [#34](https://github.com/wdvr/footprint/issues/34) | Travel timeline - visit dates | feature, ios, backend |
+| [#35](https://github.com/wdvr/footprint/issues/35) | Photos & memories | feature, ios |
+| [#37](https://github.com/wdvr/footprint/issues/37) | Badges & achievements | feature, ios, backend |
+| [#39](https://github.com/wdvr/footprint/issues/39) | Transit vs Visited distinction | feature, ios, backend |
+| [#40](https://github.com/wdvr/footprint/issues/40) | National Parks tracking | feature, ios, backend |
+| [#41](https://github.com/wdvr/footprint/issues/41) | Continent statistics breakdown | feature, ios |
+| [#42](https://github.com/wdvr/footprint/issues/42) | Time zones visited tracking | feature, ios |
+| [#43](https://github.com/wdvr/footprint/issues/43) | Apple Watch app | feature |
+| [#44](https://github.com/wdvr/footprint/issues/44) | Friends leaderboard | feature, ios, backend |
+| [#45](https://github.com/wdvr/footprint/issues/45) | Annual travel summary | feature, ios |
+| [#46](https://github.com/wdvr/footprint/issues/46) | UNESCO World Heritage Sites | feature, ios, backend |
+| [#47](https://github.com/wdvr/footprint/issues/47) | Siri Shortcuts integration | feature, ios |
 
 ## Completed Phases
 
@@ -106,7 +125,7 @@ pulumi up --yes
 | 6 | **Photos & memories** | Attach photos to visited places, integrate with Photos app | 🔲 TODO |
 | 7 | **Photo library import** | Scan photo library GPS metadata, auto-suggest places you've visited | ✅ DONE |
 | 8 | **Badges & achievements** | Gamification: "10 countries", "All US states", "Europe explorer", unlock rewards | 🔲 TODO |
-| 9 | **Push notifications** | "You're near a new country!", weekly travel stats, achievement unlocks | 🔲 TODO |
+| 9 | **Push notifications** | "You're near a new country!", weekly travel stats, achievement unlocks | ✅ DONE |
 
 ### Medium Priority - Expanded Tracking
 | # | Feature | Description | Status |
