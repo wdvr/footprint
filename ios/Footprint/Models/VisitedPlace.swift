@@ -36,13 +36,41 @@ final class VisitedPlace {
         }
     }
 
+    enum VisitType: String, Codable, CaseIterable {
+        case visited = "visited"
+        case transit = "transit"
+
+        var displayName: String {
+            switch self {
+            case .visited: return "Visited"
+            case .transit: return "Transit/Layover"
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .visited: return "figure.walk"
+            case .transit: return "airplane"
+            }
+        }
+
+        var color: String {
+            switch self {
+            case .visited: return "green"
+            case .transit: return "orange"
+            }
+        }
+    }
+
     var id: UUID
     var regionType: String
     var regionCode: String
     var regionName: String
-    // Default value enables lightweight migration from older schema versions
+    // Default values enable lightweight migration from older schema versions
     var status: String = "visited"
+    var visitType: String = "visited"
     var visitedDate: Date?
+    var departureDate: Date?
     var notes: String?
     var markedAt: Date
     var syncVersion: Int
@@ -56,7 +84,9 @@ final class VisitedPlace {
         regionCode: String,
         regionName: String,
         status: PlaceStatus = .visited,
+        visitType: VisitType = .visited,
         visitedDate: Date? = nil,
+        departureDate: Date? = nil,
         notes: String? = nil,
         markedAt: Date = Date(),
         syncVersion: Int = 1,
@@ -69,7 +99,9 @@ final class VisitedPlace {
         self.regionCode = regionCode
         self.regionName = regionName
         self.status = status.rawValue
+        self.visitType = visitType.rawValue
         self.visitedDate = visitedDate
+        self.departureDate = departureDate
         self.notes = notes
         self.markedAt = markedAt
         self.syncVersion = syncVersion
@@ -86,11 +118,30 @@ final class VisitedPlace {
         PlaceStatus(rawValue: status) ?? .visited
     }
 
+    var visitTypeEnum: VisitType {
+        VisitType(rawValue: visitType) ?? .visited
+    }
+
     var isVisited: Bool {
         statusEnum == .visited
     }
 
     var isBucketList: Bool {
         statusEnum == .bucketList
+    }
+
+    var isTransit: Bool {
+        visitTypeEnum == .transit
+    }
+
+    var isFullVisit: Bool {
+        visitTypeEnum == .visited
+    }
+
+    /// Duration of visit in days (if both dates are set)
+    var visitDuration: Int? {
+        guard let arrival = visitedDate, let departure = departureDate else { return nil }
+        let days = Calendar.current.dateComponents([.day], from: arrival, to: departure).day
+        return days.map { max(1, $0 + 1) }  // At least 1 day
     }
 }

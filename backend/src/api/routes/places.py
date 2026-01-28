@@ -9,6 +9,7 @@ from src.models.visited_place import (
     RegionType,
     VisitedPlaceCreate,
     VisitedPlaceUpdate,
+    VisitType,
 )
 from src.services.dynamodb import db_service
 
@@ -23,7 +24,9 @@ class VisitedPlaceResponse(BaseModel):
     region_code: str
     region_name: str
     status: str = "visited"
+    visit_type: str = "visited"
     visited_date: str | None = None
+    departure_date: str | None = None
     notes: str | None = None
     marked_at: str
     sync_version: int
@@ -112,7 +115,9 @@ def _place_to_response(place: dict) -> VisitedPlaceResponse:
         region_code=place.get("region_code", ""),
         region_name=place.get("region_name", ""),
         status=place.get("status", "visited"),
+        visit_type=place.get("visit_type", "visited"),
         visited_date=place.get("visited_date"),
+        departure_date=place.get("departure_date"),
         notes=place.get("notes"),
         marked_at=place.get("created_at", ""),
         sync_version=place.get("sync_version", 1),
@@ -182,7 +187,9 @@ async def create_visited_place(
         "region_code": place.region_code,
         "region_name": place.region_name,
         "status": place.status.value,
+        "visit_type": place.visit_type.value,
         "visited_date": place.visited_date.isoformat() if place.visited_date else None,
+        "departure_date": place.departure_date.isoformat() if place.departure_date else None,
         "notes": place.notes,
         "sync_version": 1,
         "is_deleted": False,
@@ -288,8 +295,12 @@ async def update_visited_place(
     update_data = {}
     if updates.status is not None:
         update_data["status"] = updates.status.value
+    if updates.visit_type is not None:
+        update_data["visit_type"] = updates.visit_type.value
     if updates.visited_date is not None:
         update_data["visited_date"] = updates.visited_date.isoformat()
+    if updates.departure_date is not None:
+        update_data["departure_date"] = updates.departure_date.isoformat()
     if updates.notes is not None:
         update_data["notes"] = updates.notes
 
@@ -352,8 +363,12 @@ async def batch_create_places(
             "region_code": place.region_code,
             "region_name": place.region_name,
             "status": place.status.value,
+            "visit_type": place.visit_type.value,
             "visited_date": place.visited_date.isoformat()
             if place.visited_date
+            else None,
+            "departure_date": place.departure_date.isoformat()
+            if place.departure_date
             else None,
             "notes": place.notes,
             "sync_version": 1,
