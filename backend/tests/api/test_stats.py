@@ -61,8 +61,16 @@ class TestContinentStats:
             {"region_code": "FR", "status": "visited", "is_deleted": False},  # Europe
             {"region_code": "DE", "status": "visited", "is_deleted": False},  # Europe
             {"region_code": "JP", "status": "visited", "is_deleted": False},  # Asia
-            {"region_code": "US", "status": "visited", "is_deleted": False},  # N. America
-            {"region_code": "BR", "status": "visited", "is_deleted": False},  # S. America
+            {
+                "region_code": "US",
+                "status": "visited",
+                "is_deleted": False,
+            },  # N. America
+            {
+                "region_code": "BR",
+                "status": "visited",
+                "is_deleted": False,
+            },  # S. America
         ]
 
         response = client.get(
@@ -144,7 +152,11 @@ class TestTimeZoneStats:
             {"region_code": "GB", "status": "visited", "is_deleted": False},  # UTC+0
             {"region_code": "FR", "status": "visited", "is_deleted": False},  # UTC+1
             {"region_code": "JP", "status": "visited", "is_deleted": False},  # UTC+9
-            {"region_code": "US", "status": "visited", "is_deleted": False},  # UTC-5 to -10
+            {
+                "region_code": "US",
+                "status": "visited",
+                "is_deleted": False,
+            },  # UTC-5 to -10
         ]
 
         response = client.get(
@@ -161,7 +173,11 @@ class TestTimeZoneStats:
     def test_get_timezone_stats_multi_zone_countries(self, client, mock_db_service):
         """Test that multi-zone countries count all their zones."""
         mock_db_service.get_user_visited_places.return_value = [
-            {"region_code": "RU", "status": "visited", "is_deleted": False},  # UTC+2 to +12
+            {
+                "region_code": "RU",
+                "status": "visited",
+                "is_deleted": False,
+            },  # UTC+2 to +12
         ]
 
         response = client.get(

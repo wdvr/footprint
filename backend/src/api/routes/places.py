@@ -188,7 +188,9 @@ async def create_visited_place(
         "status": place.status.value,
         "visit_type": place.visit_type.value,
         "visited_date": place.visited_date.isoformat() if place.visited_date else None,
-        "departure_date": place.departure_date.isoformat() if place.departure_date else None,
+        "departure_date": place.departure_date.isoformat()
+        if place.departure_date
+        else None,
         "notes": place.notes,
         "sync_version": 1,
         "is_deleted": False,

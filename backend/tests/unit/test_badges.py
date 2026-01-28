@@ -1,6 +1,5 @@
 """Tests for badge models and definitions."""
 
-
 from src.models.badges import (
     BADGES,
     BADGES_BY_ID,
@@ -26,7 +25,9 @@ class TestBadgeDefinitions:
             assert badge.category, f"Badge missing category: {badge.id}"
             assert badge.icon, f"Badge missing icon: {badge.id}"
             assert badge.requirement_type, f"Badge missing requirement_type: {badge.id}"
-            assert badge.requirement_value > 0, f"Badge has invalid requirement_value: {badge.id}"
+            assert badge.requirement_value > 0, (
+                f"Badge has invalid requirement_value: {badge.id}"
+            )
 
     def test_badge_ids_are_unique(self):
         """Test that all badge IDs are unique."""

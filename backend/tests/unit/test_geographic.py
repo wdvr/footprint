@@ -1,6 +1,5 @@
 """Tests for geographic data models and mappings."""
 
-
 from src.models.geographic import (
     CONTINENT_COUNTRY_COUNTS,
     COUNTRY_CONTINENTS,
@@ -37,9 +36,9 @@ class TestContinentMapping:
                 1 for cont in COUNTRY_CONTINENTS.values() if cont == continent
             )
             expected_count = CONTINENT_COUNTRY_COUNTS.get(continent, 0)
-            assert (
-                mapped_count == expected_count
-            ), f"Mismatch for {continent}: mapped={mapped_count}, expected={expected_count}"
+            assert mapped_count == expected_count, (
+                f"Mismatch for {continent}: mapped={mapped_count}, expected={expected_count}"
+            )
 
     def test_get_country_continent_europe(self):
         """Test getting continent for European countries."""
@@ -181,7 +180,12 @@ class TestTimeZoneStatsModel:
             percentage=33.33,
             zones=[
                 {"offset": 0, "name": "UTC+0", "visited": True, "countries": ["GB"]},
-                {"offset": 1, "name": "UTC+1", "visited": True, "countries": ["FR", "DE"]},
+                {
+                    "offset": 1,
+                    "name": "UTC+1",
+                    "visited": True,
+                    "countries": ["FR", "DE"],
+                },
             ],
             farthest_east=9,
             farthest_west=-5,

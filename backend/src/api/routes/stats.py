@@ -226,7 +226,11 @@ def _calculate_badge_progress(
     elif badge.requirement_type == "canadian_provinces_visited":
         progress = canadian_provinces_visited
     elif badge.requirement_type == "continent_countries":
-        continent = badge.requirement_filter.get("continent") if badge.requirement_filter else None
+        continent = (
+            badge.requirement_filter.get("continent")
+            if badge.requirement_filter
+            else None
+        )
         if continent:
             progress = continent_counts.get(continent, 0)
     elif badge.requirement_type == "americas_countries":
@@ -295,7 +299,9 @@ async def get_badges(current_user: dict = Depends(get_current_user)):
         code = p.get("region_code")
         continent = get_country_continent(code)
         if continent:
-            continent_counts[continent.value] = continent_counts.get(continent.value, 0) + 1
+            continent_counts[continent.value] = (
+                continent_counts.get(continent.value, 0) + 1
+            )
             continents_with_visits.add(continent.value)
 
     # Time zones
@@ -405,7 +411,9 @@ async def get_extended_stats(current_user: dict = Depends(get_current_user)):
     active_places = [p for p in places if not p.get("is_deleted", False)]
 
     # Count by visit type
-    countries_visited, countries_transit = _count_by_visit_type(active_places, "country")
+    countries_visited, countries_transit = _count_by_visit_type(
+        active_places, "country"
+    )
     us_visited, us_transit = _count_by_visit_type(active_places, "us_state")
     ca_visited, ca_transit = _count_by_visit_type(active_places, "canadian_province")
 
