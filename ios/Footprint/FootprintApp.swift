@@ -15,8 +15,13 @@ struct FootprintApp: App {
     private let isUITesting = CommandLine.arguments.contains("-UITestingMode")
     private let isSampleDataMode = CommandLine.arguments.contains("-SampleDataMode")
 
+    // Store initialization error for display
+    private let modelContainerError: Error?
+    private let sharedModelContainer: ModelContainer?
+
     init() {
         // Register background task for photo import (skip in testing)
+        let isUITesting = CommandLine.arguments.contains("-UITestingMode")
         if !isUITesting {
             PhotoImportManager.registerBackgroundTask()
         }
@@ -25,18 +30,19 @@ struct FootprintApp: App {
         if CommandLine.arguments.contains("-DisableAnimations") {
             #if canImport(UIKit)
             UIView.setAnimationsEnabled(false)
-            UIApplication.shared.keyWindow?.layer.speed = 100
+            // Find window through connected scenes (keyWindow is deprecated)
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first {
+                window.layer.speed = 100
+            }
             #endif
         }
-    }
 
-    var sharedModelContainer: ModelContainer = {
+        // Initialize ModelContainer with error handling
         let schema = Schema([
             VisitedPlace.self,
         ])
 
-        // Use in-memory storage for UI testing to avoid conflicts
-        let isUITesting = CommandLine.arguments.contains("-UITestingMode")
         let modelConfiguration = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: isUITesting
@@ -52,18 +58,70 @@ struct FootprintApp: App {
             }
             #endif
 
-            return container
+            self.sharedModelContainer = container
+            self.modelContainerError = nil
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            self.sharedModelContainer = nil
+            self.modelContainerError = error
+            print("Failed to create ModelContainer: \(error)")
         }
-    }()
-
+    }
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            if let container = sharedModelContainer {
+                RootView()
+                    .modelContainer(container)
+            } else {
+                DatabaseErrorView(error: modelContainerError)
+            }
         }
-        .modelContainer(sharedModelContainer)
+    }
+}
+
+/// View shown when the database fails to initialize
+struct DatabaseErrorView: View {
+    let error: Error?
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 60))
+                .foregroundStyle(.orange)
+
+            Text("Unable to Load Data")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            Text("The app's database could not be initialized. This may be due to insufficient storage space or a corrupted database.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+
+            if let error = error {
+                Text(error.localizedDescription)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 40)
+            }
+
+            VStack(spacing: 12) {
+                Button("Try Again") {
+                    // Restart the app by exiting - user will need to relaunch
+                    #if canImport(UIKit)
+                    exit(0)
+                    #endif
+                }
+                .buttonStyle(.borderedProminent)
+
+                Text("If the problem persists, try reinstalling the app.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.top, 20)
+        }
+        .padding()
     }
 }
 

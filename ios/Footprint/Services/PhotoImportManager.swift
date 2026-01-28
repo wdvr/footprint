@@ -182,7 +182,13 @@ final class PhotoImportManager: NSObject {
             using: nil
         ) { task in
             Task { @MainActor in
-                await PhotoImportManager.handleBackgroundTask(task as! BGProcessingTask)
+                // Safely cast to BGProcessingTask
+                guard let processingTask = task as? BGProcessingTask else {
+                    print("[PhotoImport] Unexpected task type: \(type(of: task))")
+                    task.setTaskCompleted(success: false)
+                    return
+                }
+                await PhotoImportManager.handleBackgroundTask(processingTask)
             }
         }
     }
