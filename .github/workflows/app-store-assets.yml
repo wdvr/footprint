@@ -21,7 +21,7 @@ on:
       generate_screenshots:
         description: 'Generate screenshots'
         required: false
-        default: false
+        default: true
         type: boolean
       upload_to_app_store:
         description: 'Upload to App Store Connect'
@@ -110,33 +110,53 @@ jobs:
         name: generated-assets
         path: ios/fastlane/metadata/
 
-    - name: Setup Xcode
+    - name: Select Xcode
       run: |
-        XCODE_PATH="/Applications/Xcode-16.2.0.app"
-        CURRENT_XCODE=$(xcode-select -p 2>/dev/null || echo "")
-        if [ "$CURRENT_XCODE" != "$XCODE_PATH/Contents/Developer" ]; then
-          sudo xcode-select -s "$XCODE_PATH" || echo "Xcode already set"
+        # Find and select Xcode (prefer Xcode 26.x, fall back to Xcode.app)
+        XCODE_PATH=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+        if [ -z "$XCODE_PATH" ]; then
+          XCODE_PATH="/Applications/Xcode.app"
         fi
+
+        if [ -d "$XCODE_PATH" ]; then
+          CURRENT_PATH=$(xcode-select -p 2>/dev/null || echo "")
+          TARGET_PATH="$XCODE_PATH/Contents/Developer"
+          if [ "$CURRENT_PATH" = "$TARGET_PATH" ]; then
+            echo "Xcode already set to: $XCODE_PATH"
+          else
+            echo "Switching Xcode to: $XCODE_PATH"
+            sudo xcode-select -s "$TARGET_PATH" || {
+              echo "Note: Could not switch Xcode (may require sudo). Using current selection."
+            }
+          fi
+        else
+          echo "ERROR: No Xcode found in /Applications"
+          ls -la /Applications/ | grep -i xcode
+          exit 1
+        fi
+
         xcodebuild -version
+
+    - name: Install XcodeGen
+      run: which xcodegen || brew install xcodegen
+
+    - name: Generate Xcode project
+      run: |
+        cd ios
+        xcodegen generate
 
     - name: Setup Ruby
       run: |
-        # Check current Ruby version
         echo "Current Ruby: $(ruby --version)"
-
-        # If Ruby is too old, use Homebrew Ruby
         RUBY_VERSION=$(ruby -e 'puts RUBY_VERSION')
         if [[ "$RUBY_VERSION" < "3.0" ]]; then
           echo "Ruby $RUBY_VERSION is too old, installing via Homebrew..."
           brew install ruby@3.2 || true
           echo 'export PATH="/opt/homebrew/opt/ruby@3.2/bin:$PATH"' >> $GITHUB_ENV
-          export PATH="/opt/homebrew/opt/ruby@3.2/bin:$PATH"
-          echo "New Ruby: $(ruby --version)"
         fi
 
     - name: Install Fastlane
       run: |
-        # Ensure Homebrew Ruby is in path
         export PATH="/opt/homebrew/opt/ruby@3.2/bin:$PATH"
         cd ios/fastlane
         gem install bundler --no-document || true
@@ -147,9 +167,20 @@ jobs:
       if: ${{ github.event.inputs.generate_screenshots == 'true' }}
       run: |
         export PATH="/opt/homebrew/opt/ruby@3.2/bin:$PATH"
-        # Boot simulator
-        xcrun simctl boot "iPhone 16 Pro Max" 2>/dev/null || true
+
+        # Get available simulators
+        echo "Available simulators:"
+        xcrun simctl list devices available | head -30
+
+        # Boot a simulator (try iPhone 17 Pro Max first, fallback to others)
+        DEVICE="iPhone 17 Pro Max"
+        if ! xcrun simctl list devices | grep -q "$DEVICE"; then
+          DEVICE="iPhone 16 Pro Max"
+        fi
+        echo "Using device: $DEVICE"
+        xcrun simctl boot "$DEVICE" 2>/dev/null || true
         sleep 5
+
         cd ios/fastlane
         bundle exec fastlane screenshots_iphone
 

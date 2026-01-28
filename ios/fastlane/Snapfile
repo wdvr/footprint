@@ -2,13 +2,16 @@
 # Configuration for automated screenshot generation
 
 # A list of devices you want to take the screenshots from
+# Available: iPhone 17 Pro, iPhone 17 Pro Max, iPhone Air, iPhone 17, iPhone 16e,
+#            iPad Pro 13-inch (M5), iPad Pro 11-inch (M5), iPad mini (A17 Pro),
+#            iPad (A16), iPad Air 13-inch (M3), iPad Air 11-inch (M3)
 devices([
   "iPhone 17 Pro Max",                     # 6.9" - Required for App Store
   "iPhone 17 Pro",                         # 6.3" - Required for App Store
   "iPhone 17",                             # 6.1" - Required for App Store
-  "iPhone SE (3rd generation)",            # 4.7" - For older/smaller devices
-  "iPad Pro (12.9-inch) (6th generation)", # 12.9" iPad - Required for iPad App Store
-  "iPad Pro (11-inch) (4th generation)"   # 11" iPad - Additional iPad size
+  "iPhone 16e",                            # Smaller iPhone
+  "iPad Pro 13-inch (M5)",                 # 13" iPad - Required for iPad App Store
+  "iPad Pro 11-inch (M5)"                  # 11" iPad - Additional iPad size
 ])
 
 # Languages to generate the screenshots for
@@ -42,10 +45,6 @@ launch_arguments([
 # Remove the '#' to disable slide to type on the iOS simulator
 disable_slide_to_type(true)
 
-# Configure how long snapshot should wait for animations to finish
-# The default value is 20 seconds
-wait_for_animations_timeout(30)
-
 # Stop immediately after the first test failure
 # If you want to test all devices even if one fails, set this to false
 stop_after_first_error(false)
@@ -53,14 +52,6 @@ stop_after_first_error(false)
 # Configure whether or not to locale the simulator
 # If you're not localizing your app, you can set this to false
 localize_simulator(true)
-
-# Configure whether or not Snapshot should save a copy of the simulator
-# logs during screenshot generation
-# This can be helpful for debugging test failures
-capture_simulator_logs(false)
-
-# Configure test target to use for capturing screenshots
-test_target("FootprintUITests")
 
 # Configure build configuration
 configuration("Debug")

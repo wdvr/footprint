@@ -6,6 +6,32 @@ options:
   createIntermediateGroups: true
   xcodeVersion: "15.0"
 
+schemes:
+  Footprint:
+    build:
+      targets:
+        Footprint: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - FootprintTests
+        - FootprintUITests
+    archive:
+      config: Release
+  FootprintUITests:
+    build:
+      targets:
+        Footprint: all
+        FootprintUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - FootprintUITests
+
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -42,5 +68,17 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: Footprint
+
+  FootprintUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - FootprintUITests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        OTHER_SWIFT_FLAGS: "-DSNAPSHOT"
     dependencies:
       - target: Footprint

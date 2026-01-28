@@ -179,3 +179,5 @@ site/
 # OS-specific files
 Thumbs.db
 Desktop.ini
+ios/fastlane/vendor/
+ios/fastlane/.bundle/

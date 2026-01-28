@@ -1,0 +1,8 @@
+Initial release of Footprint - Travel Map!
+
+- Track countries, US states, and Canadian provinces you've visited
+- Beautiful interactive world map
+- Tap to mark places as visited
+- View your travel statistics
+- Sign in with Apple for secure cloud backup
+- Works offline with automatic sync
