@@ -9,7 +9,6 @@ from src.models.visited_place import (
     RegionType,
     VisitedPlaceCreate,
     VisitedPlaceUpdate,
-    VisitType,
 )
 from src.services.dynamodb import db_service
 

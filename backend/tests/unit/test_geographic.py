@@ -1,6 +1,5 @@
 """Tests for geographic data models and mappings."""
 
-import pytest
 
 from src.models.geographic import (
     CONTINENT_COUNTRY_COUNTS,

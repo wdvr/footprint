@@ -1,6 +1,5 @@
 """Tests for badge models and definitions."""
 
-import pytest
 
 from src.models.badges import (
     BADGES,

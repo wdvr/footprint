@@ -1,7 +1,6 @@
 """Statistics API routes for continent, timezone, badges, and leaderboard."""
 
 from datetime import datetime
-from typing import Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -12,12 +11,9 @@ from src.models.badges import (
     Badge,
     BadgeProgress,
     BadgesResponse,
-    get_badge,
 )
 from src.models.geographic import (
     CONTINENT_COUNTRY_COUNTS,
-    COUNTRY_CONTINENTS,
-    COUNTRY_TIMEZONES,
     Continent,
     ContinentStats,
     ContinentStatsResponse,
