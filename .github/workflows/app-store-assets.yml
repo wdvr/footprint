@@ -140,7 +140,8 @@ jobs:
         export PATH="/opt/homebrew/opt/ruby@3.2/bin:$PATH"
         cd ios/fastlane
         gem install bundler --no-document || true
-        bundle install --path vendor/bundle
+        bundle config set --local path vendor/bundle
+        bundle install
 
     - name: Generate screenshots
       if: ${{ github.event.inputs.generate_screenshots == 'true' }}
