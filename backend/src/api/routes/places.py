@@ -75,6 +75,35 @@ TOTAL_US_STATES = 51  # 50 states + DC
 TOTAL_CANADIAN_PROVINCES = 13  # 10 provinces + 3 territories
 
 
+def _is_visited(place: dict) -> bool:
+    """Check if place has 'visited' status (not bucket_list)."""
+    return place.get("status", "visited") == "visited"
+
+
+def _is_bucket_list(place: dict) -> bool:
+    """Check if place has 'bucket_list' status."""
+    return place.get("status") == "bucket_list"
+
+
+def _count_places_by_type(
+    places: list[dict],
+) -> dict[str, dict[str, int]]:
+    """Count visited and bucket_list places by region type."""
+    counts = {
+        "country": {"visited": 0, "bucket_list": 0},
+        "us_state": {"visited": 0, "bucket_list": 0},
+        "canadian_province": {"visited": 0, "bucket_list": 0},
+    }
+    for p in places:
+        region_type = p.get("region_type")
+        if region_type in counts:
+            if _is_visited(p):
+                counts[region_type]["visited"] += 1
+            elif _is_bucket_list(p):
+                counts[region_type]["bucket_list"] += 1
+    return counts
+
+
 def _place_to_response(place: dict) -> VisitedPlaceResponse:
     """Convert DynamoDB item to response model."""
     return VisitedPlaceResponse(
@@ -182,46 +211,15 @@ async def get_place_stats(current_user: dict = Depends(get_current_user)):
     """
     user_id = current_user["user_id"]
     places = db_service.get_user_visited_places(user_id)
-
-    # Count by type (excluding deleted)
     active_places = [p for p in places if not p.get("is_deleted", False)]
+    counts = _count_places_by_type(active_places)
 
-    # Helper to check if visited (not bucket_list)
-    def is_visited(p: dict) -> bool:
-        return p.get("status", "visited") == "visited"
-
-    def is_bucket_list(p: dict) -> bool:
-        return p.get("status") == "bucket_list"
-
-    # Visited counts
-    countries = sum(
-        1 for p in active_places if p.get("region_type") == "country" and is_visited(p)
-    )
-    us_states = sum(
-        1 for p in active_places if p.get("region_type") == "us_state" and is_visited(p)
-    )
-    canadian_provinces = sum(
-        1
-        for p in active_places
-        if p.get("region_type") == "canadian_province" and is_visited(p)
-    )
-
-    # Bucket list counts
-    countries_bucket = sum(
-        1
-        for p in active_places
-        if p.get("region_type") == "country" and is_bucket_list(p)
-    )
-    us_states_bucket = sum(
-        1
-        for p in active_places
-        if p.get("region_type") == "us_state" and is_bucket_list(p)
-    )
-    canadian_provinces_bucket = sum(
-        1
-        for p in active_places
-        if p.get("region_type") == "canadian_province" and is_bucket_list(p)
-    )
+    countries = counts["country"]["visited"]
+    us_states = counts["us_state"]["visited"]
+    canadian_provinces = counts["canadian_province"]["visited"]
+    countries_bucket = counts["country"]["bucket_list"]
+    us_states_bucket = counts["us_state"]["bucket_list"]
+    canadian_provinces_bucket = counts["canadian_province"]["bucket_list"]
 
     return PlaceStatsResponse(
         countries_visited=countries,
@@ -239,9 +237,7 @@ async def get_place_stats(current_user: dict = Depends(get_current_user)):
         ),
         canadian_provinces_bucket_list=canadian_provinces_bucket,
         total_regions_visited=countries + us_states + canadian_provinces,
-        total_bucket_list=countries_bucket
-        + us_states_bucket
-        + canadian_provinces_bucket,
+        total_bucket_list=countries_bucket + us_states_bucket + canadian_provinces_bucket,
     )
 
 
@@ -380,49 +376,16 @@ def _update_user_stats(user_id: str) -> None:
     """Update user's visited places statistics."""
     places = db_service.get_user_visited_places(user_id)
     active_places = [p for p in places if not p.get("is_deleted", False)]
-
-    # Only count places with "visited" status (not bucket_list)
-    def is_visited(p: dict) -> bool:
-        return p.get("status", "visited") == "visited"
-
-    countries = sum(
-        1 for p in active_places if p.get("region_type") == "country" and is_visited(p)
-    )
-    us_states = sum(
-        1 for p in active_places if p.get("region_type") == "us_state" and is_visited(p)
-    )
-    canadian_provinces = sum(
-        1
-        for p in active_places
-        if p.get("region_type") == "canadian_province" and is_visited(p)
-    )
-
-    # Also track bucket list counts
-    countries_bucket = sum(
-        1
-        for p in active_places
-        if p.get("region_type") == "country" and p.get("status") == "bucket_list"
-    )
-    us_states_bucket = sum(
-        1
-        for p in active_places
-        if p.get("region_type") == "us_state" and p.get("status") == "bucket_list"
-    )
-    canadian_provinces_bucket = sum(
-        1
-        for p in active_places
-        if p.get("region_type") == "canadian_province"
-        and p.get("status") == "bucket_list"
-    )
+    counts = _count_places_by_type(active_places)
 
     db_service.update_user(
         user_id,
         {
-            "countries_visited": countries,
-            "us_states_visited": us_states,
-            "canadian_provinces_visited": canadian_provinces,
-            "countries_bucket_list": countries_bucket,
-            "us_states_bucket_list": us_states_bucket,
-            "canadian_provinces_bucket_list": canadian_provinces_bucket,
+            "countries_visited": counts["country"]["visited"],
+            "us_states_visited": counts["us_state"]["visited"],
+            "canadian_provinces_visited": counts["canadian_province"]["visited"],
+            "countries_bucket_list": counts["country"]["bucket_list"],
+            "us_states_bucket_list": counts["us_state"]["bucket_list"],
+            "canadian_provinces_bucket_list": counts["canadian_province"]["bucket_list"],
         },
     )

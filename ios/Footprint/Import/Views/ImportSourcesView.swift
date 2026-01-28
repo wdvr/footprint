@@ -17,18 +17,22 @@ struct ImportSourcesView: View {
             List {
                 // Google Section
                 Section {
-                    GoogleCalendarRow(
+                    ImportSourceRow(
+                        title: "Google Calendar",
+                        icon: "calendar",
+                        iconColor: .blue,
                         isConnected: googleAuth.isConnected,
-                        email: googleAuth.connectedEmail,
                         lastImported: UserDefaults.standard.object(forKey: "lastCalendarImport") as? Date,
-                        onReimport: { showingGoogleImport = true }
+                        onAction: { showingGoogleImport = true }
                     )
 
-                    GmailRow(
+                    ImportSourceRow(
+                        title: "Gmail",
+                        icon: "envelope.fill",
+                        iconColor: .red,
                         isConnected: googleAuth.isConnected,
-                        email: googleAuth.connectedEmail,
                         lastImported: UserDefaults.standard.object(forKey: "lastGmailImport") as? Date,
-                        onReimport: { showingGoogleImport = true }
+                        onAction: { showingGoogleImport = true }
                     )
                 } header: {
                     Text("Google")
@@ -89,113 +93,53 @@ struct ImportSourcesView: View {
     }
 }
 
-// MARK: - Google Calendar Row
+// MARK: - Import Source Row (Reusable)
 
-private struct GoogleCalendarRow: View {
+private struct ImportSourceRow: View {
+    let title: String
+    let icon: String
+    let iconColor: Color
     let isConnected: Bool
-    let email: String?
     let lastImported: Date?
-    let onReimport: () -> Void
+    let onAction: () -> Void
 
     var body: some View {
         HStack {
-            Image(systemName: "calendar")
+            Image(systemName: icon)
                 .font(.title2)
-                .foregroundStyle(isConnected ? .blue : .secondary)
+                .foregroundStyle(isConnected ? iconColor : .secondary)
                 .frame(width: 32)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Google Calendar")
+                Text(title)
                     .font(.body)
 
-                if isConnected {
-                    if let date = lastImported {
-                        Text("Last imported \(date.formatted(date: .abbreviated, time: .omitted))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                Group {
+                    if isConnected {
+                        if let date = lastImported {
+                            Text("Last imported \(date.formatted(date: .abbreviated, time: .omitted))")
+                        } else {
+                            Text("Not yet imported")
+                        }
                     } else {
-                        Text("Not yet imported")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        Text("Not connected")
                     }
-                } else {
-                    Text("Not connected")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             Spacer()
 
-            if isConnected {
-                Button("Reimport") {
-                    onReimport()
-                }
-                .font(.subheadline)
-            } else {
-                Button("Connect") {
-                    onReimport()
-                }
-                .font(.subheadline)
+            Button(isConnected ? "Reimport" : "Connect") {
+                onAction()
             }
+            .font(.subheadline)
         }
         .padding(.vertical, 4)
     }
 }
 
-// MARK: - Gmail Row
-
-private struct GmailRow: View {
-    let isConnected: Bool
-    let email: String?
-    let lastImported: Date?
-    let onReimport: () -> Void
-
-    var body: some View {
-        HStack {
-            Image(systemName: "envelope.fill")
-                .font(.title2)
-                .foregroundStyle(isConnected ? .red : .secondary)
-                .frame(width: 32)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Gmail")
-                    .font(.body)
-
-                if isConnected {
-                    if let date = lastImported {
-                        Text("Last imported \(date.formatted(date: .abbreviated, time: .omitted))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text("Not yet imported")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                } else {
-                    Text("Not connected")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Spacer()
-
-            if isConnected {
-                Button("Reimport") {
-                    onReimport()
-                }
-                .font(.subheadline)
-            } else {
-                Button("Connect") {
-                    onReimport()
-                }
-                .font(.subheadline)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-}
 
 // MARK: - Photos Row
 

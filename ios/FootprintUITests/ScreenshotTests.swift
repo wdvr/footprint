@@ -91,7 +91,7 @@ final class ScreenshotTests: XCTestCase {
     }
 
     func testScreenshot04_StateMapView() throws {
-        skipAuthenticationIfPresented()
+        skipAuthenticationIfPresent()
 
         // Go to map view first
         let mapTab = app.tabBars.buttons["Map"]
@@ -177,16 +177,6 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
-    private func skipAuthenticationIfPresented() {
-        // Check for login screen elements
-        if app.staticTexts["Track your travels around the world"].exists {
-            let continueButton = app.buttons["Continue without account"]
-            if continueButton.exists {
-                continueButton.tap()
-                sleep(2)
-            }
-        }
-    }
 }
 
 // MARK: - Snapshot Helper
