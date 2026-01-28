@@ -1,75 +1,54 @@
 # Fastlane configuration for Footprint Travel Tracker
-# This file contains the fastlane.tools configuration
 
 default_platform(:ios)
 
 platform :ios do
-  desc "Generate App Store screenshots for all devices"
+  # ============================================
+  # Screenshot Generation
+  # ============================================
+
+  desc "Generate App Store screenshots on all required device sizes"
   lane :screenshots do
     capture_screenshots(
-      workspace: "Footprint.xcodeproj",
+      project: "../Footprint.xcodeproj",
       scheme: "FootprintUITests",
       devices: [
-        "iPhone 17 Pro Max",     # 6.9" display (2024+)
-        "iPhone 17 Pro",         # 6.3" display
-        "iPhone 17",             # 6.1" display
+        "iPhone 16 Pro Max",      # 6.9" display (required)
+        "iPhone 16 Pro",          # 6.3" display
         "iPhone SE (3rd generation)", # 4.7" display
-        "iPad Pro (12.9-inch) (6th generation)", # 12.9" iPad Pro
-        "iPad Pro (11-inch) (4th generation)"    # 11" iPad Pro
+        "iPad Pro 13-inch (M4)"   # 13" iPad Pro
       ],
       languages: ["en-US"],
-      output_directory: "./fastlane/screenshots",
-      override_status_bar: true,
+      output_directory: "./screenshots",
       clear_previous_screenshots: true,
+      override_status_bar: true,
+      concurrent_simulators: false,
       stop_after_first_error: false,
-      suppress_xcode_output: false,
-      configuration: "Debug",
-      test_without_building: false,
-      disable_slide_to_type: true,
-      localize_simulator: true
+      skip_open_summary: true
     )
-
-    # Post-process screenshots to add device frames if desired
-    # frame_screenshots(
-    #   path: "./fastlane/screenshots"
-    # )
   end
 
-  desc "Generate App Store preview videos"
-  lane :preview_videos do
-    # This would require additional setup for video capture
-    # For now, we'll focus on screenshots
-    puts "📱 Preview video generation would go here"
-    puts "Consider using QuickTime screen recording or a tool like ScreenSearch"
+  desc "Generate screenshots for iPhone only (faster)"
+  lane :screenshots_iphone do
+    capture_screenshots(
+      project: "../Footprint.xcodeproj",
+      scheme: "FootprintUITests",
+      devices: ["iPhone 16 Pro Max"],
+      languages: ["en-US"],
+      output_directory: "./screenshots",
+      clear_previous_screenshots: true,
+      override_status_bar: true,
+      skip_open_summary: true
+    )
   end
 
-  desc "Prepare App Store submission materials"
-  lane :prepare_app_store do |options|
-    # Generate screenshots
-    screenshots
-
-    # TODO: Additional preparation steps
-    # - Validate app metadata
-    # - Check for missing assets
-    # - Verify privacy policy is accessible
-
-    puts "✅ App Store submission materials prepared!"
-    puts "📸 Screenshots: ./fastlane/screenshots/"
-    puts "📋 Next steps:"
-    puts "   1. Review generated screenshots"
-    puts "   2. Upload to App Store Connect"
-    puts "   3. Add app description and metadata"
-    puts "   4. Submit for review"
-  end
+  # ============================================
+  # App Store Connect Upload
+  # ============================================
 
   desc "Upload metadata, screenshots, and app icon to App Store Connect"
   lane :deliver_metadata do
-    api_key = app_store_connect_api_key(
-      key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
-      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
-      key_filepath: ENV["APP_STORE_CONNECT_KEY_PATH"],
-      in_house: false
-    )
+    api_key = get_api_key
 
     deliver(
       api_key: api_key,
@@ -81,18 +60,31 @@ platform :ios do
       precheck_include_in_app_purchases: false,
       submit_for_review: false,
       automatic_release: false,
-      run_precheck_before_submit: false
+      run_precheck_before_submit: false,
+      overwrite_screenshots: true
+    )
+  end
+
+  desc "Upload only screenshots"
+  lane :upload_screenshots do
+    api_key = get_api_key
+
+    deliver(
+      api_key: api_key,
+      app_identifier: "com.wouterdevriendt.footprint",
+      skip_binary_upload: true,
+      skip_metadata: true,
+      skip_screenshots: false,
+      skip_app_version_update: true,
+      force: true,
+      run_precheck_before_submit: false,
+      overwrite_screenshots: true
     )
   end
 
   desc "Upload only the app icon"
   lane :upload_icon do
-    api_key = app_store_connect_api_key(
-      key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
-      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
-      key_filepath: ENV["APP_STORE_CONNECT_KEY_PATH"],
-      in_house: false
-    )
+    api_key = get_api_key
 
     deliver(
       api_key: api_key,
@@ -107,54 +99,76 @@ platform :ios do
     )
   end
 
-  desc "Upload screenshots to App Store Connect"
-  lane :upload_screenshots do |options|
-    api_key = app_store_connect_api_key(
-      key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
-      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
-      key_filepath: ENV["APP_STORE_CONNECT_KEY_PATH"],
-      in_house: false
-    )
+  desc "Upload only metadata (no screenshots)"
+  lane :upload_metadata_only do
+    api_key = get_api_key
 
     deliver(
       api_key: api_key,
       app_identifier: "com.wouterdevriendt.footprint",
       skip_binary_upload: true,
-      skip_metadata: true,
-      skip_app_version_update: true,
-      overwrite_screenshots: true,
-      submit_for_review: false,
-      automatic_release: false
+      skip_screenshots: true,
+      skip_metadata: false,
+      force: true,
+      run_precheck_before_submit: false
     )
   end
 
-  desc "Clean up old screenshots and test artifacts"
-  lane :clean do
-    sh "rm -rf ./fastlane/screenshots/*"
-    sh "rm -rf ./DerivedData"
-    puts "🧹 Cleaned up old screenshots and test artifacts"
+  desc "Download existing metadata from App Store Connect"
+  lane :download_metadata do
+    api_key = get_api_key
+
+    deliver(
+      api_key: api_key,
+      app_identifier: "com.wouterdevriendt.footprint",
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      skip_metadata: false,
+      force: true,
+      run_precheck_before_submit: false,
+      download_metadata: true
+    )
+  end
+
+  # ============================================
+  # Combined Workflows
+  # ============================================
+
+  desc "Generate screenshots and upload everything"
+  lane :prepare_and_upload do
+    screenshots
+    deliver_metadata
+  end
+
+  desc "Full App Store preparation: icons, screenshots, metadata"
+  lane :full_app_store_prep do |options|
+    # Generate icons using Python script
+    Dir.chdir("../..") do
+      sh("python3 scripts/generate_icons.py")
+    end
+
+    # Generate screenshots
+    screenshots unless options[:skip_screenshots]
+
+    # Upload everything
+    deliver_metadata
+  end
+
+  # ============================================
+  # Helpers
+  # ============================================
+
+  private_lane :get_api_key do
+    app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+      key_filepath: ENV["APP_STORE_CONNECT_KEY_PATH"],
+      in_house: false
+    )
   end
 end
 
 # Error handling
 error do |lane, exception|
-  puts "❌ Error in lane '#{lane}': #{exception.message}"
-
-  # Clean up any temporary files
-  if File.directory?("./DerivedData")
-    sh "rm -rf ./DerivedData"
-  end
-end
-
-# Success notifications
-after_all do |lane, options|
-  case lane
-  when :screenshots
-    puts "📸 Screenshots generated successfully!"
-    puts "📁 Location: ./fastlane/screenshots/"
-  when :prepare_app_store
-    puts "🚀 App Store materials prepared!"
-  else
-    puts "✅ Lane '#{lane}' completed successfully!"
-  end
+  UI.error("Error in lane '#{lane}': #{exception.message}")
 end
