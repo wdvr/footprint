@@ -63,7 +63,14 @@ struct FootprintApp: App {
         } catch {
             self.sharedModelContainer = nil
             self.modelContainerError = error
-            print("Failed to create ModelContainer: \(error)")
+            print("❌ Failed to create ModelContainer:")
+            print("   Error: \(error)")
+            print("   Localized: \(error.localizedDescription)")
+            if let nsError = error as NSError? {
+                print("   Domain: \(nsError.domain)")
+                print("   Code: \(nsError.code)")
+                print("   UserInfo: \(nsError.userInfo)")
+            }
         }
     }
 
@@ -82,6 +89,8 @@ struct FootprintApp: App {
 /// View shown when the database fails to initialize
 struct DatabaseErrorView: View {
     let error: Error?
+    @State private var showingResetConfirmation = false
+    @State private var detailedError: String = ""
 
     var body: some View {
         VStack(spacing: 20) {
@@ -93,35 +102,70 @@ struct DatabaseErrorView: View {
                 .font(.title2)
                 .fontWeight(.semibold)
 
-            Text("The app's database could not be initialized. This may be due to insufficient storage space or a corrupted database.")
+            Text("The app's database could not be initialized. This may be due to a data format change or corrupted database.")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
 
             if let error = error {
-                Text(error.localizedDescription)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .padding(.horizontal, 40)
+                VStack(spacing: 8) {
+                    Text(error.localizedDescription)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+
+                    Text(String(describing: error))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal, 40)
             }
 
             VStack(spacing: 12) {
-                Button("Try Again") {
-                    // Restart the app by exiting - user will need to relaunch
-                    #if canImport(UIKit)
-                    exit(0)
-                    #endif
+                Button("Reset Database") {
+                    showingResetConfirmation = true
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(.orange)
 
-                Text("If the problem persists, try reinstalling the app.")
+                Text("This will delete all local data and restart fresh.")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
             .padding(.top, 20)
         }
         .padding()
+        .alert("Reset Database?", isPresented: $showingResetConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Reset", role: .destructive) {
+                resetDatabase()
+            }
+        } message: {
+            Text("This will delete all your local travel data. If you have an account, your data will sync back from the server after you sign in again.")
+        }
+    }
+
+    private func resetDatabase() {
+        // Delete SwiftData store files
+        let fileManager = FileManager.default
+        if let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            let storeURL = appSupport.appendingPathComponent("default.store")
+            let storeShmURL = appSupport.appendingPathComponent("default.store-shm")
+            let storeWalURL = appSupport.appendingPathComponent("default.store-wal")
+
+            try? fileManager.removeItem(at: storeURL)
+            try? fileManager.removeItem(at: storeShmURL)
+            try? fileManager.removeItem(at: storeWalURL)
+
+            print("Database files deleted, restarting app...")
+        }
+
+        // Restart the app
+        #if canImport(UIKit)
+        exit(0)
+        #endif
     }
 }
 

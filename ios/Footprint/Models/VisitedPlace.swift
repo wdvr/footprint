@@ -40,7 +40,8 @@ final class VisitedPlace {
     var regionType: String
     var regionCode: String
     var regionName: String
-    var status: String
+    // Default value enables lightweight migration from older schema versions
+    var status: String = "visited"
     var visitedDate: Date?
     var notes: String?
     var markedAt: Date
