@@ -13,7 +13,7 @@ except ImportError:
     pass  # dotenv not needed in Lambda - env vars are set in config
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import auth, feedback, friends, import_routes, places, sync
+from src.api.routes import auth, feedback, friends, import_routes, places, stats, sync
 
 # Application metadata
 app = FastAPI(
@@ -41,6 +41,7 @@ app.include_router(sync.router)
 app.include_router(friends.router)
 app.include_router(feedback.router)
 app.include_router(import_routes.router)
+app.include_router(stats.router)
 
 
 @app.get("/")

@@ -21,6 +21,13 @@ class PlaceStatus(str, Enum):
     BUCKET_LIST = "bucket_list"
 
 
+class VisitType(str, Enum):
+    """Type of visit - full visit or transit/layover."""
+
+    VISITED = "visited"
+    TRANSIT = "transit"
+
+
 class VisitedPlace(BaseModel):
     """Visited place model with full data."""
 
@@ -39,8 +46,15 @@ class VisitedPlace(BaseModel):
         default=PlaceStatus.VISITED,
         description="Status of the place - visited or bucket list",
     )
+    visit_type: VisitType = Field(
+        default=VisitType.VISITED,
+        description="Type of visit - full visit or transit/layover",
+    )
     visited_date: datetime | None = Field(
-        None, description="When the user visited (optional)"
+        None, description="When the user visited (arrival date)"
+    )
+    departure_date: datetime | None = Field(
+        None, description="When the user departed (optional)"
     )
     notes: str | None = Field(
         None, max_length=500, description="User notes about the visit"
@@ -70,7 +84,9 @@ class VisitedPlaceCreate(BaseModel):
     region_code: str
     region_name: str
     status: PlaceStatus = PlaceStatus.VISITED
+    visit_type: VisitType = VisitType.VISITED
     visited_date: datetime | None = None
+    departure_date: datetime | None = None
     notes: str | None = None
 
 
@@ -78,7 +94,9 @@ class VisitedPlaceUpdate(BaseModel):
     """Model for updating an existing visited place."""
 
     status: PlaceStatus | None = None
+    visit_type: VisitType | None = None
     visited_date: datetime | None = None
+    departure_date: datetime | None = None
     notes: str | None = None
 
 

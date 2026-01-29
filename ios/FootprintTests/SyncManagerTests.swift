@@ -132,8 +132,8 @@ final class VisitedPlaceDataTests: XCTestCase {
     }
 
     func testFetchByRegionType() throws {
-        let country = VisitedPlace(regionType: .country, regionCode: "FR", regionName: "France")
-        let state = VisitedPlace(regionType: .usState, regionCode: "CA", regionName: "California")
+        let country = VisitedPlace(regionType: .country, regionCode: "FR", regionName: "France", status: .visited, visitType: .visited)
+        let state = VisitedPlace(regionType: .usState, regionCode: "CA", regionName: "California", status: .visited, visitType: .visited)
 
         testContext.insert(country)
         testContext.insert(state)
@@ -157,10 +157,10 @@ final class VisitedPlaceDataTests: XCTestCase {
         let midDate = Date(timeIntervalSince1970: 1704153600) // 2024-01-02
         let newDate = Date(timeIntervalSince1970: 1704240000) // 2024-01-03
 
-        let oldPlace = VisitedPlace(regionType: .country, regionCode: "US", regionName: "USA")
+        let oldPlace = VisitedPlace(regionType: .country, regionCode: "US", regionName: "USA", status: .visited, visitType: .visited)
         oldPlace.lastModifiedAt = oldDate
 
-        let newPlace = VisitedPlace(regionType: .country, regionCode: "FR", regionName: "France")
+        let newPlace = VisitedPlace(regionType: .country, regionCode: "FR", regionName: "France", status: .visited, visitType: .visited)
         newPlace.lastModifiedAt = newDate
 
         testContext.insert(oldPlace)
@@ -180,7 +180,7 @@ final class VisitedPlaceDataTests: XCTestCase {
     }
 
     func testSoftDelete() throws {
-        let place = VisitedPlace(regionType: .country, regionCode: "GB", regionName: "UK")
+        let place = VisitedPlace(regionType: .country, regionCode: "GB", regionName: "UK", status: .visited, visitType: .visited)
 
         testContext.insert(place)
         try testContext.save()
@@ -201,7 +201,7 @@ final class VisitedPlaceDataTests: XCTestCase {
     }
 
     func testMarkAsSynced() throws {
-        let place = VisitedPlace(regionType: .country, regionCode: "DE", regionName: "Germany")
+        let place = VisitedPlace(regionType: .country, regionCode: "DE", regionName: "Germany", status: .visited, visitType: .visited)
         XCTAssertFalse(place.isSynced)
 
         testContext.insert(place)
@@ -219,7 +219,7 @@ final class VisitedPlaceDataTests: XCTestCase {
     }
 
     func testUpdatePlaceProperties() throws {
-        let place = VisitedPlace(regionType: .country, regionCode: "JP", regionName: "Japan")
+        let place = VisitedPlace(regionType: .country, regionCode: "JP", regionName: "Japan", status: .visited, visitType: .visited)
 
         testContext.insert(place)
         try testContext.save()
@@ -238,7 +238,7 @@ final class VisitedPlaceDataTests: XCTestCase {
     }
 
     func testDeletePlace() throws {
-        let place = VisitedPlace(regionType: .country, regionCode: "IT", regionName: "Italy")
+        let place = VisitedPlace(regionType: .country, regionCode: "IT", regionName: "Italy", status: .visited, visitType: .visited)
 
         testContext.insert(place)
         try testContext.save()
@@ -255,11 +255,11 @@ final class VisitedPlaceDataTests: XCTestCase {
 
     func testMultiplePlaces() throws {
         let places = [
-            VisitedPlace(regionType: .country, regionCode: "US", regionName: "USA"),
-            VisitedPlace(regionType: .country, regionCode: "FR", regionName: "France"),
-            VisitedPlace(regionType: .usState, regionCode: "CA", regionName: "California"),
-            VisitedPlace(regionType: .usState, regionCode: "NY", regionName: "New York"),
-            VisitedPlace(regionType: .canadianProvince, regionCode: "ON", regionName: "Ontario"),
+            VisitedPlace(regionType: .country, regionCode: "US", regionName: "USA", status: .visited, visitType: .visited),
+            VisitedPlace(regionType: .country, regionCode: "FR", regionName: "France", status: .visited, visitType: .visited),
+            VisitedPlace(regionType: .usState, regionCode: "CA", regionName: "California", status: .visited, visitType: .visited),
+            VisitedPlace(regionType: .usState, regionCode: "NY", regionName: "New York", status: .visited, visitType: .visited),
+            VisitedPlace(regionType: .canadianProvince, regionCode: "ON", regionName: "Ontario", status: .visited, visitType: .visited),
         ]
 
         for place in places {

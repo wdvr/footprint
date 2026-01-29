@@ -1918,6 +1918,25 @@ struct StatsView: View {
                         .padding(.top, 8)
                     }
 
+                    // Advanced Stats Section
+                    Divider()
+                        .padding(.horizontal)
+
+                    VStack(spacing: 16) {
+                        // Visit Type Stats
+                        VisitTypeStatsView(visitedPlaces: visitedPlaces)
+
+                        // Continent Progress
+                        ContinentProgressView(visitedPlaces: visitedPlaces)
+
+                        // Time Zone Coverage
+                        TimeZoneProgressView(visitedPlaces: visitedPlaces)
+
+                        // Badges & Achievements
+                        BadgesProgressView(visitedPlaces: visitedPlaces)
+                    }
+                    .padding(.horizontal)
+
                     Spacer()
                 }
             }
