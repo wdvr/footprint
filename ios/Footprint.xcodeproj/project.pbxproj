@@ -9,7 +9,9 @@
 /* Begin PBXBuildFile section */
 		0737BB1F9D86379154F9D0A4 /* SyncManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C78AD6C2BFDF458E421F0A /* SyncManagerTests.swift */; };
 		1422EE7E2E4EE9BC742FD37F /* CountryMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F77B77706A1622EA6FF7F3AB /* CountryMapView.swift */; };
+		2923FD02B05B1C2F77E5D5A5 /* Statistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9569159395E2601F17F83C4C /* Statistics.swift */; };
 		2A48BD23E186DF4575ACB843 /* FeedbackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15C9F790766437CA91B5EDA5 /* FeedbackView.swift */; };
+		38FC93B22330FAA41C80A002 /* AdvancedStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6EFA2D6D4671C03DA3DDC84 /* AdvancedStatsView.swift */; };
 		3BE5321A01818A7532122666 /* ImportAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A79AA6A7C7BAA15EF8A7337 /* ImportAPI.swift */; };
 		3EFF51BB5197358A4405D7D3 /* GeographicDataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B388C29EC8E33A7CFE6587 /* GeographicDataTests.swift */; };
 		4239C1A84745E095920F0371 /* CountryBoundaries.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5518FCF7E707C87C9B44207A /* CountryBoundaries.swift */; };
@@ -33,6 +35,7 @@
 		8233A95DFCB1DAE0FA2CEDD8 /* MapViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B15F3550FA460339C3801977 /* MapViewTests.swift */; };
 		915053CF31ACF098A3E2DF42 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5310B087269E2425049568DA /* PushNotificationManager.swift */; };
 		95BCA5E470BA11DE06F05A48 /* us_states.geojson in Resources */ = {isa = PBXBuildFile; fileRef = 271EBF4A0BAE88344F55C1E6 /* us_states.geojson */; };
+		A0DA5719B97394A294D6B249 /* StatisticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D0C590CA81C1D3BBC0E60A7 /* StatisticsTests.swift */; };
 		A1B3EE539616BC6CB2274094 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 896C77DE8D4AF78A38A19072 /* LocationManager.swift */; };
 		A788E9A469324C79F26E4D6F /* PhotoImportManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B441D5627284D09C789D5A5 /* PhotoImportManager.swift */; };
 		BE9E4C9207CCD7D9CCD95336 /* LocationManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300D531783D5E4F5D7547E61 /* LocationManagerTests.swift */; };
@@ -77,6 +80,7 @@
 		2188CD92D5369E26F73572A1 /* SyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncManager.swift; sourceTree = "<group>"; };
 		240284E4FB6CDE7F2AD2AFB2 /* world_states.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = world_states.json; sourceTree = "<group>"; };
 		271EBF4A0BAE88344F55C1E6 /* us_states.geojson */ = {isa = PBXFileReference; path = us_states.geojson; sourceTree = "<group>"; };
+		2D0C590CA81C1D3BBC0E60A7 /* StatisticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsTests.swift; sourceTree = "<group>"; };
 		2F0B1E5C5C1E54BF0960A8A6 /* FootprintApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FootprintApp.swift; sourceTree = "<group>"; };
 		300D531783D5E4F5D7547E61 /* LocationManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManagerTests.swift; sourceTree = "<group>"; };
 		359321FC0DA5E20FF5AD68A5 /* ScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
@@ -106,11 +110,13 @@
 		896C77DE8D4AF78A38A19072 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
 		8B9A63BC1F1445E87FA6C9E9 /* world_landmarks.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = world_landmarks.json; sourceTree = "<group>"; };
 		8BB3A459FA117DC6B0399CF2 /* APIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientTests.swift; sourceTree = "<group>"; };
+		9569159395E2601F17F83C4C /* Statistics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Statistics.swift; sourceTree = "<group>"; };
 		9B5522A9420FECA14830C77E /* AccessibilityHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityHelpers.swift; sourceTree = "<group>"; };
 		9BF3F1E2DA7FE7DF42D07D4C /* ImportReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportReviewView.swift; sourceTree = "<group>"; };
 		A8B3E54E512208094F223B2F /* FriendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsView.swift; sourceTree = "<group>"; };
 		B15F3550FA460339C3801977 /* MapViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewTests.swift; sourceTree = "<group>"; };
 		C4BE30309CDB7497F42092BD /* StateMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StateMapView.swift; sourceTree = "<group>"; };
+		C6EFA2D6D4671C03DA3DDC84 /* AdvancedStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedStatsView.swift; sourceTree = "<group>"; };
 		CE68669DCCF31941AE1D989E /* canadian_provinces.geojson */ = {isa = PBXFileReference; path = canadian_provinces.geojson; sourceTree = "<group>"; };
 		D7E45F4BC92E66E12537EA76 /* PhotoImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoImportView.swift; sourceTree = "<group>"; };
 		E8F1756B397B5937509FD5E9 /* countries.geojson */ = {isa = PBXFileReference; path = countries.geojson; sourceTree = "<group>"; };
@@ -229,6 +235,7 @@
 		8ED1C0159534A0CB2D199ED8 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				9569159395E2601F17F83C4C /* Statistics.swift */,
 				16A790782FCA451412D6B1EA /* VisitedPlace.swift */,
 			);
 			path = Models;
@@ -287,6 +294,7 @@
 				3E2F5F601FD2C9BEA04178E5 /* GeoJSONParserTests.swift */,
 				300D531783D5E4F5D7547E61 /* LocationManagerTests.swift */,
 				B15F3550FA460339C3801977 /* MapViewTests.swift */,
+				2D0C590CA81C1D3BBC0E60A7 /* StatisticsTests.swift */,
 				50C78AD6C2BFDF458E421F0A /* SyncManagerTests.swift */,
 			);
 			path = FootprintTests;
@@ -296,6 +304,7 @@
 			isa = PBXGroup;
 			children = (
 				3FCF981354B215AB7A5DA685 /* AccessibleMapSummary.swift */,
+				C6EFA2D6D4671C03DA3DDC84 /* AdvancedStatsView.swift */,
 				D7E45F4BC92E66E12537EA76 /* PhotoImportView.swift */,
 			);
 			path = Views;
@@ -461,6 +470,7 @@
 				3EFF51BB5197358A4405D7D3 /* GeographicDataTests.swift in Sources */,
 				BE9E4C9207CCD7D9CCD95336 /* LocationManagerTests.swift in Sources */,
 				8233A95DFCB1DAE0FA2CEDD8 /* MapViewTests.swift in Sources */,
+				A0DA5719B97394A294D6B249 /* StatisticsTests.swift in Sources */,
 				0737BB1F9D86379154F9D0A4 /* SyncManagerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -472,6 +482,7 @@
 				FCB4258CB6E5774DB64EDD3D /* APIClient.swift in Sources */,
 				65EF95ECBDDFBD2549453C51 /* AccessibilityHelpers.swift in Sources */,
 				6A74D0A7AE3BAE28A916D841 /* AccessibleMapSummary.swift in Sources */,
+				38FC93B22330FAA41C80A002 /* AdvancedStatsView.swift in Sources */,
 				C00294798DCEC7A37B37ED02 /* AuthManager.swift in Sources */,
 				4B7C72868FA7C04D9388E1AD /* ContentView.swift in Sources */,
 				4239C1A84745E095920F0371 /* CountryBoundaries.swift in Sources */,
@@ -493,6 +504,7 @@
 				915053CF31ACF098A3E2DF42 /* PushNotificationManager.swift in Sources */,
 				54FCC0286410EC9476DC7830 /* SampleDataHelper.swift in Sources */,
 				5CD96E03A42FA7D4620C6F48 /* StateMapView.swift in Sources */,
+				2923FD02B05B1C2F77E5D5A5 /* Statistics.swift in Sources */,
 				FAEE1917D2F3D12D3722FA77 /* SyncManager.swift in Sources */,
 				7A481CFA80ACF0DEDBF67FEF /* VisitedPlace.swift in Sources */,
 			);
