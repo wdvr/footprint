@@ -8,11 +8,12 @@ final class ScreenshotTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
 
-        app = XCUIApplication()
-        
-        // Use MainActor.assumeIsolated for snapshot setup in sync context
+        let application = XCUIApplication()
+        app = application
+
+        // Setup snapshot in MainActor context
         MainActor.assumeIsolated {
-            setupSnapshot(app)
+            setupSnapshot(application)
         }
 
         // Reset app state for consistent screenshots
@@ -57,7 +58,6 @@ final class ScreenshotTests: XCTestCase {
         // Wait for map overlays to render
         sleep(3)
 
-        // Use MainActor for snapshot
         MainActor.assumeIsolated {
             snapshot("01_MapView")
         }
@@ -81,7 +81,6 @@ final class ScreenshotTests: XCTestCase {
             sleep(1)
         }
 
-        // Use MainActor for snapshot
         MainActor.assumeIsolated {
             snapshot("02_CountriesList")
         }
@@ -98,7 +97,6 @@ final class ScreenshotTests: XCTestCase {
         // Wait for stats to load
         sleep(2)
 
-        // Use MainActor for snapshot
         MainActor.assumeIsolated {
             snapshot("03_Stats")
         }
@@ -129,7 +127,6 @@ final class ScreenshotTests: XCTestCase {
         // Wait for state map to load
         sleep(3)
 
-        // Use MainActor for snapshot
         MainActor.assumeIsolated {
             snapshot("04_StateMap")
         }
@@ -146,7 +143,6 @@ final class ScreenshotTests: XCTestCase {
         // Wait for settings to load
         sleep(2)
 
-        // Use MainActor for snapshot
         MainActor.assumeIsolated {
             snapshot("05_Settings")
         }
@@ -202,7 +198,6 @@ final class ScreenshotTests: XCTestCase {
 // MARK: - Snapshot Helper
 
 extension ScreenshotTests {
-    @MainActor
     func snapshot(_ name: String, timeWaitingForIdle timeout: TimeInterval = 20) {
         // Use fastlane's snapshot function if available, otherwise XCUIScreen
         #if SNAPSHOT

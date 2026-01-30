@@ -30,37 +30,60 @@ final class LocalizationTests: XCTestCase {
     }
     
     func testSpanishLocalization() {
-        // Test Spanish localization by directly checking if Spanish strings exist
-        // For testing purposes, we'll verify the Spanish strings are properly loaded
-        // by checking the localized strings with Spanish locale
+        // Test Spanish localization by finding the correct bundle
+        var spanishBundle: Bundle?
 
-        // Set the Spanish locale for this test
-        let originalLocale = Locale.current
-        let spanishLocale = Locale(identifier: "es")
+        // Get test bundle reference to avoid Swift 6 concurrency warnings
+        let testBundle = Bundle(for: LocalizationTests.self)
 
-        // Test that we can load Spanish strings directly from our localizable files
-        guard let spanishBundle = Bundle.main.path(forResource: "es", ofType: "lproj").flatMap(Bundle.init(path:)) else {
-            // If we can't find the bundle in the test environment, just verify our Spanish strings are defined
-            // This is a fallback for test environments where bundle loading is complex
-            print("Spanish bundle not found in test environment, skipping bundle-based test")
+        // Try multiple approaches to find the Spanish localization bundle
+
+        // Approach 1: Look for the app bundle within the test bundle
+        if let appBundlePath = testBundle.path(forResource: "Footprint", ofType: "app"),
+           let appBundle = Bundle(path: appBundlePath),
+           let spanishBundlePath = appBundle.path(forResource: "es", ofType: "lproj") {
+            spanishBundle = Bundle(path: spanishBundlePath)
+        }
+
+        // Approach 2: Try to find Spanish bundle in main bundle
+        if spanishBundle == nil,
+           let spanishBundlePath = Bundle.main.path(forResource: "es", ofType: "lproj") {
+            spanishBundle = Bundle(path: spanishBundlePath)
+        }
+
+        // Approach 3: Try to find Spanish bundle in the test bundle itself
+        if spanishBundle == nil,
+           let spanishBundlePath = testBundle.path(forResource: "es", ofType: "lproj") {
+            spanishBundle = Bundle(path: spanishBundlePath)
+        }
+
+        guard let validSpanishBundle = spanishBundle else {
+            // If we can't find the bundle, skip the detailed tests but don't fail
+            // This may happen in CI environments with different bundle structures
+            print("Spanish bundle not found in test environment")
+
+            // At minimum, verify that our L10n constants are not empty (basic smoke test)
+            XCTAssertFalse(L10n.Tab.map.isEmpty, "Tab.map should have a value")
+            XCTAssertFalse(L10n.Tab.countries.isEmpty, "Tab.countries should have a value")
+            XCTAssertFalse(L10n.Onboarding.Welcome.title.isEmpty, "Welcome title should have a value")
             return
         }
-        
+
         // Test that Spanish translations exist and are correct
-        let mapSpanish = NSLocalizedString("tab.map", bundle: spanishBundle, comment: "")
+        let mapSpanish = NSLocalizedString("tab.map", bundle: validSpanishBundle, comment: "")
         XCTAssertEqual(mapSpanish, "Mapa", "Spanish translation for 'tab.map' should be 'Mapa'")
 
-        let countriesSpanish = NSLocalizedString("tab.countries", bundle: spanishBundle, comment: "")
+        let countriesSpanish = NSLocalizedString("tab.countries", bundle: validSpanishBundle, comment: "")
         XCTAssertEqual(countriesSpanish, "Países", "Spanish translation for 'tab.countries' should be 'Países'")
 
-        let statsSpanish = NSLocalizedString("tab.stats", bundle: spanishBundle, comment: "")
+        let statsSpanish = NSLocalizedString("tab.stats", bundle: validSpanishBundle, comment: "")
         XCTAssertEqual(statsSpanish, "Estadísticas", "Spanish translation for 'tab.stats' should be 'Estadísticas'")
 
-        let settingsSpanish = NSLocalizedString("tab.settings", bundle: spanishBundle, comment: "")
+        let settingsSpanish = NSLocalizedString("tab.settings", bundle: validSpanishBundle, comment: "")
         XCTAssertEqual(settingsSpanish, "Configuración", "Spanish translation for 'tab.settings' should be 'Configuración'")
-        
+
         // Test onboarding strings
-        let welcomeTitleSpanish = NSLocalizedString("onboarding.welcome.title", bundle: spanishBundle, comment: "")
+        let welcomeTitleSpanish = NSLocalizedString("onboarding.welcome.title", bundle: validSpanishBundle, comment: "")
         XCTAssertEqual(welcomeTitleSpanish, "Bienvenido a Footprint")
     }
     
