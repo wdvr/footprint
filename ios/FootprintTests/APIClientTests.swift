@@ -135,7 +135,7 @@ final class APIClientTests: XCTestCase {
         let change = APIClient.PlaceChange(
             regionType: "us_state",
             regionCode: "CA",
-            regionName: "California",
+            regionName: "California", status: "visited",
             isDeleted: false,
             lastModifiedAt: Date(timeIntervalSince1970: 1704067200) // 2024-01-01
         )
@@ -156,7 +156,7 @@ final class APIClientTests: XCTestCase {
             APIClient.PlaceChange(
                 regionType: "country",
                 regionCode: "FR",
-                regionName: "France",
+                regionName: "France", status: "visited",
                 isDeleted: false,
                 lastModifiedAt: Date()
             )

@@ -8,7 +8,11 @@ final class ScreenshotTests: XCTestCase {
         continueAfterFailure = false
 
         app = XCUIApplication()
-        setupSnapshot(app)
+        
+        // Use MainActor.assumeIsolated for snapshot setup in sync context
+        MainActor.assumeIsolated {
+            setupSnapshot(app)
+        }
 
         // Reset app state for consistent screenshots
         app.launchArguments = [
@@ -52,7 +56,10 @@ final class ScreenshotTests: XCTestCase {
         // Wait for map overlays to render
         sleep(3)
 
-        snapshot("01_MapView")
+        // Use MainActor for snapshot
+        MainActor.assumeIsolated {
+            snapshot("01_MapView")
+        }
     }
 
     func testScreenshot02_CountriesListView() throws {
@@ -73,7 +80,10 @@ final class ScreenshotTests: XCTestCase {
             sleep(1)
         }
 
-        snapshot("02_CountriesList")
+        // Use MainActor for snapshot
+        MainActor.assumeIsolated {
+            snapshot("02_CountriesList")
+        }
     }
 
     func testScreenshot03_StatsView() throws {
@@ -87,7 +97,10 @@ final class ScreenshotTests: XCTestCase {
         // Wait for stats to load
         sleep(2)
 
-        snapshot("03_Stats")
+        // Use MainActor for snapshot
+        MainActor.assumeIsolated {
+            snapshot("03_Stats")
+        }
     }
 
     func testScreenshot04_StateMapView() throws {
@@ -115,7 +128,10 @@ final class ScreenshotTests: XCTestCase {
         // Wait for state map to load
         sleep(3)
 
-        snapshot("04_StateMap")
+        // Use MainActor for snapshot
+        MainActor.assumeIsolated {
+            snapshot("04_StateMap")
+        }
     }
 
     func testScreenshot05_SettingsView() throws {
@@ -129,7 +145,10 @@ final class ScreenshotTests: XCTestCase {
         // Wait for settings to load
         sleep(2)
 
-        snapshot("05_Settings")
+        // Use MainActor for snapshot
+        MainActor.assumeIsolated {
+            snapshot("05_Settings")
+        }
     }
 
     // MARK: - Helper Methods
@@ -173,7 +192,7 @@ final class ScreenshotTests: XCTestCase {
 
         for location in locations {
             mapView.coordinate(withNormalizedOffset: location).tap()
-            sleep(0.5)
+            sleep(1)
         }
     }
 
@@ -182,6 +201,7 @@ final class ScreenshotTests: XCTestCase {
 // MARK: - Snapshot Helper
 
 extension ScreenshotTests {
+    @MainActor
     func snapshot(_ name: String, timeWaitingForIdle timeout: TimeInterval = 20) {
         // Use fastlane's snapshot function if available, otherwise XCUIScreen
         #if SNAPSHOT
