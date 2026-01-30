@@ -511,7 +511,7 @@ final class PhotoImportManager: NSObject {
     }
 
     /// Result from photo enumeration including statistics
-    struct EnumerationResult: Sendable {
+    private struct EnumerationResult: Sendable {
         let clusters: [String: PhotoCluster]
         let totalPhotos: Int
         let photosWithLocation: Int
