@@ -216,13 +216,17 @@ struct RootView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var authManager = AuthManager.shared
     @State private var hasRequestedNotifications = false
+    @State private var hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
 
     // Check if we're in UI testing mode
     private let isUITesting = CommandLine.arguments.contains("-UITestingMode")
 
     var body: some View {
         Group {
-            if authManager.isAuthenticated || isUITesting {
+            if !hasCompletedOnboarding && !isUITesting {
+                // Show onboarding first for new users
+                OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
+            } else if authManager.isAuthenticated || isUITesting {
                 ContentView()
                     .task {
                         // Skip network operations in UI testing
