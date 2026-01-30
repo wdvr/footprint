@@ -330,10 +330,11 @@ private struct LocationPage: View {
 
     private func requestLocationPermission() {
         isRequesting = true
-        LocationManager.shared.requestAlwaysAuthorization()
+        LocationManager.shared.requestPermission()
         // Check status after a delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            permissionGranted = LocationManager.shared.authorizationStatus == .authorizedAlways
+            let status = LocationManager.shared.authorizationStatus
+            permissionGranted = status == .authorizedAlways || status == .authorizedWhenInUse
             isRequesting = false
         }
     }
