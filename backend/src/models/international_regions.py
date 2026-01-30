@@ -2,7 +2,7 @@
 
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from src.models.geographic import GeographicRegion
 
@@ -152,42 +152,6 @@ REGION_TOTALS = {
     "IN": 36,  # 28 states + 8 union territories
     "CN": 34,  # 22 provinces + 5 autonomous regions + 4 municipalities + 2 SARs + 1 disputed
 }
-
-
-class InternationalRegionStats(BaseModel):
-    """Statistics for international regions."""
-
-    # Individual country stats
-    australian_states_visited: int = Field(default=0)
-    australian_states_total: int = Field(default=8)
-    australian_states_percentage: float = Field(default=0.0)
-
-    mexican_states_visited: int = Field(default=0)
-    mexican_states_total: int = Field(default=32)
-    mexican_states_percentage: float = Field(default=0.0)
-
-    brazilian_states_visited: int = Field(default=0)
-    brazilian_states_total: int = Field(default=27)
-    brazilian_states_percentage: float = Field(default=0.0)
-
-    german_states_visited: int = Field(default=0)
-    german_states_total: int = Field(default=16)
-    german_states_percentage: float = Field(default=0.0)
-
-    indian_states_visited: int = Field(default=0)
-    indian_states_total: int = Field(default=36)
-    indian_states_percentage: float = Field(default=0.0)
-
-    chinese_provinces_visited: int = Field(default=0)
-    chinese_provinces_total: int = Field(default=34)
-    chinese_provinces_percentage: float = Field(default=0.0)
-
-    # Aggregate stats
-    total_international_regions_visited: int = Field(default=0)
-    total_international_regions_available: int = Field(
-        default=153
-    )  # Sum of all regions
-    total_international_percentage: float = Field(default=0.0)
 
 
 def get_region_model_for_country(country_code: str) -> type[SubnationalRegion] | None:

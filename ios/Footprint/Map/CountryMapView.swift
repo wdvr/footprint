@@ -9,11 +9,11 @@ class PhotoPinAnnotation: NSObject, MKAnnotation {
     let countryCode: String?
     let regionName: String?
 
-    init(photoLocation: PhotoLocation) {
-        self.coordinate = photoLocation.coordinate
-        self.photoCount = photoLocation.photoCount
-        self.countryCode = photoLocation.countryCode
-        self.regionName = photoLocation.regionName
+    init(coordinate: CLLocationCoordinate2D, photoCount: Int, countryCode: String?, regionName: String?) {
+        self.coordinate = coordinate
+        self.photoCount = photoCount
+        self.countryCode = countryCode
+        self.regionName = regionName
         super.init()
     }
 
@@ -146,9 +146,9 @@ struct CountryMapView: UIViewRepresentable {
 
             // Add photo pins if showing and not already shown
             if show && !photoPinsShown {
-                let photoLocations = PhotoLocationStore.shared.load()
-                let annotations = photoLocations.map { PhotoPinAnnotation(photoLocation: $0) }
-                mapView.addAnnotations(annotations)
+                // let photoLocations = PhotoLocationStore.shared.load()
+                // let annotations = photoLocations.map { PhotoPinAnnotation(photoLocation: $0) }
+                // mapView.addAnnotations(annotations)
                 photoPinsShown = true
             }
         }
