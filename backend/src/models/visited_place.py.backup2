@@ -21,6 +21,11 @@ class RegionType(str, Enum):
     INDIAN_STATE = "indian_state"
     CHINESE_PROVINCE = "chinese_province"
 
+    # Future expansion - cities and landmarks
+    CITY = "city"
+    UNESCO_SITE = "unesco_site"
+    NATIONAL_PARK = "national_park"
+
 
 class PlaceStatus(str, Enum):
     """Status of a place - visited or on bucket list."""
@@ -154,6 +159,15 @@ def is_international_region(region_type: RegionType) -> bool:
         RegionType.GERMAN_STATE,
         RegionType.INDIAN_STATE,
         RegionType.CHINESE_PROVINCE,
+    }
+
+
+def is_landmark_region(region_type: RegionType) -> bool:
+    """Check if region type is a landmark/point of interest."""
+    return region_type in {
+        RegionType.CITY,
+        RegionType.UNESCO_SITE,
+        RegionType.NATIONAL_PARK,
     }
 
 
