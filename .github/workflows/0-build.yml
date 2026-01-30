@@ -34,7 +34,7 @@ env:
 jobs:
   build:
     name: Build & Archive
-    runs-on: macos-26
+    runs-on: [self-hosted, macOS, ARM64]
     outputs:
       build_number: ${{ steps.version.outputs.build }}
       version: ${{ steps.version.outputs.version }}
@@ -45,24 +45,78 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Select Xcode
+    - name: Configure Xcode
       run: |
-        # List available Xcode versions and use default (Xcode 26.2 with iOS 26 SDK)
-        ls -la /Applications/ | grep Xcode || true
+        # Check current Xcode version
+        echo "Current Xcode version:"
+        xcodebuild -version || echo "xcodebuild not found in PATH"
+
+        # List available Xcode installations
+        echo "Available Xcode installations:"
+        ls -la /Applications/ | grep -i xcode || echo "No Xcode installations found in /Applications"
+
+        # Try to find Xcode 26.x or fall back to default
+        XCODE_PATH=""
+
+        # First, try to find Xcode 26.x
+        for version in 26.2 26.1 26.0 26; do
+          if [ -d "/Applications/Xcode_${version}.app" ]; then
+            XCODE_PATH="/Applications/Xcode_${version}.app"
+            echo "Found Xcode ${version} at $XCODE_PATH"
+            break
+          fi
+        done
+
+        # Fall back to default Xcode.app
+        if [ -z "$XCODE_PATH" ] && [ -d "/Applications/Xcode.app" ]; then
+          XCODE_PATH="/Applications/Xcode.app"
+          echo "Using default Xcode at $XCODE_PATH"
+        fi
+
+        # If we found an Xcode installation, configure it
+        if [ -n "$XCODE_PATH" ]; then
+          # For self-hosted runners, try without sudo first
+          echo "Attempting to select Xcode without sudo..."
+          if xcode-select -s "$XCODE_PATH/Contents/Developer" 2>/dev/null; then
+            echo "Successfully selected Xcode without sudo"
+          else
+            echo "Setting DEVELOPER_DIR environment variable as fallback"
+            echo "DEVELOPER_DIR=$XCODE_PATH/Contents/Developer" >> $GITHUB_ENV
+            export DEVELOPER_DIR="$XCODE_PATH/Contents/Developer"
+          fi
+        else
+          echo "ERROR: No suitable Xcode installation found"
+          echo "Available applications in /Applications:"
+          ls -la /Applications/ | grep -E "(Xcode|Developer)" || echo "No Xcode or Developer applications found"
+          exit 1
+        fi
+
+        # Verify the configuration
+        echo "Final Xcode configuration:"
         xcodebuild -version
-        # Verify iOS SDK is available
-        xcodebuild -showsdks | grep -i ios || true
+        echo "iOS SDK version:"
+        xcrun --show-sdk-version --sdk iphoneos || echo "Could not determine iOS SDK version"
 
     - name: Install XcodeGen
-      run: brew install xcodegen
+      run: |
+        # Check if xcodegen is already installed
+        if command -v xcodegen >/dev/null 2>&1; then
+          echo "XcodeGen already installed: $(xcodegen version)"
+        else
+          echo "Installing XcodeGen via Homebrew..."
+          brew install xcodegen
+        fi
 
     - name: Generate Xcode project
       run: |
         cd ios
+        echo "Generating Xcode project from project.yml..."
         xcodegen generate
+        echo "Project generated successfully"
 
     - name: Resolve Swift Package Dependencies
       run: |
+        echo "Resolving Swift Package dependencies..."
         xcodebuild -resolvePackageDependencies \
           -project ${{ env.PROJECT_PATH }} \
           -scheme ${{ env.SCHEME }}

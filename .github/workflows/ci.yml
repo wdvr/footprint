@@ -122,44 +122,135 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Select Xcode
+    - name: Configure Xcode
       run: |
-        # Find and select Xcode (prefer Xcode 26.x, fall back to Xcode.app)
-        XCODE_PATH=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
-        if [ -z "$XCODE_PATH" ]; then
+        # Check current Xcode version
+        echo "Current Xcode version:"
+        xcodebuild -version || echo "xcodebuild not found in PATH"
+
+        # List available Xcode installations
+        echo "Available Xcode installations:"
+        ls -la /Applications/ | grep -i xcode || echo "No Xcode installations found in /Applications"
+
+        # Try to find Xcode 26.x or fall back to default
+        XCODE_PATH=""
+
+        # First, try to find Xcode 26.x
+        for version in 26.2 26.1 26.0 26; do
+          if [ -d "/Applications/Xcode_${version}.app" ]; then
+            XCODE_PATH="/Applications/Xcode_${version}.app"
+            echo "Found Xcode ${version} at $XCODE_PATH"
+            break
+          fi
+        done
+
+        # Fall back to default Xcode.app
+        if [ -z "$XCODE_PATH" ] && [ -d "/Applications/Xcode.app" ]; then
           XCODE_PATH="/Applications/Xcode.app"
+          echo "Using default Xcode at $XCODE_PATH"
         fi
 
-        if [ -d "$XCODE_PATH" ]; then
-          echo "Using Xcode: $XCODE_PATH"
-          sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+        # If we found an Xcode installation, configure it
+        if [ -n "$XCODE_PATH" ]; then
+          # For self-hosted runners, try without sudo first
+          echo "Attempting to select Xcode without sudo..."
+          if xcode-select -s "$XCODE_PATH/Contents/Developer" 2>/dev/null; then
+            echo "Successfully selected Xcode without sudo"
+          else
+            echo "Setting DEVELOPER_DIR environment variable as fallback"
+            echo "DEVELOPER_DIR=$XCODE_PATH/Contents/Developer" >> $GITHUB_ENV
+            export DEVELOPER_DIR="$XCODE_PATH/Contents/Developer"
+          fi
         else
-          echo "ERROR: No Xcode found in /Applications"
-          ls -la /Applications/ | grep -i xcode
+          echo "ERROR: No suitable Xcode installation found"
+          echo "Available applications in /Applications:"
+          ls -la /Applications/ | grep -E "(Xcode|Developer)" || echo "No Xcode or Developer applications found"
           exit 1
         fi
 
-        # Verify
+        # Verify the configuration
+        echo "Final Xcode configuration:"
         xcodebuild -version
-        xcrun --show-sdk-version --sdk iphoneos
+        echo "iOS SDK version:"
+        xcrun --show-sdk-version --sdk iphoneos || echo "Could not determine iOS SDK version"
+        echo "Available simulators:"
+        xcrun simctl list devices available | grep "iPhone" | head -5 || echo "Could not list simulators"
+
+    - name: Install XcodeGen
+      run: |
+        # Check if xcodegen is already installed
+        if command -v xcodegen >/dev/null 2>&1; then
+          echo "XcodeGen already installed: $(xcodegen version)"
+        else
+          echo "Installing XcodeGen via Homebrew..."
+          brew install xcodegen
+        fi
+
+    - name: Generate Xcode project
+      run: |
+        cd ios
+        echo "Generating Xcode project from project.yml..."
+        xcodegen generate
+        echo "Project generated successfully"
+
+    - name: Resolve Swift Package Dependencies
+      run: |
+        echo "Resolving Swift Package dependencies..."
+        cd ios
+        xcodebuild -resolvePackageDependencies \
+          -project Footprint.xcodeproj \
+          -scheme Footprint
 
     - name: Build and Test
       run: |
         cd ios
+        echo "Building and running tests..."
+
+        # Use a more compatible simulator if iPhone 17 Pro is not available
+        SIMULATOR_NAME="iPhone 17 Pro"
+
+        # Check if the simulator exists, fall back to available ones
+        if ! xcrun simctl list devices available | grep -q "$SIMULATOR_NAME"; then
+          echo "$SIMULATOR_NAME not available, checking for alternatives..."
+          AVAILABLE_SIMULATORS=$(xcrun simctl list devices available | grep "iPhone" | head -1 | sed 's/^[[:space:]]*//' | cut -d'(' -f1 | xargs)
+          if [ -n "$AVAILABLE_SIMULATORS" ]; then
+            SIMULATOR_NAME="$AVAILABLE_SIMULATORS"
+            echo "Using simulator: $SIMULATOR_NAME"
+          else
+            echo "ERROR: No iPhone simulators available"
+            xcrun simctl list devices available
+            exit 1
+          fi
+        fi
+
+        # Run the tests with proper error handling
+        set -o pipefail
         xcodebuild test \
           -project Footprint.xcodeproj \
           -scheme Footprint \
-          -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+          -destination "platform=iOS Simulator,name=$SIMULATOR_NAME" \
           -only-testing:FootprintTests \
           -resultBundlePath TestResults.xcresult \
-          | xcpretty
+          | tee xcodebuild.log
+
+        # Check if tests actually ran
+        if [ $? -eq 0 ]; then
+          echo "✅ Tests completed successfully"
+        else
+          echo "❌ Tests failed"
+          echo "Last 50 lines of build log:"
+          tail -50 xcodebuild.log
+          exit 1
+        fi
 
     - name: Upload Test Results
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: test-results
-        path: ios/TestResults.xcresult
+        name: test-results-${{ github.run_number }}
+        path: |
+          ios/TestResults.xcresult
+          ios/xcodebuild.log
 
   website-build:
     name: Website Build
