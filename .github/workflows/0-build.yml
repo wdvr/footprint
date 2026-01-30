@@ -34,7 +34,7 @@ env:
 jobs:
   build:
     name: Build & Archive
-    runs-on: macos-14
+    runs-on: macos-15
     outputs:
       build_number: ${{ steps.version.outputs.build }}
       version: ${{ steps.version.outputs.version }}
@@ -47,9 +47,11 @@ jobs:
 
     - name: Select Xcode
       run: |
-        # Use Xcode 15.4 on macos-14 runner (has iOS 17 SDK)
-        sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+        # List available Xcode versions and use default (should be Xcode 16 with Swift 6)
+        ls -la /Applications/ | grep Xcode || true
         xcodebuild -version
+        # Verify iOS SDK is available
+        xcodebuild -showsdks | grep -i ios || true
 
     - name: Install XcodeGen
       run: brew install xcodegen
