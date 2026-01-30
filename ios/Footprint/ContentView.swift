@@ -795,13 +795,14 @@ struct WorldMapView: View {
     }
 
     private func setCountryStatus(_ country: Country, status: VisitedPlace.PlaceStatus) {
+        // Look for ANY existing place (including deleted ones) to avoid duplicates
         if let existingPlace = visitedPlaces.first(where: {
             $0.regionType == VisitedPlace.RegionType.country.rawValue
                 && $0.regionCode == country.id
-                && !$0.isDeleted
         }) {
-            // Update existing place status
+            // Reuse existing place - update status and undelete if needed
             existingPlace.status = status.rawValue
+            existingPlace.isDeleted = false
             existingPlace.lastModifiedAt = Date()
             existingPlace.isSynced = false
         } else {
@@ -834,40 +835,63 @@ struct WorldMapView: View {
             if let place = visitedPlaces.first(where: {
                 $0.regionType == VisitedPlace.RegionType.country.rawValue
                     && $0.regionCode == country.id
+                    && !$0.isDeleted
             }) {
                 place.isDeleted = true
                 place.lastModifiedAt = Date()
+                place.isSynced = false
             }
         } else {
-            // Add to visited
-            let place = VisitedPlace(
-                regionType: .country,
-                regionCode: country.id,
-                regionName: country.name
-            )
-            modelContext.insert(place)
+            // Add to visited - reuse existing deleted record if available
+            if let existingPlace = visitedPlaces.first(where: {
+                $0.regionType == VisitedPlace.RegionType.country.rawValue
+                    && $0.regionCode == country.id
+            }) {
+                existingPlace.status = VisitedPlace.PlaceStatus.visited.rawValue
+                existingPlace.isDeleted = false
+                existingPlace.lastModifiedAt = Date()
+                existingPlace.isSynced = false
+            } else {
+                let place = VisitedPlace(
+                    regionType: .country,
+                    regionCode: country.id,
+                    regionName: country.name
+                )
+                modelContext.insert(place)
+            }
         }
     }
 
     private func toggleTerritoryVisited(code: String, name: String) {
-        let existingPlace = visitedPlaces.first {
+        let activePlace = visitedPlaces.first {
             $0.regionType == VisitedPlace.RegionType.country.rawValue
                 && $0.regionCode == code
                 && !$0.isDeleted
         }
 
-        if let place = existingPlace {
+        if let place = activePlace {
             // Remove from visited
             place.isDeleted = true
             place.lastModifiedAt = Date()
+            place.isSynced = false
         } else {
-            // Add to visited
-            let place = VisitedPlace(
-                regionType: .country,
-                regionCode: code,
-                regionName: name
-            )
-            modelContext.insert(place)
+            // Add to visited - reuse existing deleted record if available
+            if let existingPlace = visitedPlaces.first(where: {
+                $0.regionType == VisitedPlace.RegionType.country.rawValue
+                    && $0.regionCode == code
+            }) {
+                existingPlace.status = VisitedPlace.PlaceStatus.visited.rawValue
+                existingPlace.isDeleted = false
+                existingPlace.lastModifiedAt = Date()
+                existingPlace.isSynced = false
+            } else {
+                let place = VisitedPlace(
+                    regionType: .country,
+                    regionCode: code,
+                    regionName: name
+                )
+                modelContext.insert(place)
+            }
         }
     }
 
