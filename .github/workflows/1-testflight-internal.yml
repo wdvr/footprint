@@ -10,6 +10,11 @@ on:
         description: 'Build workflow run ID (leave empty for latest)'
         required: false
         type: string
+      what_to_test:
+        description: 'What to Test notes for testers'
+        required: false
+        type: string
+        default: ''
 
 concurrency:
   group: testflight-internal
@@ -25,7 +30,7 @@ env:
 jobs:
   upload-to-testflight:
     name: Upload to TestFlight Internal
-    runs-on: macos-15
+    runs-on: macos-26
     outputs:
       build_number: ${{ steps.artifact.outputs.build }}
       version: ${{ steps.artifact.outputs.version }}
@@ -170,6 +175,41 @@ jobs:
           -d "{\"data\":{\"type\":\"builds\",\"id\":\"$BUILD_ID\",\"attributes\":{\"usesNonExemptEncryption\":false}}}" \
           "https://api.appstoreconnect.apple.com/v1/builds/$BUILD_ID"
 
+        # Set "What to Test" notes if provided
+        WHAT_TO_TEST="${{ github.event.inputs.what_to_test }}"
+        if [ -n "$WHAT_TO_TEST" ]; then
+          echo "Setting 'What to Test' notes..."
+          # Check if localization exists
+          LOCALIZATION_RESPONSE=$(curl -g -s -H "Authorization: Bearer $JWT" \
+            "https://api.appstoreconnect.apple.com/v1/builds/$BUILD_ID/betaBuildLocalizations")
+
+          LOCALIZATION_ID=$(echo "$LOCALIZATION_RESPONSE" | python3 -c "
+        import sys, json
+        data = json.load(sys.stdin)
+        for loc in data.get('data', []):
+          if loc.get('attributes', {}).get('locale') == 'en-US':
+            print(loc['id'])
+            break
+        " 2>/dev/null)
+
+          if [ -n "$LOCALIZATION_ID" ]; then
+            # Update existing localization
+            curl -g -s -X PATCH \
+              -H "Authorization: Bearer $JWT" \
+              -H "Content-Type: application/json" \
+              -d "{\"data\":{\"type\":\"betaBuildLocalizations\",\"id\":\"$LOCALIZATION_ID\",\"attributes\":{\"whatsNew\":\"$WHAT_TO_TEST\"}}}" \
+              "https://api.appstoreconnect.apple.com/v1/betaBuildLocalizations/$LOCALIZATION_ID"
+          else
+            # Create new localization
+            curl -g -s -X POST \
+              -H "Authorization: Bearer $JWT" \
+              -H "Content-Type: application/json" \
+              -d "{\"data\":{\"type\":\"betaBuildLocalizations\",\"attributes\":{\"locale\":\"en-US\",\"whatsNew\":\"$WHAT_TO_TEST\"},\"relationships\":{\"build\":{\"data\":{\"type\":\"builds\",\"id\":\"$BUILD_ID\"}}}}}" \
+              "https://api.appstoreconnect.apple.com/v1/betaBuildLocalizations"
+          fi
+          echo "What to Test notes set!"
+        fi
+
         # Add to internal beta groups
         GROUPS_RESPONSE=$(curl -g -s -H "Authorization: Bearer $JWT" \
           "https://api.appstoreconnect.apple.com/v1/apps/$APP_ID/betaGroups")
@@ -220,6 +260,9 @@ jobs:
         echo "- **Git Tag**: internal_build_${{ steps.artifact.outputs.build }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Source Run**: ${{ steps.find-artifact.outputs.run_id }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Status**: Distributed to internal testers" >> $GITHUB_STEP_SUMMARY
+        if [ -n "${{ github.event.inputs.what_to_test }}" ]; then
+          echo "- **What to Test**: ${{ github.event.inputs.what_to_test }}" >> $GITHUB_STEP_SUMMARY
+        fi
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
         echo "Run **2. TestFlight External** workflow to submit for external beta review." >> $GITHUB_STEP_SUMMARY
