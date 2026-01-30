@@ -1,7 +1,7 @@
 # Footprint Travel Tracker - Progress & Tasks
 
 ## Project Status: MVP DEVELOPMENT
-**Last Updated**: 2026-01-28
+**Last Updated**: 2026-01-30
 
 ## Source of Truth: GitHub Issues
 
@@ -13,6 +13,33 @@ https://github.com/wdvr/footprint/issues
 |-------|-------|--------|
 | [#30](https://github.com/wdvr/footprint/issues/30) | Persist Google connection - avoid re-auth on every import | bug, ios, backend |
 | [#31](https://github.com/wdvr/footprint/issues/31) | Reduce console logging spam on device | ios |
+| LOCAL | Apple Photos import doesn't resume - re-processes all images on restart | bug, ios |
+| LOCAL | Apple Photos import misses coastal photos (geocoding fails for near-ocean coordinates) | bug, ios |
+
+### Apple Photos Import Issues (Detailed Analysis) - FIXED
+
+**Issue 1: Import doesn't resume properly (re-processes all 70,000 images)** - FIXED
+- **Location**: `PhotoImportManager.swift`
+- **Root causes identified**:
+  1. `scanPhotoLibrary()` calls `clearScanProgress()` immediately, clearing any saved progress
+  2. Phase 1 (photo enumeration) always runs completely even during resume
+  3. No incremental scan support - always processes ALL photos
+- **Fixes implemented**:
+  1. Added `scanAllPhotos` parameter - when false (default), only scans photos newer than `lastScannedPhotoDate`
+  2. Added `pendingClusters` to `PhotoScanProgress` - resume now skips Phase 1 entirely by using saved clusters
+  3. Updated UI: "Scan New Photos" (incremental) vs "Full Rescan (All Photos)" options
+  4. Clusters are saved immediately when geocoding phase starts, so resume always works
+
+**Issue 2: Coastal photos not detected (Australia example)** - FIXED
+- **Location**: `PhotoImportManager.swift`, new `GeoLocationMatcher.swift`
+- **Root cause**: Photos on coast have GPS coordinates slightly in ocean; `CLGeocoder` returns no country code
+- **Fix implemented**:
+  1. Created `GeoLocationMatcher` utility class that uses on-device GeoJSON boundary polygons
+  2. When geocoding fails or returns no country, fallback to `matchCoordinateWithTolerance()`:
+     - First tries exact point-in-polygon match
+     - If no match, tries 8 nearby points (N, S, E, W, NE, NW, SE, SW) at 500m tolerance
+  3. Uses existing country boundary GeoJSON data (same used for map rendering)
+  4. Also handles US states and Canadian provinces in the fallback
 
 ### In Progress Features
 | Issue | Title | Labels |

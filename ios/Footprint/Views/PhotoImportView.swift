@@ -18,7 +18,13 @@ struct PhotoImportView: View {
             VStack {
                 switch importManager.state {
                 case .idle:
-                    IdleView(onStartScan: startScan, hasPendingScan: importManager.hasPendingScan, onResume: resumeScan)
+                    IdleView(
+                        onStartScan: startScan,
+                        onFullRescan: startFullRescan,
+                        hasPendingScan: importManager.hasPendingScan,
+                        hasCompletedScanBefore: importManager.lastScannedPhotoDate != nil,
+                        onResume: resumeScan
+                    )
 
                 case .requestingPermission:
                     PermissionRequestView()
@@ -105,7 +111,18 @@ struct PhotoImportView: View {
 
     private func startScan() {
         Task {
-            await importManager.scanPhotoLibrary(existingPlaces: existingPlaces)
+            await importManager.scanPhotoLibrary(existingPlaces: existingPlaces, scanAllPhotos: false)
+
+            // Auto-select all discovered locations
+            if case .completed(let locations, _, _) = importManager.state {
+                selectedLocations = Set(locations)
+            }
+        }
+    }
+
+    private func startFullRescan() {
+        Task {
+            await importManager.scanPhotoLibrary(existingPlaces: existingPlaces, scanAllPhotos: true)
 
             // Auto-select all discovered locations
             if case .completed(let locations, _, _) = importManager.state {
@@ -135,7 +152,9 @@ struct PhotoImportView: View {
 
 private struct IdleView: View {
     let onStartScan: () -> Void
+    let onFullRescan: () -> Void
     let hasPendingScan: Bool
+    let hasCompletedScanBefore: Bool
     let onResume: () -> Void
 
     var body: some View {
@@ -195,7 +214,24 @@ private struct IdleView: View {
                         Text("Start New Scan")
                             .font(.subheadline)
                     }
+                } else if hasCompletedScanBefore {
+                    // User has scanned before - offer incremental scan as primary
+                    Button(action: onStartScan) {
+                        Label("Scan New Photos", systemImage: "plus.magnifyingglass")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(.tint)
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+
+                    Button(action: onFullRescan) {
+                        Text("Full Rescan (All Photos)")
+                            .font(.subheadline)
+                    }
                 } else {
+                    // First time scan
                     Button(action: onStartScan) {
                         Label("Start Scan", systemImage: "magnifyingglass")
                             .font(.headline)
