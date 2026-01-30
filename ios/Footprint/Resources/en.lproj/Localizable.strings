@@ -1,0 +1,168 @@
+/* 
+ * Footprint Travel Tracker - English Localization
+ * Main user interface strings
+ */
+
+// MARK: - Tab Bar
+"tab.map" = "Map";
+"tab.countries" = "Countries";
+"tab.stats" = "Stats";
+"tab.settings" = "Settings";
+
+// MARK: - Authentication
+"auth.signed_in" = "Signed In";
+"auth.signed_in_with" = "Signed in with %@";
+"auth.offline_mode" = "Offline Mode";
+"auth.offline_description" = "Data stored locally only";
+"auth.sign_out" = "Sign Out";
+"auth.sign_out_confirmation" = "Are you sure you want to sign out? Your local data will be preserved.";
+
+// MARK: - Sync
+"sync.force_full_sync" = "Force Full Sync";
+"sync.syncing" = "Syncing...";
+"sync.sync_error" = "Sync Error";
+"sync.synced" = "Synced";
+"sync.last_sync" = "Last: %@";
+"sync.never_synced" = "Never synced";
+"sync.sync_now" = "Sync now";
+
+// MARK: - Location & Permissions
+"location.background_tracking" = "Background Location Tracking";
+"location.background_description" = "Get notified when you visit new places";
+"location.header" = "Location";
+"location.always_permission" = "Requires 'Always' location permission. Go to Settings > Privacy > Location Services to enable.";
+"location.battery_efficiency" = "Uses significant location changes for battery efficiency.";
+"location.center_current" = "Center on current location";
+"location.start_tracking" = "Start tracking location";
+
+// MARK: - Import
+"import.sources" = "Import Sources";
+"import.sources_description" = "Gmail, Calendar, Photos";
+"import.photo_limit" = "Photo limit";
+"import.photo_limit_none" = "None";
+
+// MARK: - Data Management
+"data.backup" = "Backup Data";
+"data.restore_backup" = "Restore Backup";
+"data.clear_all" = "Clear All Visited Places";
+"data.delete_account" = "Delete Account";
+"data.delete_account_warning" = "This will permanently delete your account and all data. This action cannot be undone.";
+"data.clear_all_confirmation" = "This will remove all %d visited places. This action cannot be undone.";
+"data.backup_success" = "Your data has been backed up to Documents/footprint_backup.json";
+"data.restore_confirmation" = "This will replace all current data with the backup. Continue?";
+"data.restore_success" = "Your data has been restored from backup.";
+
+// MARK: - App Information
+"app.version" = "Version";
+"app.build" = "Build";
+
+// MARK: - Countries & Places
+"places.countries" = "countries";
+"places.visited" = "Visited";
+"places.bucket_list" = "Bucket List";
+"places.remove" = "Remove";
+"places.mark_visited" = "Mark as Visited";
+"places.view_states" = "View States";
+"places.view_provinces" = "View Provinces";
+"places.territory_of" = "Territory of %@ • %@";
+"places.code" = "Code: %@";
+"places.search_countries" = "Search countries";
+
+// MARK: - Stats
+"stats.your_travel_stats" = "Your Travel Stats";
+"stats.total_regions_visited" = "Total Regions Visited";
+"stats.bucket_list_description" = "%d places on your bucket list";
+"stats.by_continent" = "By Continent";
+"stats.time_zones" = "Time Zones";
+"stats.time_zones_visited_percent" = "%d%% of time zones visited";
+"stats.farthest_west" = "Farthest West";
+"stats.farthest_east" = "Farthest East";
+"stats.achievements" = "Achievements";
+"stats.next_achievement" = "Next Achievement";
+"stats.visit_types" = "Visit Types";
+
+// MARK: - Onboarding
+"onboarding.skip" = "Skip";
+"onboarding.back" = "Back";
+"onboarding.next" = "Next";
+"onboarding.get_started" = "Get Started";
+
+"onboarding.welcome.title" = "Welcome to Footprint";
+"onboarding.welcome.description" = "Track the places you've visited and create your personal travel map";
+
+"onboarding.photos.title" = "Import from Photos";
+"onboarding.photos.description" = "Footprint can scan your photo library to discover places you've been based on photo locations";
+"onboarding.photos.enabled" = "Photo access enabled";
+"onboarding.photos.enable" = "Enable Photo Access";
+"onboarding.photos.optional" = "This is optional - you can enable it later in Settings";
+
+"onboarding.location.title" = "Track Your Location";
+"onboarding.location.description" = "Enable location tracking to automatically mark countries as you travel";
+"onboarding.location.enabled" = "Location access enabled";
+"onboarding.location.enable" = "Enable Location Access";
+"onboarding.location.optional" = "This is optional - you can always add places manually";
+
+"onboarding.complete.title" = "You're All Set!";
+"onboarding.complete.description" = "Start exploring the map and marking the places you've visited";
+
+// MARK: - Map & UI Controls
+"map.show_photo_pins" = "Show photo pins";
+"map.hide_photo_pins" = "Hide photo pins";
+"map.show_list" = "Show list";
+"map.show_map" = "Show map";
+"map.expand_states" = "Expand states";
+"map.collapse_states" = "Collapse states";
+
+// MARK: - Common Actions
+"action.cancel" = "Cancel";
+"action.delete" = "Delete";
+"action.ok" = "OK";
+"action.done" = "Done";
+"action.restore" = "Restore";
+
+// MARK: - Accessibility Labels
+"accessibility.visited_status" = "%@, %@";
+"accessibility.visited" = "visited";
+"accessibility.not_visited" = "not visited";
+"accessibility.continent_stats" = "%@, %d of %d countries visited";
+"accessibility.bucket_list_count" = "%d %@ on bucket list";
+"accessibility.stats_percentage" = "%@: %d of %d, %d percent";
+"accessibility.total_regions" = "Total regions visited: %d";
+
+// MARK: - Error Messages
+"error.unknown" = "Unknown error";
+"error.backup_failed" = "Backup failed";
+"error.restore_failed" = "Restore failed";
+
+// MARK: - Place Names & Geographic Terms
+"geographic.continent" = "Continent";
+"geographic.country" = "Country";
+"geographic.state" = "State";
+"geographic.province" = "Province";
+"geographic.territory" = "Territory";
+
+// MARK: - Continents
+"continent.africa" = "Africa";
+"continent.antarctica" = "Antarctica";
+"continent.asia" = "Asia";
+"continent.europe" = "Europe";
+"continent.north_america" = "North America";
+"continent.oceania" = "Oceania";
+"continent.south_america" = "South America";
+
+// MARK: - Onboarding Features and Benefits
+"onboarding.feature.map" = "Visualize your travels on an interactive map";
+"onboarding.feature.bucket_list" = "Create a bucket list of places to visit";
+"onboarding.feature.photos" = "Import locations from your photos";
+
+"onboarding.photos.benefit.map" = "See photo pins on your map";
+"onboarding.photos.benefit.automatic" = "Automatically find past travels";
+"onboarding.photos.benefit.privacy" = "Photos stay on your device";
+
+"onboarding.location.benefit.auto_detect" = "Auto-detect new countries";
+"onboarding.location.benefit.notifications" = "Get notified when visiting new places";
+"onboarding.location.benefit.battery" = "Battery-efficient background tracking";
+
+"onboarding.tip.tap_country" = "Tap any country to mark it as visited";
+"onboarding.tip.bucket_list" = "Long press to add to your bucket list";
+"onboarding.tip.photo_import" = "Import photos from Settings to see pins on the map";

@@ -1,0 +1,151 @@
+/* 
+ * Footprint Travel Tracker - Japanese Localization
+ * Main user interface strings
+ */
+
+// MARK: - Tab Bar
+"tab.map" = "地図";
+"tab.countries" = "国";
+"tab.stats" = "統計";
+"tab.settings" = "設定";
+
+// MARK: - Authentication
+"auth.signed_in" = "サインイン済み";
+"auth.signed_in_with" = "%@でサインイン";
+"auth.offline_mode" = "オフラインモード";
+"auth.offline_description" = "データはローカルにのみ保存されます";
+"auth.sign_out" = "サインアウト";
+"auth.sign_out_confirmation" = "本当にサインアウトしますか？ローカルデータは保持されます。";
+
+// MARK: - Sync
+"sync.force_full_sync" = "強制的に完全同期";
+"sync.syncing" = "同期中...";
+"sync.sync_error" = "同期エラー";
+"sync.synced" = "同期済み";
+"sync.last_sync" = "最終: %@";
+"sync.never_synced" = "未同期";
+"sync.sync_now" = "今すぐ同期";
+
+// MARK: - Location & Permissions
+"location.background_tracking" = "バックグラウンド位置追跡";
+"location.background_description" = "新しい場所を訪れた時に通知を受け取る";
+"location.header" = "位置情報";
+"location.always_permission" = "「常に許可」の位置情報許可が必要です。設定 > プライバシー > 位置情報サービスから有効にしてください。";
+"location.battery_efficiency" = "バッテリー効率のため重要な位置変更を使用します。";
+"location.center_current" = "現在の位置を中央に";
+"location.start_tracking" = "位置追跡を開始";
+
+// MARK: - Import
+"import.sources" = "インポートソース";
+"import.sources_description" = "Gmail、カレンダー、写真";
+"import.photo_limit" = "写真の上限";
+"import.photo_limit_none" = "なし";
+
+// MARK: - Data Management
+"data.backup" = "データをバックアップ";
+"data.restore_backup" = "バックアップを復元";
+"data.clear_all" = "すべての訪問地を消去";
+"data.delete_account" = "アカウントを削除";
+"data.delete_account_warning" = "これによりアカウントとすべてのデータが完全に削除されます。この操作は元に戻せません。";
+"data.clear_all_confirmation" = "これにより%d件の訪問地がすべて削除されます。この操作は元に戻せません。";
+"data.backup_success" = "データがDocuments/footprint_backup.jsonにバックアップされました";
+"data.restore_confirmation" = "これにより現在のデータがすべてバックアップで置き換えられます。続行しますか？";
+"data.restore_success" = "バックアップからデータが復元されました。";
+
+// MARK: - App Information
+"app.version" = "バージョン";
+"app.build" = "ビルド";
+
+// MARK: - Countries & Places
+"places.countries" = "ヶ国";
+"places.visited" = "訪問済み";
+"places.bucket_list" = "行きたい場所リスト";
+"places.remove" = "削除";
+"places.mark_visited" = "訪問済みにマーク";
+"places.view_states" = "州を表示";
+"places.view_provinces" = "州を表示";
+"places.territory_of" = "%@の領土 • %@";
+"places.code" = "コード: %@";
+"places.search_countries" = "国を検索";
+
+// MARK: - Stats
+"stats.your_travel_stats" = "あなたの旅行統計";
+"stats.total_regions_visited" = "訪問地域合計";
+"stats.bucket_list_description" = "行きたい場所リストに%d箇所";
+"stats.by_continent" = "大陸別";
+"stats.time_zones" = "タイムゾーン";
+"stats.time_zones_visited_percent" = "タイムゾーンの%d%%を訪問";
+"stats.farthest_west" = "最西端";
+"stats.farthest_east" = "最東端";
+"stats.achievements" = "実績";
+"stats.next_achievement" = "次の実績";
+"stats.visit_types" = "訪問タイプ";
+
+// MARK: - Onboarding
+"onboarding.skip" = "スキップ";
+"onboarding.back" = "戻る";
+"onboarding.next" = "次へ";
+"onboarding.get_started" = "始める";
+
+"onboarding.welcome.title" = "Footprintへようこそ";
+"onboarding.welcome.description" = "訪れた場所を記録し、あなた専用の旅行マップを作成しましょう";
+
+"onboarding.photos.title" = "写真からインポート";
+"onboarding.photos.description" = "Footprintは写真ライブラリをスキャンして、写真の位置情報から訪れた場所を発見できます";
+"onboarding.photos.enabled" = "写真アクセス有効";
+"onboarding.photos.enable" = "写真アクセスを有効にする";
+"onboarding.photos.optional" = "これはオプションです - 後で設定から有効にできます";
+
+"onboarding.location.title" = "位置情報を追跡";
+"onboarding.location.description" = "位置追跡を有効にして、旅行中に自動的に国をマークしましょう";
+"onboarding.location.enabled" = "位置情報アクセス有効";
+"onboarding.location.enable" = "位置情報アクセスを有効にする";
+"onboarding.location.optional" = "これはオプションです - いつでも手動で場所を追加できます";
+
+"onboarding.complete.title" = "準備完了！";
+"onboarding.complete.description" = "地図を探索して、訪れた場所をマークし始めましょう";
+
+// MARK: - Map & UI Controls
+"map.show_photo_pins" = "写真ピンを表示";
+"map.hide_photo_pins" = "写真ピンを非表示";
+"map.show_list" = "リストを表示";
+"map.show_map" = "地図を表示";
+"map.expand_states" = "州を展開";
+"map.collapse_states" = "州を折りたたみ";
+
+// MARK: - Common Actions
+"action.cancel" = "キャンセル";
+"action.delete" = "削除";
+"action.ok" = "OK";
+"action.done" = "完了";
+"action.restore" = "復元";
+
+// MARK: - Accessibility Labels
+"accessibility.visited_status" = "%@、%@";
+"accessibility.visited" = "訪問済み";
+"accessibility.not_visited" = "未訪問";
+"accessibility.continent_stats" = "%@、%d/%d ヶ国訪問済み";
+"accessibility.bucket_list_count" = "行きたい場所リストに%d%@";
+"accessibility.stats_percentage" = "%@: %d/%d、%d パーセント";
+"accessibility.total_regions" = "総訪問地域数: %d";
+
+// MARK: - Error Messages
+"error.unknown" = "不明なエラー";
+"error.backup_failed" = "バックアップに失敗";
+"error.restore_failed" = "復元に失敗";
+
+// MARK: - Place Names & Geographic Terms
+"geographic.continent" = "大陸";
+"geographic.country" = "国";
+"geographic.state" = "州";
+"geographic.province" = "州";
+"geographic.territory" = "領土";
+
+// MARK: - Continents
+"continent.africa" = "アフリカ";
+"continent.antarctica" = "南極大陸";
+"continent.asia" = "アジア";
+"continent.europe" = "ヨーロッパ";
+"continent.north_america" = "北アメリカ";
+"continent.oceania" = "オセアニア";
+"continent.south_america" = "南アメリカ";

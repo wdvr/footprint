@@ -46,7 +46,7 @@ def sparql_query(query: str, retries: int = 3) -> list[dict]:
         headers={
             "User-Agent": "Footprint-Travel-Tracker/1.0 (travel app; contact@example.com)",
             "Accept": "application/sparql-results+json",
-        }
+        },
     )
 
     for attempt in range(retries):
@@ -65,7 +65,7 @@ def sparql_query(query: str, retries: int = 3) -> list[dict]:
                 time.sleep(wait_time)
             else:
                 raise
-        except urllib.error.URLError as e:
+        except urllib.error.URLError:
             if attempt < retries - 1:
                 wait_time = 10 * (attempt + 1)
                 print(f"  Network error, retrying in {wait_time}s...")
@@ -79,8 +79,7 @@ def fetch_json_from_url(url: str) -> dict | list:
     """Fetch JSON from a URL."""
     print(f"  Fetching: {url}")
     req = urllib.request.Request(
-        url,
-        headers={"User-Agent": "Footprint-Travel-Tracker/1.0"}
+        url, headers={"User-Agent": "Footprint-Travel-Tracker/1.0"}
     )
     with urllib.request.urlopen(req, timeout=60) as response:
         return json.loads(response.read().decode("utf-8"))
@@ -120,13 +119,15 @@ def fetch_unesco_sites():
         if country_code not in sites_by_country:
             sites_by_country[country_code] = []
 
-        sites_by_country[country_code].append({
-            "name": name,
-            "type": "unesco_world_heritage",
-            "category": category.lower() if category else "cultural",
-            "latitude": lat,
-            "longitude": lng,
-        })
+        sites_by_country[country_code].append(
+            {
+                "name": name,
+                "type": "unesco_world_heritage",
+                "category": category.lower() if category else "cultural",
+                "latitude": lat,
+                "longitude": lng,
+            }
+        )
 
     output = {
         "source": "Igor-Vladyka/realplanet (UNESCO data)",
@@ -144,16 +145,14 @@ def fetch_unesco_sites():
     print(f"  Saved to: {output_path}")
 
     # Summary
-    print(f"\n  Summary:")
+    print("\n  Summary:")
     print(f"    Total UNESCO sites: {len(data)}")
     print(f"    Countries with sites: {len(sites_by_country)}")
 
     top_countries = sorted(
-        sites_by_country.items(),
-        key=lambda x: len(x[1]),
-        reverse=True
+        sites_by_country.items(), key=lambda x: len(x[1]), reverse=True
     )[:10]
-    print(f"\n  Top 10 countries by UNESCO site count:")
+    print("\n  Top 10 countries by UNESCO site count:")
     for cc, sites in top_countries:
         print(f"    {cc}: {len(sites)} sites")
 
@@ -221,12 +220,14 @@ def fetch_popular_landmarks():
                 if country_code not in all_landmarks:
                     all_landmarks[country_code] = []
 
-                all_landmarks[country_code].append({
-                    "name": name,
-                    "type": landmark_type,
-                    "latitude": lat,
-                    "longitude": lng,
-                })
+                all_landmarks[country_code].append(
+                    {
+                        "name": name,
+                        "type": landmark_type,
+                        "latitude": lat,
+                        "longitude": lng,
+                    }
+                )
 
             time.sleep(3)
 
@@ -255,7 +256,7 @@ def fetch_popular_landmarks():
         json.dump(output, f, indent=2, ensure_ascii=False)
     print(f"\n  Saved to: {output_path}")
 
-    print(f"\n  Summary:")
+    print("\n  Summary:")
     print(f"    Total landmarks: {total_landmarks}")
     print(f"    Countries with landmarks: {len(all_landmarks)}")
 
@@ -295,12 +296,14 @@ def fetch_national_parks():
         if country_code not in parks_by_country:
             parks_by_country[country_code] = []
 
-        parks_by_country[country_code].append({
-            "name": name,
-            "type": "national_park",
-            "latitude": lat,
-            "longitude": lng,
-        })
+        parks_by_country[country_code].append(
+            {
+                "name": name,
+                "type": "national_park",
+                "latitude": lat,
+                "longitude": lng,
+            }
+        )
 
     output = {
         "source": "openshift-roadshow/nationalparks-js (GeoNames)",
@@ -317,24 +320,24 @@ def fetch_national_parks():
         json.dump(output, f, indent=2, ensure_ascii=False)
     print(f"  Saved to: {output_path}")
 
-    print(f"\n  Summary:")
+    print("\n  Summary:")
     print(f"    Total national parks: {len(data)}")
     print(f"    Countries with parks: {len(parks_by_country)}")
 
     # Top countries
     top_countries = sorted(
-        parks_by_country.items(),
-        key=lambda x: len(x[1]),
-        reverse=True
+        parks_by_country.items(), key=lambda x: len(x[1]), reverse=True
     )[:10]
-    print(f"\n  Top 10 countries by park count:")
+    print("\n  Top 10 countries by park count:")
     for cc, parks in top_countries:
         print(f"    {cc}: {len(parks)} parks")
 
     return output
 
 
-def create_ios_landmarks_json(unesco_data: dict, parks_data: dict, landmarks_data: dict):
+def create_ios_landmarks_json(
+    unesco_data: dict, parks_data: dict, landmarks_data: dict
+):
     """Create combined iOS landmarks JSON."""
     print("\n=== Creating iOS Landmarks JSON ===")
 
@@ -345,24 +348,28 @@ def create_ios_landmarks_json(unesco_data: dict, parks_data: dict, landmarks_dat
         if cc not in combined:
             combined[cc] = []
         for site in sites:
-            combined[cc].append({
-                "name": site["name"],
-                "type": "unesco",
-                "lat": site["latitude"],
-                "lng": site["longitude"],
-            })
+            combined[cc].append(
+                {
+                    "name": site["name"],
+                    "type": "unesco",
+                    "lat": site["latitude"],
+                    "lng": site["longitude"],
+                }
+            )
 
     # Add national parks
     for cc, parks in parks_data.get("parks_by_country", {}).items():
         if cc not in combined:
             combined[cc] = []
         for park in parks:
-            combined[cc].append({
-                "name": park["name"],
-                "type": "park",
-                "lat": park["latitude"],
-                "lng": park["longitude"],
-            })
+            combined[cc].append(
+                {
+                    "name": park["name"],
+                    "type": "park",
+                    "lat": park["latitude"],
+                    "lng": park["longitude"],
+                }
+            )
 
     # Add other landmarks (limit per country to avoid bloat)
     for cc, landmarks in landmarks_data.get("landmarks_by_country", {}).items():
@@ -370,12 +377,14 @@ def create_ios_landmarks_json(unesco_data: dict, parks_data: dict, landmarks_dat
             combined[cc] = []
         # Take top 50 landmarks per country
         for lm in landmarks[:50]:
-            combined[cc].append({
-                "name": lm["name"],
-                "type": lm["type"],
-                "lat": lm["latitude"],
-                "lng": lm["longitude"],
-            })
+            combined[cc].append(
+                {
+                    "name": lm["name"],
+                    "type": lm["type"],
+                    "lat": lm["latitude"],
+                    "lng": lm["longitude"],
+                }
+            )
 
     # Remove items without coordinates
     for cc in combined:
@@ -398,25 +407,16 @@ def main():
         description="Fetch landmarks data from open sources"
     )
     parser.add_argument(
-        "--unesco", action="store_true",
-        help="Fetch UNESCO World Heritage Sites"
+        "--unesco", action="store_true", help="Fetch UNESCO World Heritage Sites"
     )
+    parser.add_argument("--parks", action="store_true", help="Fetch National Parks")
     parser.add_argument(
-        "--parks", action="store_true",
-        help="Fetch National Parks"
+        "--popular",
+        action="store_true",
+        help="Fetch popular landmarks (monuments, museums, etc.)",
     )
-    parser.add_argument(
-        "--popular", action="store_true",
-        help="Fetch popular landmarks (monuments, museums, etc.)"
-    )
-    parser.add_argument(
-        "--all", action="store_true",
-        help="Fetch all landmark types"
-    )
-    parser.add_argument(
-        "--ios", action="store_true",
-        help="Create iOS-optimized JSON"
-    )
+    parser.add_argument("--all", action="store_true", help="Fetch all landmark types")
+    parser.add_argument("--ios", action="store_true", help="Create iOS-optimized JSON")
 
     args = parser.parse_args()
 

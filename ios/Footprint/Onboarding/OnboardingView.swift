@@ -23,7 +23,7 @@ struct OnboardingView: View {
                 // Skip button
                 HStack {
                     Spacer()
-                    Button("Skip") {
+                    Button(L10n.Onboarding.skip) {
                         completeOnboarding()
                     }
                     .foregroundStyle(.secondary)
@@ -67,7 +67,7 @@ struct OnboardingView: View {
                             } label: {
                                 HStack {
                                     Image(systemName: "chevron.left")
-                                    Text("Back")
+                                    Text(L10n.Onboarding.back)
                                 }
                             }
                             .foregroundStyle(.secondary)
@@ -85,7 +85,7 @@ struct OnboardingView: View {
                             }
                         } label: {
                             HStack {
-                                Text(currentPage < totalPages - 1 ? "Next" : "Get Started")
+                                Text(currentPage < totalPages - 1 ? L10n.Onboarding.next : L10n.Onboarding.getStarted)
                                 if currentPage < totalPages - 1 {
                                     Image(systemName: "chevron.right")
                                 }
@@ -136,11 +136,11 @@ private struct WelcomePage: View {
             }
 
             VStack(spacing: 16) {
-                Text("Welcome to Footprint")
+                Text(L10n.Onboarding.Welcome.title)
                     .font(.largeTitle)
                     .fontWeight(.bold)
 
-                Text("Track the places you've visited and create your personal travel map")
+                Text(L10n.Onboarding.Welcome.description)
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -149,9 +149,9 @@ private struct WelcomePage: View {
 
             // Features list
             VStack(alignment: .leading, spacing: 16) {
-                FeatureRow(icon: "map.fill", color: .blue, text: "Visualize your travels on an interactive map")
-                FeatureRow(icon: "star.fill", color: .orange, text: "Create a bucket list of places to visit")
-                FeatureRow(icon: "photo.fill", color: .purple, text: "Import locations from your photos")
+                FeatureRow(icon: "map.fill", color: .blue, text: "onboarding.feature.map".localized)
+                FeatureRow(icon: "star.fill", color: .orange, text: "onboarding.feature.bucket_list".localized)
+                FeatureRow(icon: "photo.fill", color: .purple, text: "onboarding.feature.photos".localized)
             }
             .padding(.horizontal, 30)
             .padding(.top, 20)
@@ -183,11 +183,11 @@ private struct PhotoImportPage: View {
             }
 
             VStack(spacing: 16) {
-                Text("Import from Photos")
+                Text(L10n.Onboarding.Photos.title)
                     .font(.largeTitle)
                     .fontWeight(.bold)
 
-                Text("Footprint can scan your photo library to discover places you've been based on photo locations")
+                Text(L10n.Onboarding.Photos.description)
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -196,9 +196,9 @@ private struct PhotoImportPage: View {
 
             // Benefits
             VStack(alignment: .leading, spacing: 12) {
-                BenefitRow(icon: "map.fill", text: "See photo pins on your map")
-                BenefitRow(icon: "clock.fill", text: "Automatically find past travels")
-                BenefitRow(icon: "lock.shield.fill", text: "Photos stay on your device")
+                BenefitRow(icon: "map.fill", text: "onboarding.photos.benefit.map".localized)
+                BenefitRow(icon: "clock.fill", text: "onboarding.photos.benefit.automatic".localized)
+                BenefitRow(icon: "lock.shield.fill", text: "onboarding.photos.benefit.privacy".localized)
             }
             .padding(.horizontal, 40)
 
@@ -207,7 +207,7 @@ private struct PhotoImportPage: View {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
-                    Text("Photo access enabled")
+                    Text(L10n.Onboarding.Photos.enabled)
                         .foregroundStyle(.secondary)
                 }
                 .padding(.top, 10)
@@ -217,7 +217,7 @@ private struct PhotoImportPage: View {
                 } label: {
                     HStack {
                         Image(systemName: "photo.badge.plus")
-                        Text("Enable Photo Access")
+                        Text(L10n.Onboarding.Photos.enable)
                     }
                     .fontWeight(.medium)
                     .foregroundStyle(.white)
@@ -230,7 +230,7 @@ private struct PhotoImportPage: View {
                 .padding(.top, 10)
             }
 
-            Text("This is optional - you can enable it later in Settings")
+            Text(L10n.Onboarding.Photos.optional)
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -272,11 +272,11 @@ private struct LocationPage: View {
             }
 
             VStack(spacing: 16) {
-                Text("Track Your Location")
+                Text(L10n.Onboarding.Location.title)
                     .font(.largeTitle)
                     .fontWeight(.bold)
 
-                Text("Enable location tracking to automatically mark countries as you travel")
+                Text(L10n.Onboarding.Location.description)
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -285,9 +285,9 @@ private struct LocationPage: View {
 
             // Benefits
             VStack(alignment: .leading, spacing: 12) {
-                BenefitRow(icon: "flag.fill", text: "Auto-detect new countries")
-                BenefitRow(icon: "bell.fill", text: "Get notified when visiting new places")
-                BenefitRow(icon: "battery.100", text: "Battery-efficient background tracking")
+                BenefitRow(icon: "flag.fill", text: "onboarding.location.benefit.auto_detect".localized)
+                BenefitRow(icon: "bell.fill", text: "onboarding.location.benefit.notifications".localized)
+                BenefitRow(icon: "battery.100", text: "onboarding.location.benefit.battery".localized)
             }
             .padding(.horizontal, 40)
 
@@ -296,7 +296,7 @@ private struct LocationPage: View {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
-                    Text("Location access enabled")
+                    Text(L10n.Onboarding.Location.enabled)
                         .foregroundStyle(.secondary)
                 }
                 .padding(.top, 10)
@@ -306,7 +306,7 @@ private struct LocationPage: View {
                 } label: {
                     HStack {
                         Image(systemName: "location.fill")
-                        Text("Enable Location Access")
+                        Text(L10n.Onboarding.Location.enable)
                     }
                     .fontWeight(.medium)
                     .foregroundStyle(.white)
@@ -319,7 +319,7 @@ private struct LocationPage: View {
                 .padding(.top, 10)
             }
 
-            Text("This is optional - you can always add places manually")
+            Text(L10n.Onboarding.Location.optional)
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -360,11 +360,11 @@ private struct ReadyPage: View {
             }
 
             VStack(spacing: 16) {
-                Text("You're All Set!")
+                Text(L10n.Onboarding.Complete.title)
                     .font(.largeTitle)
                     .fontWeight(.bold)
 
-                Text("Start exploring the map and marking the places you've visited")
+                Text(L10n.Onboarding.Complete.description)
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -373,9 +373,9 @@ private struct ReadyPage: View {
 
             // Tips
             VStack(alignment: .leading, spacing: 16) {
-                TipRow(icon: "hand.tap.fill", text: "Tap any country to mark it as visited")
-                TipRow(icon: "star.fill", text: "Long press to add to your bucket list")
-                TipRow(icon: "photo.stack.fill", text: "Import photos from Settings to see pins on the map")
+                TipRow(icon: "hand.tap.fill", text: "onboarding.tip.tap_country".localized)
+                TipRow(icon: "star.fill", text: "onboarding.tip.bucket_list".localized)
+                TipRow(icon: "photo.stack.fill", text: "onboarding.tip.photo_import".localized)
             }
             .padding(.horizontal, 30)
             .padding(.top, 20)

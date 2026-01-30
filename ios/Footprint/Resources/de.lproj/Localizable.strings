@@ -1,0 +1,151 @@
+/* 
+ * Footprint Travel Tracker - German Localization
+ * Main user interface strings
+ */
+
+// MARK: - Tab Bar
+"tab.map" = "Karte";
+"tab.countries" = "Länder";
+"tab.stats" = "Statistiken";
+"tab.settings" = "Einstellungen";
+
+// MARK: - Authentication
+"auth.signed_in" = "Angemeldet";
+"auth.signed_in_with" = "Angemeldet mit %@";
+"auth.offline_mode" = "Offline-Modus";
+"auth.offline_description" = "Daten nur lokal gespeichert";
+"auth.sign_out" = "Abmelden";
+"auth.sign_out_confirmation" = "Möchten Sie sich wirklich abmelden? Ihre lokalen Daten bleiben erhalten.";
+
+// MARK: - Sync
+"sync.force_full_sync" = "Vollsynchronisation erzwingen";
+"sync.syncing" = "Synchronisiere...";
+"sync.sync_error" = "Synchronisationsfehler";
+"sync.synced" = "Synchronisiert";
+"sync.last_sync" = "Zuletzt: %@";
+"sync.never_synced" = "Nie synchronisiert";
+"sync.sync_now" = "Jetzt synchronisieren";
+
+// MARK: - Location & Permissions
+"location.background_tracking" = "Standortverfolgung im Hintergrund";
+"location.background_description" = "Benachrichtigung bei Besuch neuer Orte";
+"location.header" = "Standort";
+"location.always_permission" = "Benötigt 'Immer' Standortberechtigung. Gehen Sie zu Einstellungen > Datenschutz > Ortungsdienste, um es zu aktivieren.";
+"location.battery_efficiency" = "Verwendet signifikante Standortänderungen für Batterieeffizienz.";
+"location.center_current" = "Auf aktuellen Standort zentrieren";
+"location.start_tracking" = "Standortverfolgung starten";
+
+// MARK: - Import
+"import.sources" = "Importquellen";
+"import.sources_description" = "Gmail, Kalender, Fotos";
+"import.photo_limit" = "Fotolimit";
+"import.photo_limit_none" = "Keins";
+
+// MARK: - Data Management
+"data.backup" = "Daten sichern";
+"data.restore_backup" = "Backup wiederherstellen";
+"data.clear_all" = "Alle besuchten Orte löschen";
+"data.delete_account" = "Konto löschen";
+"data.delete_account_warning" = "Dies wird Ihr Konto und alle Daten dauerhaft löschen. Diese Aktion kann nicht rückgängig gemacht werden.";
+"data.clear_all_confirmation" = "Dies wird alle %d besuchten Orte entfernen. Diese Aktion kann nicht rückgängig gemacht werden.";
+"data.backup_success" = "Ihre Daten wurden in Documents/footprint_backup.json gesichert";
+"data.restore_confirmation" = "Dies wird alle aktuellen Daten durch das Backup ersetzen. Fortfahren?";
+"data.restore_success" = "Ihre Daten wurden aus dem Backup wiederhergestellt.";
+
+// MARK: - App Information
+"app.version" = "Version";
+"app.build" = "Build";
+
+// MARK: - Countries & Places
+"places.countries" = "länder";
+"places.visited" = "Besucht";
+"places.bucket_list" = "Wunschliste";
+"places.remove" = "Entfernen";
+"places.mark_visited" = "Als besucht markieren";
+"places.view_states" = "Bundesstaaten anzeigen";
+"places.view_provinces" = "Provinzen anzeigen";
+"places.territory_of" = "Territorium von %@ • %@";
+"places.code" = "Code: %@";
+"places.search_countries" = "Länder suchen";
+
+// MARK: - Stats
+"stats.your_travel_stats" = "Ihre Reisestatistiken";
+"stats.total_regions_visited" = "Besuchte Regionen gesamt";
+"stats.bucket_list_description" = "%d Orte auf Ihrer Wunschliste";
+"stats.by_continent" = "Nach Kontinent";
+"stats.time_zones" = "Zeitzonen";
+"stats.time_zones_visited_percent" = "%d%% der Zeitzonen besucht";
+"stats.farthest_west" = "Am weitesten westlich";
+"stats.farthest_east" = "Am weitesten östlich";
+"stats.achievements" = "Errungenschaften";
+"stats.next_achievement" = "Nächste Errungenschaft";
+"stats.visit_types" = "Besuchsarten";
+
+// MARK: - Onboarding
+"onboarding.skip" = "Überspringen";
+"onboarding.back" = "Zurück";
+"onboarding.next" = "Weiter";
+"onboarding.get_started" = "Los geht's";
+
+"onboarding.welcome.title" = "Willkommen bei Footprint";
+"onboarding.welcome.description" = "Verfolgen Sie die Orte, die Sie besucht haben, und erstellen Sie Ihre persönliche Reisekarte";
+
+"onboarding.photos.title" = "Aus Fotos importieren";
+"onboarding.photos.description" = "Footprint kann Ihre Fotobibliothek scannen, um Orte zu entdecken, an denen Sie basierend auf Fotostandorten waren";
+"onboarding.photos.enabled" = "Fotozugriff aktiviert";
+"onboarding.photos.enable" = "Fotozugriff aktivieren";
+"onboarding.photos.optional" = "Dies ist optional - Sie können es später in den Einstellungen aktivieren";
+
+"onboarding.location.title" = "Ihren Standort verfolgen";
+"onboarding.location.description" = "Aktivieren Sie die Standortverfolgung, um automatisch Länder zu markieren, während Sie reisen";
+"onboarding.location.enabled" = "Standortzugriff aktiviert";
+"onboarding.location.enable" = "Standortzugriff aktivieren";
+"onboarding.location.optional" = "Dies ist optional - Sie können Orte immer manuell hinzufügen";
+
+"onboarding.complete.title" = "Alles bereit!";
+"onboarding.complete.description" = "Beginnen Sie, die Karte zu erkunden und die Orte zu markieren, die Sie besucht haben";
+
+// MARK: - Map & UI Controls
+"map.show_photo_pins" = "Foto-Pins anzeigen";
+"map.hide_photo_pins" = "Foto-Pins ausblenden";
+"map.show_list" = "Liste anzeigen";
+"map.show_map" = "Karte anzeigen";
+"map.expand_states" = "Bundesstaaten erweitern";
+"map.collapse_states" = "Bundesstaaten einklappen";
+
+// MARK: - Common Actions
+"action.cancel" = "Abbrechen";
+"action.delete" = "Löschen";
+"action.ok" = "OK";
+"action.done" = "Fertig";
+"action.restore" = "Wiederherstellen";
+
+// MARK: - Accessibility Labels
+"accessibility.visited_status" = "%@, %@";
+"accessibility.visited" = "besucht";
+"accessibility.not_visited" = "nicht besucht";
+"accessibility.continent_stats" = "%@, %d von %d Ländern besucht";
+"accessibility.bucket_list_count" = "%d %@ auf der Wunschliste";
+"accessibility.stats_percentage" = "%@: %d von %d, %d Prozent";
+"accessibility.total_regions" = "Besuchte Regionen gesamt: %d";
+
+// MARK: - Error Messages
+"error.unknown" = "Unbekannter Fehler";
+"error.backup_failed" = "Sicherung fehlgeschlagen";
+"error.restore_failed" = "Wiederherstellung fehlgeschlagen";
+
+// MARK: - Place Names & Geographic Terms
+"geographic.continent" = "Kontinent";
+"geographic.country" = "Land";
+"geographic.state" = "Bundesstaat";
+"geographic.province" = "Provinz";
+"geographic.territory" = "Territorium";
+
+// MARK: - Continents
+"continent.africa" = "Afrika";
+"continent.antarctica" = "Antarktis";
+"continent.asia" = "Asien";
+"continent.europe" = "Europa";
+"continent.north_america" = "Nordamerika";
+"continent.oceania" = "Ozeanien";
+"continent.south_america" = "Südamerika";

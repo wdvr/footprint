@@ -26,6 +26,7 @@ This is a travel tracking application that allows users to mark countries, US st
 - **Version Control**: Git with GitHub (private repository)
 - **Workflow**: Pull Request based development with frequent commits
 - **Permissions**: Use dangerously disable sandbox after initial setup
+- **Parallel Agents**: You have permission to spawn multiple subagents with `claude -p --dangerously-skip-permissions` to get more done in parallel
 - **Testing**: Comprehensive automated testing for all components
 
 ### Deploy to Physical Device
@@ -119,17 +120,22 @@ Labels:
 1. **Create branch for each feature/fix**: `git checkout -b feature/issue-XX-description`
 2. **Reference issue in branch name**: Use issue number for traceability
 3. **Frequent Commits**: Commit every logical change, don't batch work
-4. **Create PR when ready**: `gh pr create --title "Title" --body "Fixes #XX"`
+4. **Create DRAFT PR**: `gh pr create --draft --title "Title" --body "Fixes #XX"`
 5. **PR Requirements**:
    - All tests must pass
    - Reference the GitHub issue being fixed
    - No direct pushes to main or long-running feature branches
-6. **Merge Strategy**: Squash and merge for clean history
-7. **Close issue**: Automatically closed when PR merged with "Fixes #XX"
+6. **Mark ready when complete**: `gh pr ready` (triggers auto-merge if CI passes)
+7. **Merge Strategy**: Squash and merge for clean history
+8. **Close issue**: Automatically closed when PR merged with "Fixes #XX"
+
+> **IMPORTANT**: Always create PRs as drafts (`--draft`). This prevents auto-merge from merging
+> half-baked work. Only mark ready (`gh pr ready`) when implementation is complete and tested.
 
 ### DO NOT:
 - Push directly to main
 - Push multiple unrelated features to the same branch
+- Create non-draft PRs for work in progress
 - Leave PRs open for too long without review
 
 ### Testing Strategy - TEST EVERYTHING
