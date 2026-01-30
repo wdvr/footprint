@@ -32,19 +32,53 @@ targets:
   FootprintTests:
     type: bundle.unit-test
     platform: iOS
+    deploymentTarget: "17.0"
     sources:
       - path: FootprintTests
     settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.wouterdevriendt.footprint.FootprintTests
+      SWIFT_VERSION: 6.0
+      DEVELOPMENT_TEAM: N324UX8D9M
+      CODE_SIGN_STYLE: Automatic
       GENERATE_INFOPLIST_FILE: YES
+      TEST_HOST: $(BUILT_PRODUCTS_DIR)/Footprint.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Footprint
+      BUNDLE_LOADER: $(TEST_HOST)
     dependencies:
       - target: Footprint
   
   FootprintUITests:
     type: bundle.ui-testing
     platform: iOS
+    deploymentTarget: "17.0"
     sources:
       - path: FootprintUITests
     settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.wouterdevriendt.footprint.FootprintUITests
+      SWIFT_VERSION: 6.0
+      DEVELOPMENT_TEAM: N324UX8D9M
+      CODE_SIGN_STYLE: Automatic
       GENERATE_INFOPLIST_FILE: YES
+      TEST_TARGET_NAME: Footprint
     dependencies:
       - target: Footprint
+
+schemes:
+  Footprint:
+    build:
+      targets:
+        Footprint: all
+        FootprintTests: [test]
+        FootprintUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - FootprintTests
+        - FootprintUITests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

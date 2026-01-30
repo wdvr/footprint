@@ -433,9 +433,15 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					20280EB10EA6E78CF46034E5 = {
+						DevelopmentTeam = N324UX8D9M;
+						ProvisioningStyle = Automatic;
 						TestTargetID = 875A6FEFF1E0AF26ABF6F3BD;
 					};
 					875A6FEFF1E0AF26ABF6F3BD = {
+						DevelopmentTeam = N324UX8D9M;
+						ProvisioningStyle = Automatic;
+					};
+					DA0BDDA9DC1BA2D00EBBAB96 = {
 						DevelopmentTeam = N324UX8D9M;
 						ProvisioningStyle = Automatic;
 					};
@@ -730,16 +736,20 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = N324UX8D9M;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.wouterdevriendt.FootprintTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wouterdevriendt.footprint.FootprintTests;
 				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Footprint.app/Footprint";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Footprint.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Footprint";
 			};
 			name = Debug;
 		};
@@ -747,16 +757,20 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = N324UX8D9M;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.wouterdevriendt.FootprintTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wouterdevriendt.footprint.FootprintTests;
 				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Footprint.app/Footprint";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Footprint.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Footprint";
 			};
 			name = Release;
 		};
@@ -792,14 +806,18 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = N324UX8D9M;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.wouterdevriendt.FootprintUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wouterdevriendt.footprint.FootprintUITests;
 				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Footprint;
 			};
@@ -809,14 +827,18 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = N324UX8D9M;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.wouterdevriendt.FootprintUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wouterdevriendt.footprint.FootprintUITests;
 				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Footprint;
 			};

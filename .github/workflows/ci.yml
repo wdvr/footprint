@@ -206,8 +206,8 @@ jobs:
         cd ios
         echo "Building and running tests..."
 
-        # Use a more compatible simulator if iPhone 17 Pro is not available
-        SIMULATOR_NAME="iPhone 17 Pro"
+        # Use a more compatible simulator if iPhone 17 is not available
+        SIMULATOR_NAME="iPhone 17"
 
         # Check if the simulator exists, fall back to available ones
         if ! xcrun simctl list devices available | grep -q "$SIMULATOR_NAME"; then

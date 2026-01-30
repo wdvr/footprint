@@ -13,15 +13,9 @@ final class LocalizationTests: XCTestCase {
     
     override func setUp() {
         super.setUp()
-        // Reset to English for consistent tests
-        UserDefaults.standard.set(["en"], forKey: "AppleLanguages")
-        UserDefaults.standard.synchronize()
     }
     
     override func tearDown() {
-        // Reset language preferences
-        UserDefaults.standard.removeObject(forKey: "AppleLanguages")
-        UserDefaults.standard.synchronize()
         super.tearDown()
     }
     
@@ -36,14 +30,31 @@ final class LocalizationTests: XCTestCase {
     }
     
     func testSpanishLocalization() {
-        // Switch to Spanish and test localization
-        UserDefaults.standard.set(["es"], forKey: "AppleLanguages")
-        UserDefaults.standard.synchronize()
+        // Test Spanish localization by directly accessing the Spanish bundle
+        // First try to get the main app bundle
+        let mainBundle = Bundle.main
+        guard let spanishPath = mainBundle.path(forResource: "es", ofType: "lproj"),
+              let spanishBundle = Bundle(path: spanishPath) else {
+            XCTFail("Could not find Spanish localization bundle")
+            return
+        }
         
-        // Note: In a real app, you'd need to restart or reload for language changes
-        // For testing, we can directly test the Spanish strings
-        let mapKey = NSLocalizedString("tab.map", bundle: Bundle(for: type(of: self)), comment: "")
-        XCTAssertTrue(mapKey == "Map" || mapKey == "Mapa") // May not switch immediately in test
+        // Test that Spanish translations exist and are correct
+        let mapSpanish = NSLocalizedString("tab.map", bundle: spanishBundle, comment: "")
+        XCTAssertEqual(mapSpanish, "Mapa")
+        
+        let countriesSpanish = NSLocalizedString("tab.countries", bundle: spanishBundle, comment: "")
+        XCTAssertEqual(countriesSpanish, "Países")
+        
+        let statsSpanish = NSLocalizedString("tab.stats", bundle: spanishBundle, comment: "")
+        XCTAssertEqual(statsSpanish, "Estadísticas")
+        
+        let settingsSpanish = NSLocalizedString("tab.settings", bundle: spanishBundle, comment: "")
+        XCTAssertEqual(settingsSpanish, "Configuración")
+        
+        // Test onboarding strings
+        let welcomeTitleSpanish = NSLocalizedString("onboarding.welcome.title", bundle: spanishBundle, comment: "")
+        XCTAssertEqual(welcomeTitleSpanish, "Bienvenido a Footprint")
     }
     
     func testParameterizedStrings() {
@@ -109,6 +120,30 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(L10n.Continent.southAmerica, "South America")
         XCTAssertEqual(L10n.Continent.oceania, "Oceania")
         XCTAssertEqual(L10n.Continent.antarctica, "Antarctica")
+    }
+    
+    // MARK: - Bundle Testing for Multiple Languages
+    
+    func testAllSupportedLanguageBundles() {
+        // Test that all supported language bundles exist and have the key strings
+        let supportedLanguages = ["en", "es", "fr", "de", "ja"]
+        
+        for language in supportedLanguages {
+            guard let languagePath = Bundle.main.path(forResource: language, ofType: "lproj"),
+                  let languageBundle = Bundle(path: languagePath) else {
+                XCTFail("Could not find \(language) localization bundle")
+                continue
+            }
+            
+            // Test that critical strings exist and are not the key
+            let mapString = NSLocalizedString("tab.map", bundle: languageBundle, comment: "")
+            XCTAssertFalse(mapString.isEmpty, "\(language): Map string should not be empty")
+            XCTAssertNotEqual(mapString, "tab.map", "\(language): Should be localized, not key")
+            
+            let welcomeTitle = NSLocalizedString("onboarding.welcome.title", bundle: languageBundle, comment: "")
+            XCTAssertFalse(welcomeTitle.isEmpty, "\(language): Welcome title should not be empty")
+            XCTAssertNotEqual(welcomeTitle, "onboarding.welcome.title", "\(language): Should be localized, not key")
+        }
     }
     
     // MARK: - Accessibility Tests
