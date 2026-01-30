@@ -5,6 +5,37 @@ import SwiftData
 import SwiftUI
 import UserNotifications
 
+/// Sample coordinate for debugging unmatched locations
+struct UnmatchedCoordinate: Identifiable, Codable {
+    let id: UUID
+    let latitude: Double
+    let longitude: Double
+    let photoCount: Int
+
+    init(latitude: Double, longitude: Double, photoCount: Int) {
+        self.id = UUID()
+        self.latitude = latitude
+        self.longitude = longitude
+        self.photoCount = photoCount
+    }
+}
+
+/// Statistics from a photo import scan for debugging
+struct ImportStatistics: Codable {
+    var totalPhotosScanned: Int = 0
+    var photosWithLocation: Int = 0
+    var photosWithoutLocation: Int = 0
+    var clustersCreated: Int = 0
+    var clustersMatched: Int = 0
+    var clustersUnmatched: Int = 0
+    var unmatchedCoordinates: [UnmatchedCoordinate] = [] // Sample of unmatched (max 50)
+    var countriesFound: [String: Int] = [:] // Country code -> photo count
+
+    var photosInUnmatchedClusters: Int {
+        unmatchedCoordinates.reduce(0) { $0 + $1.photoCount }
+    }
+}
+
 /// Represents a discovered location from the photo library
 struct DiscoveredLocation: Identifiable, Hashable, Codable {
     let id: UUID
@@ -104,7 +135,7 @@ final class PhotoImportManager: NSObject {
         case collecting(photosProcessed: Int)
         case scanning(progress: Double, clustersProcessed: Int, totalClusters: Int, locationsFound: Int)
         case backgrounded(progress: Double, clustersProcessed: Int, totalClusters: Int, locationsFound: Int)
-        case completed(locations: [DiscoveredLocation], totalFound: Int, alreadyVisited: Int)
+        case completed(locations: [DiscoveredLocation], totalFound: Int, alreadyVisited: Int, statistics: ImportStatistics)
         case error(String)
     }
 
@@ -428,10 +459,17 @@ final class PhotoImportManager: NSObject {
 
         // Phase 1: Enumerate photos on background thread to avoid blocking UI
         let cellSize = self.gridCellSize
-        let clusters = await collectPhotoClusters(assets: assets, totalPhotos: totalPhotos, cellSize: cellSize)
+        let enumerationResult = await collectPhotoClusters(assets: assets, totalPhotos: totalPhotos, cellSize: cellSize)
+
+        // Initialize statistics from enumeration
+        var statistics = ImportStatistics()
+        statistics.totalPhotosScanned = enumerationResult.totalPhotos
+        statistics.photosWithLocation = enumerationResult.photosWithLocation
+        statistics.photosWithoutLocation = enumerationResult.photosWithoutLocation
+        statistics.clustersCreated = enumerationResult.clusters.count
 
         // Phase 2: Geocode unique clusters (much fewer API calls)
-        await geocodeClusters(Array(clusters.values), existingPlaces: existingPlaces)
+        await geocodeClusters(Array(enumerationResult.clusters.values), existingPlaces: existingPlaces, statistics: statistics)
     }
 
     /// Collect photo clusters on a background thread with progress updates
@@ -439,9 +477,9 @@ final class PhotoImportManager: NSObject {
         assets: PHFetchResult<PHAsset>,
         totalPhotos: Int,
         cellSize: Double
-    ) async -> [String: PhotoCluster] {
+    ) async -> EnumerationResult {
         // Use AsyncStream to receive progress updates from background thread
-        let (stream, continuation) = AsyncStream.makeStream(of: (clusters: [String: PhotoCluster]?, progress: Int).self)
+        let (stream, continuation) = AsyncStream.makeStream(of: (result: EnumerationResult?, progress: Int).self)
 
         // Start background enumeration
         Task.detached {
@@ -450,26 +488,34 @@ final class PhotoImportManager: NSObject {
                 totalPhotos: totalPhotos,
                 cellSize: cellSize,
                 progressCallback: { processed in
-                    continuation.yield((clusters: nil, progress: processed))
+                    continuation.yield((result: nil, progress: processed))
                 },
-                completion: { clusters in
-                    continuation.yield((clusters: clusters, progress: totalPhotos))
+                completion: { result in
+                    continuation.yield((result: result, progress: totalPhotos))
                     continuation.finish()
                 }
             )
         }
 
         // Process stream and update UI
-        var finalClusters: [String: PhotoCluster] = [:]
+        var finalResult = EnumerationResult(clusters: [:], totalPhotos: 0, photosWithLocation: 0, photosWithoutLocation: 0)
         for await update in stream {
-            if let clusters = update.clusters {
-                finalClusters = clusters
+            if let result = update.result {
+                finalResult = result
             } else {
                 // Update progress on main actor
                 state = .collecting(photosProcessed: update.progress)
             }
         }
-        return finalClusters
+        return finalResult
+    }
+
+    /// Result from photo enumeration including statistics
+    struct EnumerationResult: Sendable {
+        let clusters: [String: PhotoCluster]
+        let totalPhotos: Int
+        let photosWithLocation: Int
+        let photosWithoutLocation: Int
     }
 
     /// Nonisolated helper that runs photo enumeration on a background thread with progress updates
@@ -478,13 +524,12 @@ final class PhotoImportManager: NSObject {
         totalPhotos: Int,
         cellSize: Double,
         progressCallback: @Sendable @escaping (Int) -> Void,
-        completion: @Sendable @escaping ([String: PhotoCluster]) -> Void
+        completion: @Sendable @escaping (EnumerationResult) -> Void
     ) async {
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             DispatchQueue.global(qos: .userInitiated).async {
                 var clusters: [String: PhotoCluster] = [:]
                 var photosWithLocation = 0
-                let batchSize = 500
                 var processedTotal = 0
 
                 // Use smaller batches for smoother progress updates
@@ -528,8 +573,16 @@ final class PhotoImportManager: NSObject {
                     progressCallback(processedTotal)
                 }
 
-                print("[PhotoImport] Enumeration complete: \(totalPhotos) photos, \(photosWithLocation) with location, \(clusters.count) clusters")
-                completion(clusters)
+                let photosWithoutLocation = totalPhotos - photosWithLocation
+                print("[PhotoImport] Enumeration complete: \(totalPhotos) photos, \(photosWithLocation) with location, \(photosWithoutLocation) without location, \(clusters.count) clusters")
+
+                let result = EnumerationResult(
+                    clusters: clusters,
+                    totalPhotos: totalPhotos,
+                    photosWithLocation: photosWithLocation,
+                    photosWithoutLocation: photosWithoutLocation
+                )
+                completion(result)
                 continuation.resume()
             }
         }
@@ -650,8 +703,10 @@ final class PhotoImportManager: NSObject {
     private func geocodeClusters(
         _ clusters: [PhotoCluster],
         existingPlaces: [VisitedPlace],
-        existingProgress: PhotoScanProgress? = nil
+        existingProgress: PhotoScanProgress? = nil,
+        statistics: ImportStatistics = ImportStatistics()
     ) async {
+        var stats = statistics
         let totalClusters = clusters.count + (existingProgress?.processedGridKeys.count ?? 0)
 
         print("[PhotoImport] Starting geocoding: \(clusters.count) clusters to process")
@@ -659,7 +714,7 @@ final class PhotoImportManager: NSObject {
         if clusters.isEmpty {
             print("[PhotoImport] No clusters to geocode")
             let locations = existingProgress?.discoveredLocations ?? []
-            state = .completed(locations: locations, totalFound: 0, alreadyVisited: 0)
+            state = .completed(locations: locations, totalFound: 0, alreadyVisited: 0, statistics: stats)
             clearScanProgress()
             if isRunningInBackground {
                 showCompletionNotification(locationsFound: locations.count)
@@ -777,6 +832,10 @@ final class PhotoImportManager: NSObject {
                     }
 
                     if let countryCode = countryCode {
+                        // Track as matched cluster
+                        stats.clustersMatched += 1
+                        stats.countriesFound[countryCode, default: 0] += cluster.photoCount
+
                         if processedCount <= 5 {
                             print("[PhotoImport] Geocoded cluster \(processedCount): \(countryCode) - \(countryName ?? "?")")
                         }
@@ -841,6 +900,16 @@ final class PhotoImportManager: NSObject {
                                 }
                             }
                         }
+                    } else {
+                        // Track as unmatched cluster
+                        stats.clustersUnmatched += 1
+                        if stats.unmatchedCoordinates.count < 50 {
+                            stats.unmatchedCoordinates.append(UnmatchedCoordinate(
+                                latitude: cluster.representativeLocation.coordinate.latitude,
+                                longitude: cluster.representativeLocation.coordinate.longitude,
+                                photoCount: cluster.photoCount
+                            ))
+                        }
                     }
 
                     // Small delay to avoid geocoder rate limiting
@@ -852,6 +921,10 @@ final class PhotoImportManager: NSObject {
                         cluster.representativeLocation.coordinate,
                         toleranceMeters: 500
                     ) {
+                        // Fallback matched
+                        stats.clustersMatched += 1
+                        stats.countriesFound[match.countryCode, default: 0] += cluster.photoCount
+
                         if let country = GeographicData.countries.first(where: { $0.id == match.countryCode }) {
                             let key = "country:\(match.countryCode)"
 
@@ -874,8 +947,19 @@ final class PhotoImportManager: NSObject {
                                 print("[PhotoImport] Fallback added: \(country.name)")
                             }
                         }
-                    } else if processedCount <= 5 {
-                        print("[PhotoImport] Geocoding error for cluster \(processedCount): \(error)")
+                    } else {
+                        // Both geocoding and fallback failed - track as unmatched
+                        stats.clustersUnmatched += 1
+                        if stats.unmatchedCoordinates.count < 50 {
+                            stats.unmatchedCoordinates.append(UnmatchedCoordinate(
+                                latitude: cluster.representativeLocation.coordinate.latitude,
+                                longitude: cluster.representativeLocation.coordinate.longitude,
+                                photoCount: cluster.photoCount
+                            ))
+                        }
+                        if processedCount <= 5 {
+                            print("[PhotoImport] Geocoding error for cluster \(processedCount): \(error)")
+                        }
                     }
                     continue
                 }
@@ -901,7 +985,25 @@ final class PhotoImportManager: NSObject {
             for loc in discoveredLocations.prefix(10) {
                 print("[PhotoImport]   - \(loc.regionName) (\(loc.regionCode)): \(loc.photoCount) photos")
             }
-            state = .completed(locations: discoveredLocations, totalFound: totalFound, alreadyVisited: alreadyVisitedCount)
+
+            // Print statistics summary
+            print("[PhotoImport] === STATISTICS ===")
+            print("[PhotoImport] Total photos scanned: \(stats.totalPhotosScanned)")
+            print("[PhotoImport] Photos with location: \(stats.photosWithLocation)")
+            print("[PhotoImport] Photos without location: \(stats.photosWithoutLocation)")
+            print("[PhotoImport] Clusters created: \(stats.clustersCreated)")
+            print("[PhotoImport] Clusters matched to country: \(stats.clustersMatched)")
+            print("[PhotoImport] Clusters unmatched (no country): \(stats.clustersUnmatched)")
+            print("[PhotoImport] Photos in unmatched clusters: \(stats.photosInUnmatchedClusters)")
+            if !stats.unmatchedCoordinates.isEmpty {
+                print("[PhotoImport] Sample unmatched coordinates:")
+                for coord in stats.unmatchedCoordinates.prefix(10) {
+                    print("[PhotoImport]   (\(coord.latitude), \(coord.longitude)) - \(coord.photoCount) photos")
+                }
+            }
+            print("[PhotoImport] Countries found: \(stats.countriesFound.sorted(by: { $0.value > $1.value }).prefix(10).map { "\($0.key): \($0.value)" }.joined(separator: ", "))")
+
+            state = .completed(locations: discoveredLocations, totalFound: totalFound, alreadyVisited: alreadyVisitedCount, statistics: stats)
             clearScanProgress()
 
             // Notify if in background
