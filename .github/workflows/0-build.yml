@@ -34,7 +34,7 @@ env:
 jobs:
   build:
     name: Build & Archive
-    runs-on: [self-hosted, macOS, ARM64]
+    runs-on: macos-15
     outputs:
       build_number: ${{ steps.version.outputs.build }}
       version: ${{ steps.version.outputs.version }}
@@ -47,17 +47,12 @@ jobs:
 
     - name: Select Xcode
       run: |
-        XCODE_PATH=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
-        if [ -z "$XCODE_PATH" ]; then
-          XCODE_PATH="/Applications/Xcode.app"
-        fi
-        if [ -d "$XCODE_PATH" ]; then
-          sudo xcode-select -s "$XCODE_PATH/Contents/Developer" || true
-        fi
+        # Use latest Xcode available on GitHub runner
+        sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
         xcodebuild -version
 
     - name: Install XcodeGen
-      run: which xcodegen || brew install xcodegen
+      run: brew install xcodegen
 
     - name: Generate Xcode project
       run: |
