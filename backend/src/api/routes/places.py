@@ -1,4 +1,4 @@
-"""Visited places API routes."""
+"""Visited places API routes with extended region type support."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -9,6 +9,7 @@ from src.models.visited_place import (
     RegionType,
     VisitedPlaceCreate,
     VisitedPlaceUpdate,
+    get_region_total,
 )
 from src.services.dynamodb import db_service
 
@@ -52,9 +53,10 @@ class BatchCreateResponse(BaseModel):
     places: list[VisitedPlaceResponse]
 
 
-class PlaceStatsResponse(BaseModel):
-    """User's visited places statistics."""
+class ExtendedPlaceStatsResponse(BaseModel):
+    """User's visited places statistics with international regions."""
 
+    # Original stats
     countries_visited: int
     countries_total: int
     countries_percentage: float
@@ -67,14 +69,38 @@ class PlaceStatsResponse(BaseModel):
     canadian_provinces_total: int
     canadian_provinces_percentage: float
     canadian_provinces_bucket_list: int
+
+    # International region stats
+    australian_states_visited: int
+    australian_states_total: int
+    australian_states_percentage: float
+    australian_states_bucket_list: int
+    mexican_states_visited: int
+    mexican_states_total: int
+    mexican_states_percentage: float
+    mexican_states_bucket_list: int
+    brazilian_states_visited: int
+    brazilian_states_total: int
+    brazilian_states_percentage: float
+    brazilian_states_bucket_list: int
+    german_states_visited: int
+    german_states_total: int
+    german_states_percentage: float
+    german_states_bucket_list: int
+    indian_states_visited: int
+    indian_states_total: int
+    indian_states_percentage: float
+    indian_states_bucket_list: int
+    chinese_provinces_visited: int
+    chinese_provinces_total: int
+    chinese_provinces_percentage: float
+    chinese_provinces_bucket_list: int
+
+    # Aggregate totals
     total_regions_visited: int
     total_bucket_list: int
-
-
-# Geographic totals
-TOTAL_COUNTRIES = 195
-TOTAL_US_STATES = 51  # 50 states + DC
-TOTAL_CANADIAN_PROVINCES = 13  # 10 provinces + 3 territories
+    total_international_regions_visited: int
+    total_international_regions_available: int
 
 
 def _is_visited(place: dict) -> bool:
@@ -87,15 +113,20 @@ def _is_bucket_list(place: dict) -> bool:
     return place.get("status") == "bucket_list"
 
 
-def _count_places_by_type(
-    places: list[dict],
-) -> dict[str, dict[str, int]]:
+def _count_places_by_type(places: list[dict]) -> dict[str, dict[str, int]]:
     """Count visited and bucket_list places by region type."""
     counts = {
         "country": {"visited": 0, "bucket_list": 0},
         "us_state": {"visited": 0, "bucket_list": 0},
         "canadian_province": {"visited": 0, "bucket_list": 0},
+        "australian_state": {"visited": 0, "bucket_list": 0},
+        "mexican_state": {"visited": 0, "bucket_list": 0},
+        "brazilian_state": {"visited": 0, "bucket_list": 0},
+        "german_state": {"visited": 0, "bucket_list": 0},
+        "indian_state": {"visited": 0, "bucket_list": 0},
+        "chinese_province": {"visited": 0, "bucket_list": 0},
     }
+
     for p in places:
         region_type = p.get("region_type")
         if region_type in counts:
@@ -103,11 +134,12 @@ def _count_places_by_type(
                 counts[region_type]["visited"] += 1
             elif _is_bucket_list(p):
                 counts[region_type]["bucket_list"] += 1
+
     return counts
 
 
-def _place_to_response(place: dict) -> VisitedPlaceResponse:
-    """Convert DynamoDB item to response model."""
+def _convert_to_response(place: dict) -> VisitedPlaceResponse:
+    """Convert database place to response model."""
     return VisitedPlaceResponse(
         user_id=place.get("user_id", ""),
         region_type=place.get("region_type", ""),
@@ -118,247 +150,59 @@ def _place_to_response(place: dict) -> VisitedPlaceResponse:
         visited_date=place.get("visited_date"),
         departure_date=place.get("departure_date"),
         notes=place.get("notes"),
-        marked_at=place.get("created_at", ""),
+        marked_at=place.get("marked_at", ""),
         sync_version=place.get("sync_version", 1),
         is_deleted=place.get("is_deleted", False),
     )
 
 
-@router.get("", response_model=PlacesListResponse)
-async def list_visited_places(
+@router.get("/", response_model=PlacesListResponse)
+async def list_places(
+    user_id: str = Depends(get_current_user),
     region_type: RegionType | None = Query(None, description="Filter by region type"),
     status: PlaceStatus | None = Query(None, description="Filter by status"),
-    current_user: dict = Depends(get_current_user),
+    limit: int = Query(1000, ge=1, le=1000, description="Maximum number of results"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
 ):
-    """
-    List all visited places for the current user.
+    """Get user's visited places with optional filtering."""
+    try:
+        # Convert enum to string for service layer
+        region_type_str = region_type.value if region_type else None
+        status_str = status.value if status else None
 
-    Optionally filter by region type (country, us_state, canadian_province)
-    and/or status (visited, bucket_list).
-    """
-    user_id = current_user["user_id"]
-    region_type_str = region_type.value if region_type else None
-    places = db_service.get_user_visited_places(user_id, region_type_str)
+        places = db_service.get_user_visited_places(
+            user_id, region_type_str, status_str, limit, offset
+        )
 
-    # Filter out soft-deleted places
-    active_places = [p for p in places if not p.get("is_deleted", False)]
+        response_places = [_convert_to_response(p) for p in places]
 
-    # Filter by status if specified
-    if status:
-        active_places = [
-            p for p in active_places if p.get("status", "visited") == status.value
-        ]
-
-    return PlacesListResponse(
-        places=[_place_to_response(p) for p in active_places],
-        total=len(active_places),
-    )
+        return PlacesListResponse(places=response_places, total=len(response_places))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve places: {str(e)}",
+        )
 
 
 @router.post(
-    "", response_model=VisitedPlaceResponse, status_code=status.HTTP_201_CREATED
+    "/", response_model=VisitedPlaceResponse, status_code=status.HTTP_201_CREATED
 )
-async def create_visited_place(
+async def create_place(
     place: VisitedPlaceCreate,
-    current_user: dict = Depends(get_current_user),
+    user_id: str = Depends(get_current_user),
 ):
-    """
-    Mark a new place as visited.
-
-    Creates a record that the user has visited this region.
-    """
-    user_id = current_user["user_id"]
-
-    # Check if place already exists
-    existing = db_service.get_visited_place(
-        user_id, place.region_type.value, place.region_code
-    )
-
-    if existing and not existing.get("is_deleted", False):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This place is already marked as visited",
+    """Create a new visited place."""
+    try:
+        # Check if place already exists
+        existing = db_service.get_visited_place(
+            user_id, place.region_type.value, place.region_code
         )
+        if existing and not existing.get("is_deleted", False):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Place already exists"
+            )
 
-    # Create or restore the place
-    place_data = {
-        "region_type": place.region_type.value,
-        "region_code": place.region_code,
-        "region_name": place.region_name,
-        "status": place.status.value,
-        "visit_type": place.visit_type.value,
-        "visited_date": place.visited_date.isoformat() if place.visited_date else None,
-        "departure_date": place.departure_date.isoformat()
-        if place.departure_date
-        else None,
-        "notes": place.notes,
-        "sync_version": 1,
-        "is_deleted": False,
-    }
-
-    if existing:
-        # Restore soft-deleted place
-        result = db_service.update_visited_place(
-            user_id, place.region_type.value, place.region_code, place_data
-        )
-    else:
-        result = db_service.create_visited_place(user_id, place_data)
-
-    # Update user stats
-    _update_user_stats(user_id)
-
-    return _place_to_response(result)
-
-
-@router.get("/stats", response_model=PlaceStatsResponse)
-async def get_place_stats(current_user: dict = Depends(get_current_user)):
-    """
-    Get user's visited places statistics.
-
-    Returns counts and percentages for each region type, including bucket list.
-    """
-    user_id = current_user["user_id"]
-    places = db_service.get_user_visited_places(user_id)
-    active_places = [p for p in places if not p.get("is_deleted", False)]
-    counts = _count_places_by_type(active_places)
-
-    countries = counts["country"]["visited"]
-    us_states = counts["us_state"]["visited"]
-    canadian_provinces = counts["canadian_province"]["visited"]
-    countries_bucket = counts["country"]["bucket_list"]
-    us_states_bucket = counts["us_state"]["bucket_list"]
-    canadian_provinces_bucket = counts["canadian_province"]["bucket_list"]
-
-    return PlaceStatsResponse(
-        countries_visited=countries,
-        countries_total=TOTAL_COUNTRIES,
-        countries_percentage=round((countries / TOTAL_COUNTRIES) * 100, 2),
-        countries_bucket_list=countries_bucket,
-        us_states_visited=us_states,
-        us_states_total=TOTAL_US_STATES,
-        us_states_percentage=round((us_states / TOTAL_US_STATES) * 100, 2),
-        us_states_bucket_list=us_states_bucket,
-        canadian_provinces_visited=canadian_provinces,
-        canadian_provinces_total=TOTAL_CANADIAN_PROVINCES,
-        canadian_provinces_percentage=round(
-            (canadian_provinces / TOTAL_CANADIAN_PROVINCES) * 100, 2
-        ),
-        canadian_provinces_bucket_list=canadian_provinces_bucket,
-        total_regions_visited=countries + us_states + canadian_provinces,
-        total_bucket_list=countries_bucket + us_states_bucket + canadian_provinces_bucket,
-    )
-
-
-@router.get("/{region_type}/{region_code}", response_model=VisitedPlaceResponse)
-async def get_visited_place(
-    region_type: RegionType,
-    region_code: str,
-    current_user: dict = Depends(get_current_user),
-):
-    """
-    Get a specific visited place.
-
-    Returns the details of a visited place by region type and code.
-    """
-    user_id = current_user["user_id"]
-    place = db_service.get_visited_place(user_id, region_type.value, region_code)
-
-    if not place or place.get("is_deleted", False):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Visited place not found",
-        )
-
-    return _place_to_response(place)
-
-
-@router.patch("/{region_type}/{region_code}", response_model=VisitedPlaceResponse)
-async def update_visited_place(
-    region_type: RegionType,
-    region_code: str,
-    updates: VisitedPlaceUpdate,
-    current_user: dict = Depends(get_current_user),
-):
-    """
-    Update a visited place.
-
-    Update the visited date or notes for an existing visited place.
-    """
-    user_id = current_user["user_id"]
-    existing = db_service.get_visited_place(user_id, region_type.value, region_code)
-
-    if not existing or existing.get("is_deleted", False):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Visited place not found",
-        )
-
-    update_data = {}
-    if updates.status is not None:
-        update_data["status"] = updates.status.value
-    if updates.visit_type is not None:
-        update_data["visit_type"] = updates.visit_type.value
-    if updates.visited_date is not None:
-        update_data["visited_date"] = updates.visited_date.isoformat()
-    if updates.departure_date is not None:
-        update_data["departure_date"] = updates.departure_date.isoformat()
-    if updates.notes is not None:
-        update_data["notes"] = updates.notes
-
-    # Increment sync version
-    update_data["sync_version"] = existing.get("sync_version", 1) + 1
-
-    result = db_service.update_visited_place(
-        user_id, region_type.value, region_code, update_data
-    )
-
-    # Update user stats if status changed
-    if updates.status is not None:
-        _update_user_stats(user_id)
-
-    return _place_to_response(result)
-
-
-@router.delete("/{region_type}/{region_code}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_visited_place(
-    region_type: RegionType,
-    region_code: str,
-    current_user: dict = Depends(get_current_user),
-):
-    """
-    Unmark a place as visited.
-
-    Soft deletes the visited place record (for sync purposes).
-    """
-    user_id = current_user["user_id"]
-    existing = db_service.get_visited_place(user_id, region_type.value, region_code)
-
-    if not existing or existing.get("is_deleted", False):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Visited place not found",
-        )
-
-    db_service.delete_visited_place(user_id, region_type.value, region_code)
-
-    # Update user stats
-    _update_user_stats(user_id)
-
-
-@router.post("/batch", response_model=BatchCreateResponse)
-async def batch_create_places(
-    request: BatchCreateRequest,
-    current_user: dict = Depends(get_current_user),
-):
-    """
-    Batch create multiple visited places.
-
-    Efficiently mark multiple places as visited in a single request.
-    """
-    user_id = current_user["user_id"]
-
-    places_data = []
-    for place in request.places:
+        # Convert to dict for database
         place_data = {
             "region_type": place.region_type.value,
             "region_code": place.region_code,
@@ -372,36 +216,286 @@ async def batch_create_places(
             if place.departure_date
             else None,
             "notes": place.notes,
-            "sync_version": 1,
-            "is_deleted": False,
         }
-        places_data.append(place_data)
 
-    created = db_service.batch_create_places(user_id, places_data)
+        created_place = db_service.create_visited_place(
+            user_id, place.region_type.value, place.region_code, place_data
+        )
 
-    # Update user stats
-    _update_user_stats(user_id)
+        return _convert_to_response(created_place)
 
-    return BatchCreateResponse(
-        created=len(created),
-        places=[_place_to_response(p) for p in created],
-    )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create place: {str(e)}",
+        )
 
 
-def _update_user_stats(user_id: str) -> None:
-    """Update user's visited places statistics."""
-    places = db_service.get_user_visited_places(user_id)
-    active_places = [p for p in places if not p.get("is_deleted", False)]
-    counts = _count_places_by_type(active_places)
+@router.post("/batch", response_model=BatchCreateResponse)
+async def batch_create_places(
+    request: BatchCreateRequest,
+    user_id: str = Depends(get_current_user),
+):
+    """Batch create multiple visited places."""
+    created_places = []
 
-    db_service.update_user(
-        user_id,
-        {
-            "countries_visited": counts["country"]["visited"],
-            "us_states_visited": counts["us_state"]["visited"],
-            "canadian_provinces_visited": counts["canadian_province"]["visited"],
-            "countries_bucket_list": counts["country"]["bucket_list"],
-            "us_states_bucket_list": counts["us_state"]["bucket_list"],
-            "canadian_provinces_bucket_list": counts["canadian_province"]["bucket_list"],
-        },
-    )
+    try:
+        for place in request.places:
+            # Check if place already exists
+            existing = db_service.get_visited_place(
+                user_id, place.region_type.value, place.region_code
+            )
+            if existing and not existing.get("is_deleted", False):
+                continue  # Skip existing places
+
+            place_data = {
+                "region_type": place.region_type.value,
+                "region_code": place.region_code,
+                "region_name": place.region_name,
+                "status": place.status.value,
+                "visit_type": place.visit_type.value,
+                "visited_date": place.visited_date.isoformat()
+                if place.visited_date
+                else None,
+                "departure_date": place.departure_date.isoformat()
+                if place.departure_date
+                else None,
+                "notes": place.notes,
+            }
+
+            created_place = db_service.create_visited_place(
+                user_id, place.region_type.value, place.region_code, place_data
+            )
+            created_places.append(created_place)
+
+        response_places = [_convert_to_response(p) for p in created_places]
+
+        return BatchCreateResponse(created=len(created_places), places=response_places)
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to batch create places: {str(e)}",
+        )
+
+
+@router.get("/{region_type}/{region_code}", response_model=VisitedPlaceResponse)
+async def get_place(
+    region_type: RegionType,
+    region_code: str,
+    user_id: str = Depends(get_current_user),
+):
+    """Get a specific visited place."""
+    try:
+        place = db_service.get_visited_place(user_id, region_type.value, region_code)
+        if not place or place.get("is_deleted", False):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Place not found"
+            )
+
+        return _convert_to_response(place)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get place: {str(e)}",
+        )
+
+
+@router.patch("/{region_type}/{region_code}", response_model=VisitedPlaceResponse)
+async def update_place(
+    region_type: RegionType,
+    region_code: str,
+    updates: VisitedPlaceUpdate,
+    user_id: str = Depends(get_current_user),
+):
+    """Update an existing visited place."""
+    try:
+        # Check if place exists
+        existing = db_service.get_visited_place(user_id, region_type.value, region_code)
+        if not existing or existing.get("is_deleted", False):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Place not found"
+            )
+
+        # Convert updates to dict, only including non-None values
+        update_data = {}
+        if updates.status is not None:
+            update_data["status"] = updates.status.value
+        if updates.visit_type is not None:
+            update_data["visit_type"] = updates.visit_type.value
+        if updates.visited_date is not None:
+            update_data["visited_date"] = updates.visited_date.isoformat()
+        if updates.departure_date is not None:
+            update_data["departure_date"] = updates.departure_date.isoformat()
+        if updates.notes is not None:
+            update_data["notes"] = updates.notes
+
+        updated_place = db_service.update_visited_place(
+            user_id, region_type.value, region_code, update_data
+        )
+
+        return _convert_to_response(updated_place)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update place: {str(e)}",
+        )
+
+
+@router.delete("/{region_type}/{region_code}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_place(
+    region_type: RegionType,
+    region_code: str,
+    user_id: str = Depends(get_current_user),
+):
+    """Delete a visited place (soft delete for sync)."""
+    try:
+        # Check if place exists
+        existing = db_service.get_visited_place(user_id, region_type.value, region_code)
+        if not existing or existing.get("is_deleted", False):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Place not found"
+            )
+
+        db_service.delete_visited_place(user_id, region_type.value, region_code)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete place: {str(e)}",
+        )
+
+
+@router.get("/stats", response_model=ExtendedPlaceStatsResponse)
+async def get_place_stats(user_id: str = Depends(get_current_user)):
+    """Get user's visited places statistics with international regions."""
+    try:
+        places = db_service.get_user_visited_places(user_id)
+        counts = _count_places_by_type(places)
+
+        # Calculate percentages and build response
+        def safe_percentage(visited: int, total: int) -> float:
+            return (visited / total * 100) if total > 0 else 0.0
+
+        # Count total international regions visited
+        total_international_visited = sum(
+            [
+                counts["australian_state"]["visited"],
+                counts["mexican_state"]["visited"],
+                counts["brazilian_state"]["visited"],
+                counts["german_state"]["visited"],
+                counts["indian_state"]["visited"],
+                counts["chinese_province"]["visited"],
+            ]
+        )
+
+        # Calculate total regions visited
+        total_visited = sum(
+            [
+                counts["country"]["visited"],
+                counts["us_state"]["visited"],
+                counts["canadian_province"]["visited"],
+                total_international_visited,
+            ]
+        )
+
+        # Calculate total bucket list items
+        total_bucket_list = sum(
+            [counts[region_type]["bucket_list"] for region_type in counts.keys()]
+        )
+
+        return ExtendedPlaceStatsResponse(
+            # Original stats
+            countries_visited=counts["country"]["visited"],
+            countries_total=get_region_total(RegionType.COUNTRY),
+            countries_percentage=safe_percentage(
+                counts["country"]["visited"], get_region_total(RegionType.COUNTRY)
+            ),
+            countries_bucket_list=counts["country"]["bucket_list"],
+            us_states_visited=counts["us_state"]["visited"],
+            us_states_total=get_region_total(RegionType.US_STATE),
+            us_states_percentage=safe_percentage(
+                counts["us_state"]["visited"], get_region_total(RegionType.US_STATE)
+            ),
+            us_states_bucket_list=counts["us_state"]["bucket_list"],
+            canadian_provinces_visited=counts["canadian_province"]["visited"],
+            canadian_provinces_total=get_region_total(RegionType.CANADIAN_PROVINCE),
+            canadian_provinces_percentage=safe_percentage(
+                counts["canadian_province"]["visited"],
+                get_region_total(RegionType.CANADIAN_PROVINCE),
+            ),
+            canadian_provinces_bucket_list=counts["canadian_province"]["bucket_list"],
+            # International region stats
+            australian_states_visited=counts["australian_state"]["visited"],
+            australian_states_total=get_region_total(RegionType.AUSTRALIAN_STATE),
+            australian_states_percentage=safe_percentage(
+                counts["australian_state"]["visited"],
+                get_region_total(RegionType.AUSTRALIAN_STATE),
+            ),
+            australian_states_bucket_list=counts["australian_state"]["bucket_list"],
+            mexican_states_visited=counts["mexican_state"]["visited"],
+            mexican_states_total=get_region_total(RegionType.MEXICAN_STATE),
+            mexican_states_percentage=safe_percentage(
+                counts["mexican_state"]["visited"],
+                get_region_total(RegionType.MEXICAN_STATE),
+            ),
+            mexican_states_bucket_list=counts["mexican_state"]["bucket_list"],
+            brazilian_states_visited=counts["brazilian_state"]["visited"],
+            brazilian_states_total=get_region_total(RegionType.BRAZILIAN_STATE),
+            brazilian_states_percentage=safe_percentage(
+                counts["brazilian_state"]["visited"],
+                get_region_total(RegionType.BRAZILIAN_STATE),
+            ),
+            brazilian_states_bucket_list=counts["brazilian_state"]["bucket_list"],
+            german_states_visited=counts["german_state"]["visited"],
+            german_states_total=get_region_total(RegionType.GERMAN_STATE),
+            german_states_percentage=safe_percentage(
+                counts["german_state"]["visited"],
+                get_region_total(RegionType.GERMAN_STATE),
+            ),
+            german_states_bucket_list=counts["german_state"]["bucket_list"],
+            indian_states_visited=counts["indian_state"]["visited"],
+            indian_states_total=get_region_total(RegionType.INDIAN_STATE),
+            indian_states_percentage=safe_percentage(
+                counts["indian_state"]["visited"],
+                get_region_total(RegionType.INDIAN_STATE),
+            ),
+            indian_states_bucket_list=counts["indian_state"]["bucket_list"],
+            chinese_provinces_visited=counts["chinese_province"]["visited"],
+            chinese_provinces_total=get_region_total(RegionType.CHINESE_PROVINCE),
+            chinese_provinces_percentage=safe_percentage(
+                counts["chinese_province"]["visited"],
+                get_region_total(RegionType.CHINESE_PROVINCE),
+            ),
+            chinese_provinces_bucket_list=counts["chinese_province"]["bucket_list"],
+            # Aggregate totals
+            total_regions_visited=total_visited,
+            total_bucket_list=total_bucket_list,
+            total_international_regions_visited=total_international_visited,
+            total_international_regions_available=sum(
+                [
+                    get_region_total(RegionType.AUSTRALIAN_STATE),
+                    get_region_total(RegionType.MEXICAN_STATE),
+                    get_region_total(RegionType.BRAZILIAN_STATE),
+                    get_region_total(RegionType.GERMAN_STATE),
+                    get_region_total(RegionType.INDIAN_STATE),
+                    get_region_total(RegionType.CHINESE_PROVINCE),
+                ]
+            ),
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get stats: {str(e)}",
+        )

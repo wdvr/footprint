@@ -51,6 +51,7 @@ actor APIClient {
 
     private var accessToken: String?
     private var refreshToken: String?
+    private var isRefreshing = false
 
     private init() {}
 
@@ -62,11 +63,18 @@ actor APIClient {
         // Store in Keychain for persistence
         KeychainHelper.save(key: "accessToken", value: access)
         KeychainHelper.save(key: "refreshToken", value: refresh)
+        print("[APIClient] Tokens stored - Access: \(access.prefix(10))..., Refresh: \(refresh.prefix(10))...")
     }
 
     func loadStoredTokens() {
         self.accessToken = KeychainHelper.load(key: "accessToken")
         self.refreshToken = KeychainHelper.load(key: "refreshToken")
+        
+        if let access = accessToken, let refresh = refreshToken {
+            print("[APIClient] Loaded stored tokens - Access: \(access.prefix(10))..., Refresh: \(refresh.prefix(10))...")
+        } else {
+            print("[APIClient] No stored tokens found")
+        }
     }
 
     func clearTokens() {
@@ -74,6 +82,7 @@ actor APIClient {
         self.refreshToken = nil
         KeychainHelper.delete(key: "accessToken")
         KeychainHelper.delete(key: "refreshToken")
+        print("[APIClient] Tokens cleared")
     }
 
     var isAuthenticated: Bool {
@@ -89,7 +98,7 @@ actor APIClient {
         case delete = "DELETE"
     }
 
-    /// Public request method for API calls
+    /// Public request method for API calls with automatic token refresh
     func request<T: Decodable>(
         path: String,
         method: HTTPMethod = .get,
@@ -97,7 +106,114 @@ actor APIClient {
         authenticated: Bool = true,
         timeout: TimeInterval = 60
     ) async throws -> T {
-        try await _request(path, method: method.rawValue, body: body, authenticated: authenticated, timeout: timeout)
+        return try await _requestWithRetry(
+            path, 
+            method: method.rawValue, 
+            body: body, 
+            authenticated: authenticated, 
+            timeout: timeout
+        )
+    }
+
+    /// Internal method that handles automatic token refresh on 401 responses
+    private func _requestWithRetry<T: Decodable>(
+        _ path: String,
+        method: String = "GET",
+        body: Encodable? = nil,
+        authenticated: Bool = false,
+        timeout: TimeInterval = 60,
+        isRetry: Bool = false
+    ) async throws -> T {
+        do {
+            // Try the original request
+            return try await _request(path, method: method, body: body, authenticated: authenticated, timeout: timeout)
+        } catch APIError.unauthorized {
+            // Only attempt refresh if this is not already a retry and we have a refresh token
+            guard !isRetry, authenticated, refreshToken != nil else {
+                print("[APIClient] 401 - Cannot retry: isRetry=\(isRetry), authenticated=\(authenticated), hasRefreshToken=\(refreshToken != nil)")
+                throw APIError.unauthorized
+            }
+            
+            print("[APIClient] 401 received, attempting token refresh...")
+            
+            // If we're already refreshing, wait for completion
+            if isRefreshing {
+                print("[APIClient] Already refreshing, waiting...")
+                return try await waitForRefreshAndRetry(path, method: method, body: body, authenticated: authenticated, timeout: timeout)
+            }
+            
+            // Attempt to refresh the token
+            do {
+                try await performTokenRefresh()
+                print("[APIClient] Token refresh successful, retrying original request")
+                
+                // Retry the original request with new token
+                return try await _requestWithRetry(
+                    path, 
+                    method: method, 
+                    body: body, 
+                    authenticated: authenticated, 
+                    timeout: timeout, 
+                    isRetry: true
+                )
+            } catch {
+                print("[APIClient] Token refresh failed: \(error)")
+                // Clear tokens if refresh fails
+                clearTokens()
+                throw APIError.unauthorized
+            }
+        }
+    }
+    
+    /// Wait for ongoing refresh operation and retry request
+    private func waitForRefreshAndRetry<T: Decodable>(
+        _ path: String,
+        method: String,
+        body: Encodable?,
+        authenticated: Bool,
+        timeout: TimeInterval
+    ) async throws -> T {
+        // Simple polling approach to wait for refresh completion
+        while isRefreshing {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        
+        // After refresh completes, retry the original request
+        return try await _request(
+            path, 
+            method: method, 
+            body: body, 
+            authenticated: authenticated, 
+            timeout: timeout
+        )
+    }
+    
+    /// Perform token refresh operation
+    private func performTokenRefresh() async throws {
+        guard !isRefreshing else { return }
+        
+        isRefreshing = true
+        defer { 
+            isRefreshing = false
+        }
+        
+        guard let refreshToken = refreshToken else {
+            print("[APIClient] No refresh token available")
+            throw APIError.unauthorized
+        }
+        
+        print("[APIClient] Performing token refresh...")
+        
+        struct RefreshRequest: Encodable {
+            let refreshToken: String
+        }
+        
+        let body = RefreshRequest(refreshToken: refreshToken)
+        let response: AuthResponse = try await _request("/auth/refresh", method: "POST", body: body, authenticated: false)
+        
+        // Update stored tokens
+        setTokens(access: response.tokens.accessToken, refresh: response.tokens.refreshToken)
+        print("[APIClient] Token refresh completed successfully")
     }
 
     private func _request<T: Decodable>(
@@ -219,7 +335,7 @@ actor APIClient {
     }
 
     func getCurrentUser() async throws -> UserResponse {
-        try await _request("/auth/me", authenticated: true)
+        try await _requestWithRetry("/auth/me", authenticated: true)
     }
 
     // MARK: - Places Endpoints
@@ -250,7 +366,7 @@ actor APIClient {
     }
 
     func getVisitedPlaces() async throws -> [VisitedPlaceResponse] {
-        let response: PlacesListResponse = try await _request("/places", authenticated: true)
+        let response: PlacesListResponse = try await request(path: "/places", authenticated: true)
         return response.places
     }
 
@@ -268,11 +384,11 @@ actor APIClient {
             visitedDate: visitedDate,
             notes: notes
         )
-        return try await _request("/places", method: "POST", body: body, authenticated: true)
+        return try await request(path: "/places", method: .post, body: body, authenticated: true)
     }
 
     func deleteVisitedPlace(regionType: String, regionCode: String) async throws {
-        let _: EmptyResponse = try await _request("/places/\(regionType)/\(regionCode)", method: "DELETE", authenticated: true)
+        let _: EmptyResponse = try await request(path: "/places/\(regionType)/\(regionCode)", method: .delete, authenticated: true)
     }
 
     // MARK: - Sync Endpoints
@@ -299,7 +415,7 @@ actor APIClient {
 
     func syncPlaces(lastSyncAt: Date?, changes: [PlaceChange]) async throws -> SyncResponse {
         let body = SyncRequest(lastSyncAt: lastSyncAt, changes: changes)
-        return try await _request("/sync/simple", method: "POST", body: body, authenticated: true)
+        return try await request(path: "/sync/simple", method: .post, body: body, authenticated: true)
     }
 
     // MARK: - Stats Endpoints
@@ -312,7 +428,7 @@ actor APIClient {
     }
 
     func getStats() async throws -> StatsResponse {
-        try await _request("/places/stats", authenticated: true)
+        try await request(path: "/places/stats", authenticated: true)
     }
 
     // MARK: - Health Check
@@ -323,7 +439,7 @@ actor APIClient {
     }
 
     func healthCheck() async throws -> HealthResponse {
-        try await _request("/health")
+        try await request(path: "/health", authenticated: false)
     }
 }
 

@@ -27,9 +27,13 @@ import urllib.request
 from pathlib import Path
 
 # Base URLs for data sources
-DR5HN_BASE = "https://raw.githubusercontent.com/dr5hn/countries-states-cities-database/master"
+DR5HN_BASE = (
+    "https://raw.githubusercontent.com/dr5hn/countries-states-cities-database/master"
+)
 # Using GitHub mirror of GeoNames data (more reliable than GeoNames server)
-GEONAMES_CITIES_URL = "https://raw.githubusercontent.com/lmfmaier/cities-json/master/cities500.json"
+GEONAMES_CITIES_URL = (
+    "https://raw.githubusercontent.com/lmfmaier/cities-json/master/cities500.json"
+)
 
 # Output directories
 SCRIPT_DIR = Path(__file__).parent
@@ -42,8 +46,7 @@ def fetch_json(url: str) -> dict | list:
     """Fetch JSON from URL."""
     print(f"  Fetching: {url}")
     req = urllib.request.Request(
-        url,
-        headers={"User-Agent": "Footprint-Travel-Tracker/1.0"}
+        url, headers={"User-Agent": "Footprint-Travel-Tracker/1.0"}
     )
     with urllib.request.urlopen(req, timeout=60) as response:
         return json.loads(response.read().decode("utf-8"))
@@ -70,16 +73,18 @@ def fetch_states_provinces():
         if country_code not in states_by_country:
             states_by_country[country_code] = []
 
-        states_by_country[country_code].append({
-            "id": state.get("id"),
-            "name": state.get("name"),
-            "code": state.get("state_code"),
-            "country_code": country_code,
-            "country_name": state.get("country_name", ""),
-            "latitude": state.get("latitude"),
-            "longitude": state.get("longitude"),
-            "type": state.get("type", "state"),
-        })
+        states_by_country[country_code].append(
+            {
+                "id": state.get("id"),
+                "name": state.get("name"),
+                "code": state.get("state_code"),
+                "country_code": country_code,
+                "country_name": state.get("country_name", ""),
+                "latitude": state.get("latitude"),
+                "longitude": state.get("longitude"),
+                "type": state.get("type", "state"),
+            }
+        )
 
     # Create output structure
     output = {
@@ -100,19 +105,19 @@ def fetch_states_provinces():
     print(f"  Saved to: {output_path}")
 
     # Print summary
-    print(f"\n  Summary:")
+    print("\n  Summary:")
     print(f"    Total states/provinces: {len(states_data)}")
     print(f"    Countries with subdivisions: {len(states_by_country)}")
 
     # Top countries by state count
     top_countries = sorted(
-        states_by_country.items(),
-        key=lambda x: len(x[1]),
-        reverse=True
+        states_by_country.items(), key=lambda x: len(x[1]), reverse=True
     )[:10]
-    print(f"\n  Top 10 countries by subdivision count:")
+    print("\n  Top 10 countries by subdivision count:")
     for country_code, states in top_countries:
-        country_name = states[0].get("country_name", country_code) if states else country_code
+        country_name = (
+            states[0].get("country_name", country_code) if states else country_code
+        )
         print(f"    {country_code} ({country_name}): {len(states)}")
 
     return output
@@ -146,15 +151,17 @@ def fetch_cities(min_population: int = 250000):
         if population < min_population:
             continue
 
-        cities_data.append({
-            "id": str(city.get("id", "")),
-            "name": city.get("name", ""),
-            "country_code": city.get("country", ""),
-            "admin1": city.get("admin1", ""),  # state/province name
-            "latitude": city.get("lat", ""),
-            "longitude": city.get("lon", ""),
-            "population": population,
-        })
+        cities_data.append(
+            {
+                "id": str(city.get("id", "")),
+                "name": city.get("name", ""),
+                "country_code": city.get("country", ""),
+                "admin1": city.get("admin1", ""),  # state/province name
+                "latitude": city.get("lat", ""),
+                "longitude": city.get("lon", ""),
+                "population": population,
+            }
+        )
 
     print(f"  Found {len(cities_data):,} cities with population >= {min_population:,}")
 
@@ -189,24 +196,24 @@ def fetch_cities(min_population: int = 250000):
     print(f"  Saved to: {output_path}")
 
     # Print summary
-    print(f"\n  Summary:")
+    print("\n  Summary:")
     print(f"    Total cities: {len(cities_data):,}")
     print(f"    Countries with cities: {len(cities_by_country)}")
 
     # Top countries by city count
     top_countries = sorted(
-        cities_by_country.items(),
-        key=lambda x: len(x[1]),
-        reverse=True
+        cities_by_country.items(), key=lambda x: len(x[1]), reverse=True
     )[:10]
-    print(f"\n  Top 10 countries by city count:")
+    print("\n  Top 10 countries by city count:")
     for country_code, cities in top_countries:
         print(f"    {country_code}: {len(cities):,} cities")
 
     # Show some sample cities
-    print(f"\n  Sample large cities:")
+    print("\n  Sample large cities:")
     for city in cities_data[:5]:
-        print(f"    {city['name']} ({city['country_code']}): pop {city['population']:,}")
+        print(
+            f"    {city['name']} ({city['country_code']}): pop {city['population']:,}"
+        )
 
     return output
 
@@ -277,12 +284,14 @@ def create_ios_states_json(states_data: dict):
                 # Use code if available, otherwise generate from id
                 code = s.get("code") or f"S{s.get('id', '')}"
                 if s.get("name") and s.get("latitude") and s.get("longitude"):
-                    state_list.append({
-                        "code": code,
-                        "name": s["name"],
-                        "lat": s["latitude"],
-                        "lng": s["longitude"],
-                    })
+                    state_list.append(
+                        {
+                            "code": code,
+                            "name": s["name"],
+                            "lat": s["latitude"],
+                            "lng": s["longitude"],
+                        }
+                    )
             if state_list:
                 ios_states[country_code] = state_list
 
@@ -334,7 +343,7 @@ def create_ios_cities_json(cities_data: dict):
     # Show distribution
     city_counts = [(cc, len(cities)) for cc, cities in ios_cities.items()]
     city_counts.sort(key=lambda x: x[1], reverse=True)
-    print(f"\n  Top 10 countries:")
+    print("\n  Top 10 countries:")
     for cc, count in city_counts[:10]:
         print(f"    {cc}: {count} cities")
 
@@ -344,24 +353,15 @@ def main():
         description="Fetch geographic data from open sources"
     )
     parser.add_argument(
-        "--states", action="store_true",
-        help="Fetch states/provinces data"
+        "--states", action="store_true", help="Fetch states/provinces data"
     )
+    parser.add_argument("--cities", action="store_true", help="Fetch cities data")
     parser.add_argument(
-        "--cities", action="store_true",
-        help="Fetch cities data"
+        "--countries", action="store_true", help="Fetch countries metadata"
     )
+    parser.add_argument("--all", action="store_true", help="Fetch all data types")
     parser.add_argument(
-        "--countries", action="store_true",
-        help="Fetch countries metadata"
-    )
-    parser.add_argument(
-        "--all", action="store_true",
-        help="Fetch all data types"
-    )
-    parser.add_argument(
-        "--ios", action="store_true",
-        help="Also create iOS-optimized JSON files"
+        "--ios", action="store_true", help="Also create iOS-optimized JSON files"
     )
 
     args = parser.parse_args()
