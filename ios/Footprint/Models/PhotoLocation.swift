@@ -39,6 +39,7 @@ struct PhotoLocation: Identifiable, Codable, Equatable {
 }
 
 /// Manager for storing and retrieving photo locations
+@MainActor
 class PhotoLocationStore {
     static let shared = PhotoLocationStore()
 
