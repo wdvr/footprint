@@ -18,7 +18,13 @@ struct PhotoImportView: View {
             VStack {
                 switch importManager.state {
                 case .idle:
-                    IdleView(onStartScan: startScan, hasPendingScan: importManager.hasPendingScan, onResume: resumeScan)
+                    IdleView(
+                        onStartScan: startScan,
+                        onFullRescan: startFullRescan,
+                        hasPendingScan: importManager.hasPendingScan,
+                        hasCompletedScanBefore: importManager.lastScannedPhotoDate != nil,
+                        onResume: resumeScan
+                    )
 
                 case .requestingPermission:
                     PermissionRequestView()
@@ -36,11 +42,12 @@ struct PhotoImportView: View {
                 case .backgrounded(let progress, let processed, let total, let locationsFound):
                     ScanningView(progress: progress, processed: processed, total: total, locationsFound: locationsFound, isBackgrounded: true, onMinimize: minimizeAndDismiss)
 
-                case .completed(let locations, let totalFound, let alreadyVisited):
+                case .completed(let locations, let totalFound, let alreadyVisited, let statistics):
                     if locations.isEmpty {
                         NoLocationsFoundView(
                             totalFound: totalFound,
                             alreadyVisited: alreadyVisited,
+                            statistics: statistics,
                             onDismiss: {
                                 importManager.reset()
                                 dismiss()
@@ -51,6 +58,7 @@ struct PhotoImportView: View {
                             locations: locations,
                             totalFound: totalFound,
                             alreadyVisited: alreadyVisited,
+                            statistics: statistics,
                             selectedLocations: $selectedLocations,
                             onImport: { showImportConfirmation = true }
                         )
@@ -105,10 +113,21 @@ struct PhotoImportView: View {
 
     private func startScan() {
         Task {
-            await importManager.scanPhotoLibrary(existingPlaces: existingPlaces)
+            await importManager.scanPhotoLibrary(existingPlaces: existingPlaces, scanAllPhotos: false)
 
             // Auto-select all discovered locations
-            if case .completed(let locations, _, _) = importManager.state {
+            if case .completed(let locations, _, _, _) = importManager.state {
+                selectedLocations = Set(locations)
+            }
+        }
+    }
+
+    private func startFullRescan() {
+        Task {
+            await importManager.scanPhotoLibrary(existingPlaces: existingPlaces, scanAllPhotos: true)
+
+            // Auto-select all discovered locations
+            if case .completed(let locations, _, _, _) = importManager.state {
                 selectedLocations = Set(locations)
             }
         }
@@ -119,7 +138,7 @@ struct PhotoImportView: View {
             await importManager.resumeScan(existingPlaces: existingPlaces)
 
             // Auto-select all discovered locations
-            if case .completed(let locations, _, _) = importManager.state {
+            if case .completed(let locations, _, _, _) = importManager.state {
                 selectedLocations = Set(locations)
             }
         }
@@ -135,7 +154,9 @@ struct PhotoImportView: View {
 
 private struct IdleView: View {
     let onStartScan: () -> Void
+    let onFullRescan: () -> Void
     let hasPendingScan: Bool
+    let hasCompletedScanBefore: Bool
     let onResume: () -> Void
 
     var body: some View {
@@ -195,7 +216,24 @@ private struct IdleView: View {
                         Text("Start New Scan")
                             .font(.subheadline)
                     }
+                } else if hasCompletedScanBefore {
+                    // User has scanned before - offer incremental scan as primary
+                    Button(action: onStartScan) {
+                        Label("Scan New Photos", systemImage: "plus.magnifyingglass")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(.tint)
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+
+                    Button(action: onFullRescan) {
+                        Text("Full Rescan (All Photos)")
+                            .font(.subheadline)
+                    }
                 } else {
+                    // First time scan
                     Button(action: onStartScan) {
                         Label("Start Scan", systemImage: "magnifyingglass")
                             .font(.headline)
@@ -433,7 +471,9 @@ private struct ScanningView: View {
 private struct NoLocationsFoundView: View {
     let totalFound: Int
     let alreadyVisited: Int
+    let statistics: ImportStatistics
     let onDismiss: () -> Void
+    @State private var showingStats = false
 
     var body: some View {
         VStack(spacing: 24) {
@@ -467,6 +507,19 @@ private struct NoLocationsFoundView: View {
                 }
             }
 
+            // Statistics summary
+            Button {
+                showingStats.toggle()
+            } label: {
+                Label("View Scan Details", systemImage: showingStats ? "chevron.up" : "chevron.down")
+                    .font(.subheadline)
+            }
+
+            if showingStats {
+                StatisticsView(statistics: statistics)
+                    .padding(.horizontal)
+            }
+
             Spacer()
 
             Button("Done", action: onDismiss)
@@ -488,8 +541,10 @@ private struct LocationsListView: View {
     let locations: [DiscoveredLocation]
     let totalFound: Int
     let alreadyVisited: Int
+    let statistics: ImportStatistics
     @Binding var selectedLocations: Set<DiscoveredLocation>
     let onImport: () -> Void
+    @State private var showingStats = false
 
     private var countries: [DiscoveredLocation] {
         locations.filter { $0.regionType == VisitedPlace.RegionType.country.rawValue }
@@ -561,6 +616,24 @@ private struct LocationsListView: View {
                                 onToggle: { toggleSelection(location) }
                             )
                         }
+                    }
+                }
+
+                // Statistics section
+                Section {
+                    Button {
+                        showingStats.toggle()
+                    } label: {
+                        HStack {
+                            Label("Scan Details", systemImage: "chart.bar.doc.horizontal")
+                            Spacer()
+                            Image(systemName: showingStats ? "chevron.up" : "chevron.down")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    if showingStats {
+                        StatisticsView(statistics: statistics)
                     }
                 }
             }
@@ -700,6 +773,130 @@ private struct ErrorView: View {
             }
             .padding(.horizontal)
             .padding(.bottom, 24)
+        }
+    }
+}
+
+// MARK: - Statistics View
+
+private struct StatisticsView: View {
+    let statistics: ImportStatistics
+    @State private var showingUnmatched = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Photo counts
+            Group {
+                StatRow(label: "Photos scanned", value: "\(statistics.totalPhotosScanned)")
+                StatRow(label: "With location data", value: "\(statistics.photosWithLocation)", color: .green)
+                StatRow(label: "Without location data", value: "\(statistics.photosWithoutLocation)", color: statistics.photosWithoutLocation > 0 ? .orange : .secondary)
+            }
+
+            Divider()
+
+            // Cluster counts
+            Group {
+                StatRow(label: "Location clusters", value: "\(statistics.clustersCreated)")
+                StatRow(label: "Matched to country", value: "\(statistics.clustersMatched)", color: .green)
+                StatRow(label: "Unmatched (ocean/unknown)", value: "\(statistics.clustersUnmatched)", color: statistics.clustersUnmatched > 0 ? .red : .secondary)
+            }
+
+            if statistics.clustersUnmatched > 0 {
+                StatRow(
+                    label: "Photos in unmatched clusters",
+                    value: "\(statistics.photosInUnmatchedClusters)",
+                    color: .red
+                )
+            }
+
+            // Countries found
+            if !statistics.countriesFound.isEmpty {
+                Divider()
+
+                Text("Photos by Country")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+
+                let sortedCountries = statistics.countriesFound.sorted { $0.value > $1.value }
+                ForEach(sortedCountries.prefix(10), id: \.key) { country, count in
+                    StatRow(
+                        label: countryName(for: country),
+                        value: "\(count) photos",
+                        color: .blue
+                    )
+                }
+                if sortedCountries.count > 10 {
+                    Text("+ \(sortedCountries.count - 10) more countries")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            // Unmatched coordinates (for debugging)
+            if !statistics.unmatchedCoordinates.isEmpty {
+                Divider()
+
+                Button {
+                    showingUnmatched.toggle()
+                } label: {
+                    HStack {
+                        Text("Unmatched Coordinates (\(statistics.unmatchedCoordinates.count) samples)")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                        Spacer()
+                        Image(systemName: showingUnmatched ? "chevron.up" : "chevron.down")
+                            .font(.caption)
+                    }
+                    .foregroundStyle(.red)
+                }
+
+                if showingUnmatched {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(statistics.unmatchedCoordinates.prefix(20)) { coord in
+                            HStack {
+                                Text(String(format: "%.4f, %.4f", coord.latitude, coord.longitude))
+                                    .font(.caption2)
+                                    .monospaced()
+                                Spacer()
+                                Text("\(coord.photoCount) photos")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        if statistics.unmatchedCoordinates.count > 20 {
+                            Text("+ \(statistics.unmatchedCoordinates.count - 20) more...")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.leading, 8)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+    }
+
+    private func countryName(for code: String) -> String {
+        GeographicData.countries.first { $0.id == code }?.name ?? code
+    }
+}
+
+private struct StatRow: View {
+    let label: String
+    let value: String
+    var color: Color = .primary
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(color)
         }
     }
 }
