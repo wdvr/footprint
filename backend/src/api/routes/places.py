@@ -181,7 +181,7 @@ async def list_places(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve places: {str(e)}",
-        )
+        ) from e
 
 
 @router.post(
@@ -230,7 +230,7 @@ async def create_place(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create place: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/batch", response_model=BatchCreateResponse)
@@ -278,7 +278,7 @@ async def batch_create_places(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to batch create places: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/{region_type}/{region_code}", response_model=VisitedPlaceResponse)
@@ -303,7 +303,7 @@ async def get_place(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get place: {str(e)}",
-        )
+        ) from e
 
 
 @router.patch("/{region_type}/{region_code}", response_model=VisitedPlaceResponse)
@@ -347,7 +347,7 @@ async def update_place(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update place: {str(e)}",
-        )
+        ) from e
 
 
 @router.delete("/{region_type}/{region_code}", status_code=status.HTTP_204_NO_CONTENT)
@@ -373,7 +373,7 @@ async def delete_place(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete place: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/stats", response_model=ExtendedPlaceStatsResponse)
@@ -498,4 +498,4 @@ async def get_place_stats(user_id: str = Depends(get_current_user)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get stats: {str(e)}",
-        )
+        ) from e
