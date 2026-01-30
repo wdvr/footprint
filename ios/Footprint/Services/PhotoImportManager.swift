@@ -6,7 +6,7 @@ import SwiftUI
 import UserNotifications
 
 /// Sample coordinate for debugging unmatched locations
-struct UnmatchedCoordinate: Identifiable, Codable {
+struct UnmatchedCoordinate: Identifiable, Codable, Equatable {
     let id: UUID
     let latitude: Double
     let longitude: Double
@@ -21,7 +21,7 @@ struct UnmatchedCoordinate: Identifiable, Codable {
 }
 
 /// Statistics from a photo import scan for debugging
-struct ImportStatistics: Codable {
+struct ImportStatistics: Codable, Equatable {
     var totalPhotosScanned: Int = 0
     var photosWithLocation: Int = 0
     var photosWithoutLocation: Int = 0
@@ -453,7 +453,7 @@ final class PhotoImportManager: NSObject {
         totalPhotosToProcess = totalPhotos
 
         if totalPhotos == 0 {
-            state = .completed(locations: [], totalFound: 0, alreadyVisited: 0)
+            state = .completed(locations: [], totalFound: 0, alreadyVisited: 0, statistics: ImportStatistics())
             return
         }
 
