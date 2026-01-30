@@ -529,6 +529,7 @@ struct WorldMapView: View {
     @State private var stateMapCountry: String?
     @State private var showListView = false
     @State private var centerOnUserLocation = false
+    @State private var showPhotoPins = false
 
     private var visitedCountryCodes: Set<String> {
         Set(
@@ -631,7 +632,8 @@ struct WorldMapView: View {
                         onCountryTapped: { countryCode in
                             selectedCountry = countryCode
                         },
-                        showUserLocation: LocationManager.shared.isTracking
+                        showUserLocation: LocationManager.shared.isTracking,
+                        showPhotoPins: showPhotoPins
                     )
                     .ignoresSafeArea(edges: .bottom)
                     .onChange(of: selectedCountry) { _, newValue in
@@ -696,15 +698,31 @@ struct WorldMapView: View {
                     .accessibilityLabel(LocationManager.shared.isTracking ? "Center on current location" : "Start tracking location")
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        conditionalWithAnimation(.easeInOut, reduceMotion: reduceMotion) {
-                            showListView.toggle()
+                    HStack(spacing: 16) {
+                        // Photo pins toggle
+                        if !showListView && PhotoLocationStore.shared.load().count > 0 {
+                            Button {
+                                conditionalWithAnimation(.easeInOut, reduceMotion: reduceMotion) {
+                                    showPhotoPins.toggle()
+                                }
+                            } label: {
+                                Image(systemName: showPhotoPins ? "photo.fill" : "photo")
+                                    .foregroundStyle(showPhotoPins ? .blue : .primary)
+                            }
+                            .accessibilityLabel(showPhotoPins ? "Hide photo pins" : "Show photo pins")
                         }
-                    } label: {
-                        Image(systemName: showListView ? "map" : "list.bullet")
+
+                        // List/Map toggle
+                        Button {
+                            conditionalWithAnimation(.easeInOut, reduceMotion: reduceMotion) {
+                                showListView.toggle()
+                            }
+                        } label: {
+                            Image(systemName: showListView ? "map" : "list.bullet")
+                        }
+                        .accessibilityLabel(showListView ? "Show map" : "Show list")
+                        .accessibilityHint("Double tap to switch to \(showListView ? "map" : "list") view")
                     }
-                    .accessibilityLabel(showListView ? "Show map" : "Show list")
-                    .accessibilityHint("Double tap to switch to \(showListView ? "map" : "list") view")
                 }
             }
             .onAppear {

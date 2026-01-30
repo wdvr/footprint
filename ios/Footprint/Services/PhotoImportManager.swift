@@ -752,6 +752,9 @@ final class PhotoImportManager: NSObject {
         var allFoundLocations: Set<String> = []
         var alreadyVisitedCount = 0
 
+        // Collect all photo locations for map display
+        var photoLocations: [PhotoLocation] = []
+
         // Restore previous discoveries
         if let progress = existingProgress {
             for location in progress.discoveredLocations {
@@ -900,6 +903,15 @@ final class PhotoImportManager: NSObject {
                                 }
                             }
                         }
+                        // Save photo location for map display
+                        photoLocations.append(PhotoLocation(
+                            latitude: cluster.representativeLocation.coordinate.latitude,
+                            longitude: cluster.representativeLocation.coordinate.longitude,
+                            photoCount: cluster.photoCount,
+                            earliestDate: cluster.earliestDate,
+                            countryCode: countryCode,
+                            regionName: countryName
+                        ))
                     } else {
                         // Track as unmatched cluster
                         stats.clustersUnmatched += 1
@@ -910,6 +922,15 @@ final class PhotoImportManager: NSObject {
                                 photoCount: cluster.photoCount
                             ))
                         }
+                        // Still save location for map (without country info)
+                        photoLocations.append(PhotoLocation(
+                            latitude: cluster.representativeLocation.coordinate.latitude,
+                            longitude: cluster.representativeLocation.coordinate.longitude,
+                            photoCount: cluster.photoCount,
+                            earliestDate: cluster.earliestDate,
+                            countryCode: nil,
+                            regionName: nil
+                        ))
                     }
 
                     // Small delay to avoid geocoder rate limiting
@@ -947,6 +968,15 @@ final class PhotoImportManager: NSObject {
                                 print("[PhotoImport] Fallback added: \(country.name)")
                             }
                         }
+                        // Save photo location for map display (fallback matched)
+                        photoLocations.append(PhotoLocation(
+                            latitude: cluster.representativeLocation.coordinate.latitude,
+                            longitude: cluster.representativeLocation.coordinate.longitude,
+                            photoCount: cluster.photoCount,
+                            earliestDate: cluster.earliestDate,
+                            countryCode: match.countryCode,
+                            regionName: match.countryName
+                        ))
                     } else {
                         // Both geocoding and fallback failed - track as unmatched
                         stats.clustersUnmatched += 1
@@ -957,6 +987,15 @@ final class PhotoImportManager: NSObject {
                                 photoCount: cluster.photoCount
                             ))
                         }
+                        // Still save location for map (without country info)
+                        photoLocations.append(PhotoLocation(
+                            latitude: cluster.representativeLocation.coordinate.latitude,
+                            longitude: cluster.representativeLocation.coordinate.longitude,
+                            photoCount: cluster.photoCount,
+                            earliestDate: cluster.earliestDate,
+                            countryCode: nil,
+                            regionName: nil
+                        ))
                         if processedCount <= 5 {
                             print("[PhotoImport] Geocoding error for cluster \(processedCount): \(error)")
                         }
@@ -1002,6 +1041,10 @@ final class PhotoImportManager: NSObject {
                 }
             }
             print("[PhotoImport] Countries found: \(stats.countriesFound.sorted(by: { $0.value > $1.value }).prefix(10).map { "\($0.key): \($0.value)" }.joined(separator: ", "))")
+
+            // Save photo locations for map display
+            PhotoLocationStore.shared.save(photoLocations)
+            print("[PhotoImport] Saved \(photoLocations.count) photo locations for map display")
 
             state = .completed(locations: discoveredLocations, totalFound: totalFound, alreadyVisited: alreadyVisitedCount, statistics: stats)
             clearScanProgress()

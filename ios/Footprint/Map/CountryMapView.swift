@@ -2,6 +2,34 @@ import MapKit
 import SwiftUI
 import UIKit
 
+/// Custom annotation for photo locations
+class PhotoPinAnnotation: NSObject, MKAnnotation {
+    dynamic var coordinate: CLLocationCoordinate2D
+    let photoCount: Int
+    let countryCode: String?
+    let regionName: String?
+
+    init(photoLocation: PhotoLocation) {
+        self.coordinate = photoLocation.coordinate
+        self.photoCount = photoLocation.photoCount
+        self.countryCode = photoLocation.countryCode
+        self.regionName = photoLocation.regionName
+        super.init()
+    }
+
+    var title: String? {
+        if photoCount == 1 {
+            return "1 photo"
+        } else {
+            return "\(photoCount) photos"
+        }
+    }
+
+    var subtitle: String? {
+        regionName
+    }
+}
+
 /// A map view that displays country boundaries with visited status highlighting
 struct CountryMapView: UIViewRepresentable {
     let visitedCountryCodes: Set<String>
@@ -12,6 +40,7 @@ struct CountryMapView: UIViewRepresentable {
     @Binding var centerOnUserLocation: Bool
     var onCountryTapped: ((String) -> Void)?
     var showUserLocation: Bool = false
+    var showPhotoPins: Bool = false
 
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView()
@@ -71,6 +100,9 @@ struct CountryMapView: UIViewRepresentable {
         } else {
             context.coordinator.updateOverlayColors(in: mapView)
         }
+
+        // Update photo pins
+        context.coordinator.updatePhotoPins(in: mapView, show: showPhotoPins)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -88,6 +120,7 @@ struct CountryMapView: UIViewRepresentable {
         var selectedCountryCode: String?
         var onCountryTapped: ((String) -> Void)?
         weak var mapView: MKMapView?
+        var photoPinsShown: Bool = false
 
         init(_ parent: CountryMapView) {
             self.parent = parent
@@ -98,6 +131,26 @@ struct CountryMapView: UIViewRepresentable {
             self.selectedCountryCode = parent.selectedCountry
             self.onCountryTapped = parent.onCountryTapped
             super.init()
+        }
+
+        // MARK: - Photo Pins
+
+        func updatePhotoPins(in mapView: MKMapView, show: Bool) {
+            // Remove existing photo pins if hiding
+            if !show && photoPinsShown {
+                let photoPinAnnotations = mapView.annotations.compactMap { $0 as? PhotoPinAnnotation }
+                mapView.removeAnnotations(photoPinAnnotations)
+                photoPinsShown = false
+                return
+            }
+
+            // Add photo pins if showing and not already shown
+            if show && !photoPinsShown {
+                let photoLocations = PhotoLocationStore.shared.load()
+                let annotations = photoLocations.map { PhotoPinAnnotation(photoLocation: $0) }
+                mapView.addAnnotations(annotations)
+                photoPinsShown = true
+            }
         }
 
         // MARK: - Tap Gesture Handling
@@ -299,6 +352,69 @@ struct CountryMapView: UIViewRepresentable {
             }
 
             return MKOverlayRenderer(overlay: overlay)
+        }
+
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            // Don't customize user location annotation
+            if annotation is MKUserLocation {
+                return nil
+            }
+
+            // Handle photo pin annotations
+            if let photoPin = annotation as? PhotoPinAnnotation {
+                let identifier = "PhotoPin"
+                var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView
+
+                if annotationView == nil {
+                    annotationView = MKMarkerAnnotationView(annotation: photoPin, reuseIdentifier: identifier)
+                    annotationView?.canShowCallout = true
+                    annotationView?.clusteringIdentifier = "PhotoCluster"
+                } else {
+                    annotationView?.annotation = photoPin
+                }
+
+                // Style based on photo count
+                if photoPin.photoCount >= 10 {
+                    annotationView?.markerTintColor = .systemRed
+                    annotationView?.glyphText = "\(photoPin.photoCount)"
+                } else if photoPin.photoCount >= 5 {
+                    annotationView?.markerTintColor = .systemOrange
+                    annotationView?.glyphText = "\(photoPin.photoCount)"
+                } else {
+                    annotationView?.markerTintColor = .systemBlue
+                    annotationView?.glyphImage = UIImage(systemName: "photo")
+                }
+
+                annotationView?.displayPriority = .defaultHigh
+
+                return annotationView
+            }
+
+            // Handle cluster annotations
+            if let cluster = annotation as? MKClusterAnnotation {
+                let identifier = "PhotoCluster"
+                var clusterView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView
+
+                if clusterView == nil {
+                    clusterView = MKMarkerAnnotationView(annotation: cluster, reuseIdentifier: identifier)
+                    clusterView?.canShowCallout = true
+                } else {
+                    clusterView?.annotation = cluster
+                }
+
+                // Calculate total photos in cluster
+                let totalPhotos = cluster.memberAnnotations
+                    .compactMap { $0 as? PhotoPinAnnotation }
+                    .reduce(0) { $0 + $1.photoCount }
+
+                clusterView?.markerTintColor = .systemPurple
+                clusterView?.glyphText = "\(totalPhotos)"
+                clusterView?.displayPriority = .defaultHigh
+
+                return clusterView
+            }
+
+            return nil
         }
 
         func mapView(_ mapView: MKMapView, didSelect annotation: MKAnnotation) {
