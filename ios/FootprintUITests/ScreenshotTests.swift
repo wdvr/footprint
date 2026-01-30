@@ -1,14 +1,20 @@
 import XCTest
 import MapKit
 
+@MainActor
 final class ScreenshotTests: XCTestCase {
     var app: XCUIApplication!
 
     override func setUpWithError() throws {
         continueAfterFailure = false
 
-        app = XCUIApplication()
-        setupSnapshot(app)
+        let application = XCUIApplication()
+        app = application
+
+        // Setup snapshot in MainActor context
+        MainActor.assumeIsolated {
+            setupSnapshot(application)
+        }
 
         // Reset app state for consistent screenshots
         app.launchArguments = [
@@ -52,7 +58,10 @@ final class ScreenshotTests: XCTestCase {
         // Wait for map overlays to render
         sleep(3)
 
-        snapshot("01_MapView")
+        MainActor.assumeIsolated {
+            MainActor.assumeIsolated {
+            snapshot("01_MapView")
+        }
     }
 
     func testScreenshot02_CountriesListView() throws {
@@ -73,7 +82,9 @@ final class ScreenshotTests: XCTestCase {
             sleep(1)
         }
 
-        snapshot("02_CountriesList")
+        MainActor.assumeIsolated {
+            snapshot("02_CountriesList")
+        }
     }
 
     func testScreenshot03_StatsView() throws {
@@ -87,7 +98,9 @@ final class ScreenshotTests: XCTestCase {
         // Wait for stats to load
         sleep(2)
 
-        snapshot("03_Stats")
+        MainActor.assumeIsolated {
+            snapshot("03_Stats")
+        }
     }
 
     func testScreenshot04_StateMapView() throws {
@@ -115,7 +128,9 @@ final class ScreenshotTests: XCTestCase {
         // Wait for state map to load
         sleep(3)
 
-        snapshot("04_StateMap")
+        MainActor.assumeIsolated {
+            snapshot("04_StateMap")
+        }
     }
 
     func testScreenshot05_SettingsView() throws {
@@ -129,7 +144,9 @@ final class ScreenshotTests: XCTestCase {
         // Wait for settings to load
         sleep(2)
 
-        snapshot("05_Settings")
+        MainActor.assumeIsolated {
+            snapshot("05_Settings")
+        }
     }
 
     // MARK: - Helper Methods
