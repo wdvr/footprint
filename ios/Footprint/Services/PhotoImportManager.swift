@@ -175,7 +175,7 @@ final class PhotoImportManager: NSObject {
 
     // Concurrency limit for parallel geocoding (adjust based on foreground/background)
     private var geocodingConcurrencyLimit: Int {
-        isRunningInBackground ? 2 : 5  // More aggressive when app is in foreground
+        isRunningInBackground ? 3 : 10  // More aggressive when app is in foreground
     }
 
     private let progressKey = "PhotoImportScanProgress"
@@ -508,12 +508,18 @@ final class PhotoImportManager: NSObject {
 
         state = .collecting(photosProcessed: 0)
 
+        let scanStartTime = Date()
+        print("[PhotoImport] ========== SCAN STARTED ==========")
+
         // Fetch ALL photos - we use localIdentifier tracking instead of date filtering
         // This ensures photos with old EXIF dates (e.g., imported from camera) are still detected
         let fetchOptions = PHFetchOptions()
         fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
 
+        let fetchStartTime = Date()
         let assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+        let fetchDuration = Date().timeIntervalSince(fetchStartTime)
+        print("[PhotoImport] Photo library fetch took \(String(format: "%.2f", fetchDuration))s")
 
         // Get the set of already processed photo IDs for fast lookup
         let alreadyProcessedIDs = scanAllPhotos ? Set<String>() : processedPhotoIDs
@@ -534,6 +540,8 @@ final class PhotoImportManager: NSObject {
         }
 
         // Phase 1: Enumerate photos on background thread to avoid blocking UI
+        print("[PhotoImport] Phase 1: Starting photo enumeration...")
+        let enumerationStartTime = Date()
         let cellSize = self.gridCellSize
         let enumerationResult = await collectPhotoClusters(
             assets: assets,
@@ -541,6 +549,8 @@ final class PhotoImportManager: NSObject {
             cellSize: cellSize,
             alreadyProcessedIDs: alreadyProcessedIDs
         )
+        let enumerationDuration = Date().timeIntervalSince(enumerationStartTime)
+        print("[PhotoImport] Phase 1 complete: \(String(format: "%.2f", enumerationDuration))s - \(enumerationResult.clusters.count) clusters from \(enumerationResult.photosWithLocation) photos with location (skipped \(enumerationResult.skippedAlreadyProcessed) already processed)")
 
         // Mark newly processed photos as done
         if !enumerationResult.newPhotoIDs.isEmpty {
@@ -557,7 +567,13 @@ final class PhotoImportManager: NSObject {
         statistics.clustersCreated = enumerationResult.clusters.count
 
         // Phase 2: Geocode unique clusters (much fewer API calls)
+        print("[PhotoImport] Phase 2: Starting geocoding of \(enumerationResult.clusters.count) clusters (concurrency: \(geocodingConcurrencyLimit))...")
+        let geocodingStartTime = Date()
         await geocodeClusters(Array(enumerationResult.clusters.values), existingPlaces: existingPlaces, statistics: statistics)
+        let geocodingDuration = Date().timeIntervalSince(geocodingStartTime)
+        let totalDuration = Date().timeIntervalSince(scanStartTime)
+        print("[PhotoImport] Phase 2 complete: \(String(format: "%.2f", geocodingDuration))s")
+        print("[PhotoImport] ========== SCAN COMPLETE: \(String(format: "%.2f", totalDuration))s total ==========")
     }
 
     /// Collect photo clusters on a background thread with progress updates
@@ -1031,6 +1047,12 @@ final class PhotoImportManager: NSObject {
                 }
 
                 clusterIndex = batchEnd
+
+                // Log progress every 50 clusters or at completion
+                let progressPercent = Int((Double(processedCount) / Double(totalClusters)) * 100)
+                if processedCount % 50 == 0 || processedCount == totalClusters {
+                    print("[PhotoImport] Geocoding progress: \(processedCount)/\(totalClusters) clusters (\(progressPercent)%) - \(allFoundLocations.count) locations found")
+                }
 
                 // Save progress periodically (every batch)
                 let remainingClusters = clusters.filter { !processedGridKeys.contains($0.gridKey) }
