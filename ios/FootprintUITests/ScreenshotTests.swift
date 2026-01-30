@@ -1,6 +1,7 @@
 import XCTest
 import MapKit
 
+@MainActor
 final class ScreenshotTests: XCTestCase {
     var app: XCUIApplication!
 
