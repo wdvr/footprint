@@ -122,29 +122,29 @@ jobs:
       - name: Select/create stack
         run: |
           cd infrastructure
-          pulumi stack select ${{ needs.determine-environment.outputs.stack }} || pulumi stack init ${{ needs.determine-environment.outputs.stack }}
+          uv run pulumi stack select ${{ needs.determine-environment.outputs.stack }} || uv run pulumi stack init ${{ needs.determine-environment.outputs.stack }}
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
       - name: Set stack config
         run: |
           cd infrastructure
-          pulumi config set aws:region ${{ secrets.AWS_REGION }}
-          pulumi config set environment ${{ needs.determine-environment.outputs.environment }}
+          uv run pulumi config set aws:region ${{ secrets.AWS_REGION }}
+          uv run pulumi config set environment ${{ needs.determine-environment.outputs.environment }}
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
       - name: Pulumi preview
         run: |
           cd infrastructure
-          pulumi preview
+          uv run pulumi preview
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
       - name: Pulumi deploy
         run: |
           cd infrastructure
-          pulumi up --yes
+          uv run pulumi up --yes
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
@@ -152,7 +152,7 @@ jobs:
         id: outputs
         run: |
           cd infrastructure
-          echo "api_url=$(pulumi stack output api_url)" >> $GITHUB_OUTPUT
+          echo "api_url=$(uv run pulumi stack output api_url)" >> $GITHUB_OUTPUT
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
