@@ -1,14 +1,20 @@
 import XCTest
 import MapKit
 
+@MainActor
 final class ScreenshotTests: XCTestCase {
     var app: XCUIApplication!
 
     override func setUpWithError() throws {
         continueAfterFailure = false
 
-        app = XCUIApplication()
-        setupSnapshot(app)
+        let application = XCUIApplication()
+        app = application
+
+        // Setup snapshot in MainActor context
+        MainActor.assumeIsolated {
+            setupSnapshot(application)
+        }
 
         // Reset app state for consistent screenshots
         app.launchArguments = [
@@ -22,7 +28,7 @@ final class ScreenshotTests: XCTestCase {
 
         // Wait for app to fully load
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
-        sleep(2) // Allow time for initial UI setup
+        Thread.sleep(forTimeInterval: 2) // Allow time for initial UI setup
     }
 
     override func tearDownWithError() throws {
@@ -50,9 +56,11 @@ final class ScreenshotTests: XCTestCase {
         addSampleVisitedCountries()
 
         // Wait for map overlays to render
-        sleep(3)
+        Thread.sleep(forTimeInterval: 3)
 
-        snapshot("01_MapView")
+        MainActor.assumeIsolated {
+            snapshot("01_MapView")
+        }
     }
 
     func testScreenshot02_CountriesListView() throws {
@@ -64,16 +72,18 @@ final class ScreenshotTests: XCTestCase {
         countriesTab.tap()
 
         // Wait for list to load
-        sleep(2)
+        Thread.sleep(forTimeInterval: 2)
 
         // Expand a continent section to show more detail
         let africaButton = app.buttons["Africa: 8/54 countries"]
         if africaButton.exists {
             africaButton.tap()
-            sleep(1)
+            Thread.sleep(forTimeInterval: 1)
         }
 
-        snapshot("02_CountriesList")
+        MainActor.assumeIsolated {
+            snapshot("02_CountriesList")
+        }
     }
 
     func testScreenshot03_StatsView() throws {
@@ -85,9 +95,11 @@ final class ScreenshotTests: XCTestCase {
         statsTab.tap()
 
         // Wait for stats to load
-        sleep(2)
+        Thread.sleep(forTimeInterval: 2)
 
-        snapshot("03_Stats")
+        MainActor.assumeIsolated {
+            snapshot("03_Stats")
+        }
     }
 
     func testScreenshot04_StateMapView() throws {
@@ -100,7 +112,7 @@ final class ScreenshotTests: XCTestCase {
         }
 
         // Wait for map to load
-        sleep(2)
+        Thread.sleep(forTimeInterval: 2)
 
         // Tap on United States to show state view
         let usRegion = app.maps.firstMatch
@@ -113,9 +125,11 @@ final class ScreenshotTests: XCTestCase {
         }
 
         // Wait for state map to load
-        sleep(3)
+        Thread.sleep(forTimeInterval: 3)
 
-        snapshot("04_StateMap")
+        MainActor.assumeIsolated {
+            snapshot("04_StateMap")
+        }
     }
 
     func testScreenshot05_SettingsView() throws {
@@ -127,9 +141,11 @@ final class ScreenshotTests: XCTestCase {
         settingsTab.tap()
 
         // Wait for settings to load
-        sleep(2)
+        Thread.sleep(forTimeInterval: 2)
 
-        snapshot("05_Settings")
+        MainActor.assumeIsolated {
+            snapshot("05_Settings")
+        }
     }
 
     // MARK: - Helper Methods
@@ -139,7 +155,7 @@ final class ScreenshotTests: XCTestCase {
         let continueWithoutAccountButton = app.buttons["Continue without account"]
         if continueWithoutAccountButton.waitForExistence(timeout: 3) {
             continueWithoutAccountButton.tap()
-            sleep(2)
+            Thread.sleep(forTimeInterval: 2)
         }
 
         // Alternative: look for Sign in with Apple and skip
@@ -148,7 +164,7 @@ final class ScreenshotTests: XCTestCase {
             // If we see login screen, try to find skip option or handle it
             if continueWithoutAccountButton.exists {
                 continueWithoutAccountButton.tap()
-                sleep(2)
+                Thread.sleep(forTimeInterval: 2)
             }
         }
     }
@@ -173,7 +189,7 @@ final class ScreenshotTests: XCTestCase {
 
         for location in locations {
             mapView.coordinate(withNormalizedOffset: location).tap()
-            sleep(0.5)
+            Thread.sleep(forTimeInterval: 0.5)
         }
     }
 

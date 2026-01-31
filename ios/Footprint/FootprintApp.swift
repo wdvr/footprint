@@ -4,6 +4,9 @@ import Photos
 #if canImport(UIKit)
 import UIKit
 #endif
+#if canImport(FirebaseCore)
+import FirebaseCore
+#endif
 
 @main
 struct FootprintApp: App {
@@ -176,6 +179,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        // Initialize Firebase Analytics & Crashlytics
+        AnalyticsService.shared.configure()
+
         // Set up notification delegate
         UNUserNotificationCenter.current().delegate = PushNotificationManager.shared
 

@@ -136,6 +136,7 @@ final class APIClientTests: XCTestCase {
             regionType: "us_state",
             regionCode: "CA",
             regionName: "California",
+            status: "visited",
             isDeleted: false,
             lastModifiedAt: Date(timeIntervalSince1970: 1704067200) // 2024-01-01
         )
@@ -157,6 +158,7 @@ final class APIClientTests: XCTestCase {
                 regionType: "country",
                 regionCode: "FR",
                 regionName: "France",
+                status: "visited",
                 isDeleted: false,
                 lastModifiedAt: Date()
             )
