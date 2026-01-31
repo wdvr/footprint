@@ -20,7 +20,7 @@ on:
           - prod
 
 env:
-  PULUMI_BACKEND_URL: s3://footprint-pulumi-state-954800154782?region=us-east-1
+  PULUMI_BACKEND_URL: s3://footprint-pulumi-state-383757231925?region=us-east-1
 
 jobs:
   setup-domain:
