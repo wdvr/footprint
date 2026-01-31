@@ -123,10 +123,22 @@ struct SettingsView: View {
                         .padding(.vertical, 4)
                     }
 
-                    Button(role: .destructive) {
-                        showingSignOutAlert = true
-                    } label: {
-                        Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                    // Show Login button when in offline mode, Sign Out when logged in with account
+                    if AuthManager.shared.isOfflineMode && AuthManager.shared.user == nil {
+                        Button {
+                            // Sign out from offline mode to go back to login screen
+                            Task {
+                                await AuthManager.shared.signOut()
+                            }
+                        } label: {
+                            Label("Sign In", systemImage: "person.crop.circle.badge.plus")
+                        }
+                    } else {
+                        Button(role: .destructive) {
+                            showingSignOutAlert = true
+                        } label: {
+                            Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                        }
                     }
                 }
 

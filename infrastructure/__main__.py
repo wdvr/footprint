@@ -317,27 +317,35 @@ api_gateway_permission = aws.lambda_.Permission(
 # Custom Domain (footprintmaps.com)
 # =============================================================================
 
-# Cross-account domain setup:
-# - Domain + Hosted Zone: default account (954800154782)
-# - Infrastructure (Lambda, API GW, etc.): personal account (383757231925)
-#
-# Set enable_custom_domain=true to create certificates and custom domains
-# DNS records must be created manually in the default account's hosted zone
+# Domain configuration - everything in one AWS account
+# Set enable_custom_domain=true to create hosted zone, certificates, and custom domains
 enable_custom_domain = config.get_bool("enable_custom_domain") or False
 
 domain_name = config.get("domain_name") or "footprintmaps.com"
 api_subdomain = f"api.{domain_name}"
 
-# Note: hosted_zone is in a DIFFERENT account, so we can't manage DNS records from here
-# DNS records must be added manually or via a separate Pulumi stack in the default account
-hosted_zone = None  # Cross-account - cannot access from here
-
-# ACM Certificate for the domain (regional, for API Gateway)
-# Note: DNS validation records must be added manually to the hosted zone in the default account
+# Route53 Hosted Zone for the domain
+# Note: Domain registration must be done via AWS Console or CLI first
+# Once registered, this creates the hosted zone and manages DNS records
+hosted_zone = None
 certificate = None
 cert_validation = None
+cert_validation_records = []
 
 if enable_custom_domain:
+    # Create the Route53 Hosted Zone
+    hosted_zone = aws.route53.Zone(
+        resource_name("hosted-zone"),
+        name=domain_name,
+        comment=f"Hosted zone for {domain_name} - managed by Pulumi",
+        tags=common_tags,
+    )
+
+    # Export nameservers for domain registration
+    export("nameservers", hosted_zone.name_servers)
+    export("hosted_zone_id", hosted_zone.zone_id)
+
+    # ACM Certificate for the domain (regional, for API Gateway)
     certificate = aws.acm.Certificate(
         resource_name("certificate"),
         domain_name=domain_name,
@@ -346,24 +354,25 @@ if enable_custom_domain:
         tags=common_tags,
     )
 
-    # Export validation records for manual addition to default account's hosted zone
-    export(
-        "cert_validation_name",
-        certificate.domain_validation_options[0].resource_record_name,
-    )
-    export(
-        "cert_validation_type",
-        certificate.domain_validation_options[0].resource_record_type,
-    )
-    export(
-        "cert_validation_value",
-        certificate.domain_validation_options[0].resource_record_value,
-    )
+    # Create DNS validation records in Route53
+    # Using dynamic indexing for domain validation options
+    cert_validation_records = []
+    for i in range(2):  # Main domain + wildcard
+        record = aws.route53.Record(
+            f"{resource_name('cert-validation')}-{i}",
+            zone_id=hosted_zone.zone_id,
+            name=certificate.domain_validation_options[i].resource_record_name,
+            type=certificate.domain_validation_options[i].resource_record_type,
+            records=[certificate.domain_validation_options[i].resource_record_value],
+            ttl=300,
+        )
+        cert_validation_records.append(record)
 
-    # Certificate validation - will succeed once DNS records are added to default account
+    # Certificate validation - waits for DNS records to propagate
     cert_validation = aws.acm.CertificateValidation(
         resource_name("cert-validation"),
         certificate_arn=certificate.arn,
+        validation_record_fqdns=[r.fqdn for r in cert_validation_records],
     )
 
 # =============================================================================
@@ -372,8 +381,9 @@ if enable_custom_domain:
 
 api_domain = None
 api_mapping = None
+api_dns_record = None
 
-if enable_custom_domain and cert_validation:
+if enable_custom_domain and cert_validation and hosted_zone:
     # API Gateway custom domain - now on api subdomain
     api_domain = aws.apigatewayv2.DomainName(
         resource_name("api-domain"),
@@ -395,7 +405,22 @@ if enable_custom_domain and cert_validation:
         # No api_mapping_key - API is at root of api.footprintmaps.com
     )
 
-    # Export API domain target for manual DNS record in default account
+    # Create DNS A record (alias) for api.footprintmaps.com
+    api_dns_record = aws.route53.Record(
+        resource_name("api-dns"),
+        zone_id=hosted_zone.zone_id,
+        name=api_subdomain,
+        type="A",
+        aliases=[
+            aws.route53.RecordAliasArgs(
+                name=api_domain.domain_name_configuration.target_domain_name,
+                zone_id=api_domain.domain_name_configuration.hosted_zone_id,
+                evaluate_target_health=False,
+            )
+        ],
+    )
+
+    # Export API domain info
     export("api_domain_target", api_domain.domain_name_configuration.target_domain_name)
     export(
         "api_domain_hosted_zone_id", api_domain.domain_name_configuration.hosted_zone_id
@@ -450,37 +475,37 @@ cf_cert_validation = None
 website_distribution = None
 website_bucket_policy = None
 
-if enable_custom_domain:
+# Create us-east-1 provider for CloudFront certificate (CloudFront requires us-east-1)
+us_east_1_provider = aws.Provider("us-east-1-provider", region="us-east-1")
+
+if enable_custom_domain and hosted_zone:
     cloudfront_certificate = aws.acm.Certificate(
         resource_name("cf-certificate"),
         domain_name=domain_name,
+        subject_alternative_names=[f"www.{domain_name}"],
         validation_method="DNS",
         tags=common_tags,
-        opts=ResourceOptions(
-            provider=aws.Provider("us-east-1-provider", region="us-east-1")
-        ),
+        opts=ResourceOptions(provider=us_east_1_provider),
     )
 
-    # Export CloudFront cert validation records for manual addition to default account
-    export(
-        "cf_cert_validation_name",
-        cloudfront_certificate.domain_validation_options[0].resource_record_name,
-    )
-    export(
-        "cf_cert_validation_type",
-        cloudfront_certificate.domain_validation_options[0].resource_record_type,
-    )
-    export(
-        "cf_cert_validation_value",
-        cloudfront_certificate.domain_validation_options[0].resource_record_value,
-    )
+    # Create DNS validation records for CloudFront certificate in Route53
+    cf_cert_validation_records = []
+    for i in range(2):  # Main domain + www subdomain
+        record = aws.route53.Record(
+            f"{resource_name('cf-cert-validation')}-{i}",
+            zone_id=hosted_zone.zone_id,
+            name=cloudfront_certificate.domain_validation_options[i].resource_record_name,
+            type=cloudfront_certificate.domain_validation_options[i].resource_record_type,
+            records=[cloudfront_certificate.domain_validation_options[i].resource_record_value],
+            ttl=300,
+        )
+        cf_cert_validation_records.append(record)
 
     cf_cert_validation = aws.acm.CertificateValidation(
         resource_name("cf-cert-validation"),
         certificate_arn=cloudfront_certificate.arn,
-        opts=ResourceOptions(
-            provider=aws.Provider("us-east-1-provider-validation", region="us-east-1")
-        ),
+        validation_record_fqdns=[r.fqdn for r in cf_cert_validation_records],
+        opts=ResourceOptions(provider=us_east_1_provider),
     )
 
     # CloudFront distribution for marketing website
@@ -489,7 +514,7 @@ if enable_custom_domain:
         enabled=True,
         is_ipv6_enabled=True,
         default_root_object="index.html",
-        aliases=[domain_name],
+        aliases=[domain_name, f"www.{domain_name}"],
         origins=[
             aws.cloudfront.DistributionOriginArgs(
                 domain_name=website_bucket.bucket_regional_domain_name,
@@ -562,7 +587,38 @@ if enable_custom_domain:
         ),
     )
 
-    # Export CloudFront domain for manual DNS record in default account
+    # Create DNS A record (alias) for footprintmaps.com -> CloudFront
+    if hosted_zone:
+        website_dns_record = aws.route53.Record(
+            resource_name("website-dns"),
+            zone_id=hosted_zone.zone_id,
+            name=domain_name,
+            type="A",
+            aliases=[
+                aws.route53.RecordAliasArgs(
+                    name=website_distribution.domain_name,
+                    zone_id=website_distribution.hosted_zone_id,
+                    evaluate_target_health=False,
+                )
+            ],
+        )
+
+        # Also add www subdomain pointing to the same CloudFront distribution
+        www_dns_record = aws.route53.Record(
+            resource_name("www-dns"),
+            zone_id=hosted_zone.zone_id,
+            name=f"www.{domain_name}",
+            type="A",
+            aliases=[
+                aws.route53.RecordAliasArgs(
+                    name=website_distribution.domain_name,
+                    zone_id=website_distribution.hosted_zone_id,
+                    evaluate_target_health=False,
+                )
+            ],
+        )
+
+    # Export CloudFront domain info
     export("cloudfront_domain_name", website_distribution.domain_name)
     export("cloudfront_hosted_zone_id", website_distribution.hosted_zone_id)
 
@@ -603,9 +659,12 @@ if enable_custom_domain:
     pulumi.log.info(f"API will be available at: https://{api_subdomain}")
     pulumi.log.info(f"Website will be available at: https://{domain_name}")
     pulumi.log.info("")
-    pulumi.log.info("=== MANUAL DNS SETUP REQUIRED ===")
-    pulumi.log.info("Add these records to the hosted zone in the DEFAULT AWS account:")
-    pulumi.log.info("See Pulumi outputs for cert_validation_* and cloudfront_* values")
+    pulumi.log.info("=== DOMAIN REGISTRATION NOTE ===")
+    pulumi.log.info("If the domain is not yet registered:")
+    pulumi.log.info("1. Register domain via AWS Console: Route 53 > Registered domains > Register domain")
+    pulumi.log.info("2. Update the domain's nameservers to use the hosted zone nameservers")
+    pulumi.log.info("   (see 'nameservers' output after deployment)")
+    pulumi.log.info("DNS records for API and website are automatically configured.")
 else:
     pulumi.log.info("Custom domain DISABLED - using default AWS URLs")
     pulumi.log.info("Enable with: pulumi config set enable_custom_domain true")
