@@ -11,12 +11,64 @@ on:
       - main
       - develop
 
-# Permissions for reading files and PRs
+# Runner Configuration - Easy switches to control runner behavior
+env:
+  # Set to 'true' to prefer self-hosted runners, 'false' to always use GitHub-hosted
+  USE_SELF_HOSTED: 'true'
+  # Set to 'true' to automatically fall back to GitHub-hosted if self-hosted unavailable
+  ENABLE_FALLBACK: 'true'
+
+# Permissions for reading files, PRs, and checking runners
 permissions:
   contents: read
   pull-requests: read
+  actions: read
 
 jobs:
+  # Check runner availability and determine strategy
+  runner-strategy:
+    name: Check Runner Availability
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.check.outputs.runner }}
+      runner-label: ${{ steps.check.outputs.runner-label }}
+    steps:
+    - name: Check self-hosted runner availability
+      id: check
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "Configuration: USE_SELF_HOSTED=${{ env.USE_SELF_HOSTED }}, ENABLE_FALLBACK=${{ env.ENABLE_FALLBACK }}"
+
+        # If self-hosted is disabled, use GitHub-hosted
+        if [ "${{ env.USE_SELF_HOSTED }}" != "true" ]; then
+          echo "Self-hosted disabled by configuration"
+          echo "runner=macos-15" >> $GITHUB_OUTPUT
+          echo "runner-label=github-hosted" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        # Check for available self-hosted macOS runners
+        echo "Checking for self-hosted runners..."
+        RUNNERS=$(gh api repos/${{ github.repository }}/actions/runners --jq '.runners[] | select(.status=="online") | select(.labels[].name=="macOS" or .labels[].name=="self-hosted") | .name' 2>/dev/null || echo "")
+
+        if [ -n "$RUNNERS" ]; then
+          echo "✅ Found online self-hosted runner(s): $RUNNERS"
+          echo "runner=self-hosted" >> $GITHUB_OUTPUT
+          echo "runner-label=self-hosted" >> $GITHUB_OUTPUT
+        else
+          echo "⚠️ No self-hosted runners available"
+          if [ "${{ env.ENABLE_FALLBACK }}" == "true" ]; then
+            echo "Falling back to GitHub-hosted runner"
+            echo "runner=macos-15" >> $GITHUB_OUTPUT
+            echo "runner-label=github-hosted-fallback" >> $GITHUB_OUTPUT
+          else
+            echo "Fallback disabled - will attempt self-hosted anyway"
+            echo "runner=self-hosted" >> $GITHUB_OUTPUT
+            echo "runner-label=self-hosted-required" >> $GITHUB_OUTPUT
+          fi
+        fi
+
   # Detect which files changed to conditionally run jobs
   changes:
     name: Detect Changes
@@ -113,53 +165,102 @@ jobs:
         uv run python -m py_compile __main__.py deploy_lambda.py
 
   ios-test:
-    name: iOS Tests
-    runs-on: [self-hosted, macOS, ARM64]
-    needs: changes
+    name: iOS Tests (${{ needs.runner-strategy.outputs.runner-label }})
+    needs: [changes, runner-strategy]
     if: ${{ needs.changes.outputs.ios == 'true' }}
+    runs-on: ${{ needs.runner-strategy.outputs.runner == 'self-hosted' && fromJSON('["self-hosted", "macOS", "ARM64"]') || 'macos-15' }}
+    timeout-minutes: 30
 
     steps:
+    - name: Runner Info
+      run: |
+        echo "🖥️ Runner: ${{ needs.runner-strategy.outputs.runner-label }}"
+        echo "OS: $(uname -s) $(uname -r)"
+        echo "Arch: $(uname -m)"
+        echo "Host: $(hostname)"
+
     - name: Checkout code
       uses: actions/checkout@v4
 
     - name: Select Xcode
       run: |
-        # Find and select Xcode (prefer Xcode 26.x, fall back to Xcode.app)
+        # Find and select Xcode (prefer Xcode 26.x, fall back to latest)
         XCODE_PATH=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+        if [ -z "$XCODE_PATH" ]; then
+          XCODE_PATH=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+        fi
         if [ -z "$XCODE_PATH" ]; then
           XCODE_PATH="/Applications/Xcode.app"
         fi
 
         if [ -d "$XCODE_PATH" ]; then
           echo "Using Xcode: $XCODE_PATH"
-          sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+          sudo xcode-select -s "$XCODE_PATH/Contents/Developer" || true
+          export DEVELOPER_DIR="$XCODE_PATH/Contents/Developer"
         else
-          echo "ERROR: No Xcode found in /Applications"
-          ls -la /Applications/ | grep -i xcode
-          exit 1
+          echo "WARNING: No Xcode found, using default"
         fi
 
-        # Verify
         xcodebuild -version
-        xcrun --show-sdk-version --sdk iphoneos
+        xcrun --show-sdk-version --sdk iphoneos || true
+
+    - name: Install XcodeGen (if needed)
+      run: |
+        if ! command -v xcodegen &> /dev/null; then
+          echo "Installing XcodeGen..."
+          brew install xcodegen
+        else
+          echo "XcodeGen already installed: $(xcodegen --version)"
+        fi
+
+    - name: Generate Xcode Project
+      run: |
+        cd ios
+        if [ -f "project.yml" ]; then
+          xcodegen generate
+        fi
+
+    - name: Find Available Simulator
+      id: simulator
+      run: |
+        # Try iPhone 17, then iPhone 16, then any available iPhone
+        for SIM in "iPhone 17" "iPhone 17 Pro" "iPhone 16" "iPhone 16 Pro" "iPhone 15" "iPhone 15 Pro"; do
+          if xcrun simctl list devices available | grep -q "$SIM"; then
+            echo "simulator=$SIM" >> $GITHUB_OUTPUT
+            echo "Found simulator: $SIM"
+            exit 0
+          fi
+        done
+        # Fallback to first available iPhone
+        SIM=$(xcrun simctl list devices available | grep "iPhone" | head -1 | sed 's/^[[:space:]]*//' | cut -d'(' -f1 | xargs)
+        echo "simulator=$SIM" >> $GITHUB_OUTPUT
+        echo "Using fallback simulator: $SIM"
 
     - name: Build and Test
       run: |
         cd ios
+        set -o pipefail
         xcodebuild test \
           -project Footprint.xcodeproj \
           -scheme Footprint \
-          -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+          -destination "platform=iOS Simulator,name=${{ steps.simulator.outputs.simulator }}" \
           -only-testing:FootprintTests \
           -resultBundlePath TestResults.xcresult \
-          | xcpretty
+          2>&1 | tee build.log | head -500
+
+        # Show summary
+        echo ""
+        echo "=== Test Summary ==="
+        grep -E "(Test Suite|tests.*failures|TEST.*PASSED|TEST.*FAILED)" build.log | tail -20 || true
 
     - name: Upload Test Results
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: test-results
-        path: ios/TestResults.xcresult
+        name: test-results-${{ needs.runner-strategy.outputs.runner-label }}
+        path: |
+          ios/TestResults.xcresult
+          ios/build.log
 
   website-build:
     name: Website Build
