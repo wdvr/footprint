@@ -54,6 +54,7 @@
 		DAC886209B93ABDE1995D546 /* AnalyticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96AC324FA8562CEBEF2517D9 /* AnalyticsService.swift */; };
 		E14D1665D514EB59C701E6E4 /* world_landmarks.json in Resources */ = {isa = PBXBuildFile; fileRef = 8B9A63BC1F1445E87FA6C9E9 /* world_landmarks.json */; };
 		E186CD7B7C8ADBA2D7B79364 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7BB04D74CC90EA416220D702 /* Assets.xcassets */; };
+		GOOGLESERVICE0PLIST0BUILD2 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = GOOGLESERVICE0PLIST0FILE2 /* GoogleService-Info.plist */; };
 		ED9EF5A0D3DFBE00A6810992 /* SnapshotHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CC85F56B4C464D8ABFAA34A /* SnapshotHelper.swift */; };
 		EEF1C332331CD745C2E29CA5 /* GeoJSONParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A9464E97E44DCD324EB7F8 /* GeoJSONParser.swift */; };
 		F4019DC5F70C971A1E9F5E49 /* ImportSourcesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40FED221E52639823F78834E /* ImportSourcesView.swift */; };
@@ -121,6 +122,7 @@
 		74B388C29EC8E33A7CFE6587 /* GeographicDataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeographicDataTests.swift; sourceTree = "<group>"; };
 		7B685393AE7645314C34CBC0 /* Footprint.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Footprint.entitlements; sourceTree = "<group>"; };
 		7BB04D74CC90EA416220D702 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		GOOGLESERVICE0PLIST0FILE2 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		7CC85F56B4C464D8ABFAA34A /* SnapshotHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotHelper.swift; sourceTree = "<group>"; };
 		7D047C8302CC055C227ABAB2 /* Footprint.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Footprint.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		895B45EDCA612AF247606558 /* ImportState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportState.swift; sourceTree = "<group>"; };
@@ -352,6 +354,7 @@
 			isa = PBXGroup;
 			children = (
 				7BB04D74CC90EA416220D702 /* Assets.xcassets */,
+				GOOGLESERVICE0PLIST0FILE2 /* GoogleService-Info.plist */,
 				72F43929B46C3947CB730CCC /* ContentView.swift */,
 				7B685393AE7645314C34CBC0 /* Footprint.entitlements */,
 				2F0B1E5C5C1E54BF0960A8A6 /* FootprintApp.swift */,
@@ -406,6 +409,8 @@
 			);
 			name = Footprint;
 			packageProductDependencies = (
+				FIREBASE0ANALYTICS0000002 /* FirebaseAnalytics */,
+				FIREBASE0CRASHLYTICS00002 /* FirebaseCrashlytics */,
 			);
 			productName = Footprint;
 			productReference = 7D047C8302CC055C227ABAB2 /* Footprint.app */;
@@ -485,6 +490,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E186CD7B7C8ADBA2D7B79364 /* Assets.xcassets in Resources */,
+				GOOGLESERVICE0PLIST0BUILD2 /* GoogleService-Info.plist in Resources */,
 				A9F9AD22979EA9BAFD047418 /* INTERNATIONALIZATION_GUIDE.md in Resources */,
 				CB8EA3875361055C55630ADE /* Localizable.strings in Resources */,
 				473B2873036A2DFFA76C637A /* canadian_provinces.geojson in Resources */,
