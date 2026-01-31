@@ -1,0 +1,33 @@
+name: iOS Build
+
+# Uses shared workflow from ios-infra for building the iOS app
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios-build.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'ios/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: wdvr/ios-infra/.github/workflows/ios-build.yml@main
+    with:
+      bundle_id: com.wouterdevriendt.footprint
+      scheme: Footprint
+      project_path: ios/Footprint.xcodeproj
+      use_xcodegen: true
+      xcodegen_path: ios
+      info_plist_path: ios/Footprint/Info.plist
+    secrets: inherit
