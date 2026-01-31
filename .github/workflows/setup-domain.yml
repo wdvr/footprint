@@ -154,31 +154,31 @@ jobs:
       - name: Select/create stack
         run: |
           cd infrastructure
-          pulumi stack select ${{ inputs.environment }} || pulumi stack init ${{ inputs.environment }}
+          uv run pulumi stack select ${{ inputs.environment }} || uv run pulumi stack init ${{ inputs.environment }}
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
       - name: Configure stack with custom domain
         run: |
           cd infrastructure
-          pulumi config set aws:region ${{ secrets.AWS_REGION }}
-          pulumi config set environment ${{ inputs.environment }}
-          pulumi config set domain_name ${{ inputs.domain_name }}
-          pulumi config set enable_custom_domain true
+          uv run pulumi config set aws:region ${{ secrets.AWS_REGION }}
+          uv run pulumi config set environment ${{ inputs.environment }}
+          uv run pulumi config set domain_name ${{ inputs.domain_name }}
+          uv run pulumi config set enable_custom_domain true
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
       - name: Pulumi preview
         run: |
           cd infrastructure
-          pulumi preview
+          uv run pulumi preview
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
       - name: Pulumi deploy
         run: |
           cd infrastructure
-          pulumi up --yes
+          uv run pulumi up --yes
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
@@ -188,14 +188,14 @@ jobs:
           cd infrastructure
           echo "## Deployment Outputs" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          pulumi stack output --json | jq -r 'to_entries[] | "- **\(.key)**: \(.value)"' >> $GITHUB_STEP_SUMMARY
+          uv run pulumi stack output --json | jq -r 'to_entries[] | "- **\(.key)**: \(.value)"' >> $GITHUB_STEP_SUMMARY
 
           # Check for nameservers to update domain
-          if pulumi stack output nameservers 2>/dev/null; then
+          if uv run pulumi stack output nameservers 2>/dev/null; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
             echo "Update your domain's nameservers to:" >> $GITHUB_STEP_SUMMARY
-            pulumi stack output nameservers --json | jq -r '.[]' | while read ns; do echo "- $ns"; done >> $GITHUB_STEP_SUMMARY
+            uv run pulumi stack output nameservers --json | jq -r '.[]' | while read ns; do echo "- $ns"; done >> $GITHUB_STEP_SUMMARY
           fi
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
