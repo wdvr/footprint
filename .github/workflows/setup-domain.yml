@@ -1,0 +1,201 @@
+name: Setup Custom Domain
+
+on:
+  workflow_dispatch:
+    inputs:
+      register_domain:
+        description: 'Register domain (requires AWS payment method)'
+        type: boolean
+        default: false
+      domain_name:
+        description: 'Domain name to register/configure'
+        type: string
+        default: 'footprintmaps.com'
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+          - staging
+          - prod
+
+env:
+  PULUMI_BACKEND_URL: s3://footprint-pulumi-state-954800154782?region=us-east-1
+
+jobs:
+  setup-domain:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1  # Route53 domains requires us-east-1
+
+      - name: Check domain availability
+        if: ${{ inputs.register_domain }}
+        run: |
+          echo "Checking availability of ${{ inputs.domain_name }}..."
+          aws route53domains check-domain-availability --domain-name ${{ inputs.domain_name }}
+
+      - name: Register domain
+        if: ${{ inputs.register_domain }}
+        run: |
+          echo "Registering domain ${{ inputs.domain_name }}..."
+          # Domain registration requires contact details
+          # This creates a registration request - you'll need to confirm via email
+          aws route53domains register-domain \
+            --domain-name ${{ inputs.domain_name }} \
+            --duration-in-years 1 \
+            --auto-renew \
+            --admin-contact '{
+              "FirstName": "Wouter",
+              "LastName": "De Vriendt",
+              "ContactType": "PERSON",
+              "AddressLine1": "123 Main St",
+              "City": "San Francisco",
+              "State": "CA",
+              "CountryCode": "US",
+              "ZipCode": "94102",
+              "PhoneNumber": "+1.5551234567",
+              "Email": "admin@footprintmaps.com"
+            }' \
+            --registrant-contact '{
+              "FirstName": "Wouter",
+              "LastName": "De Vriendt",
+              "ContactType": "PERSON",
+              "AddressLine1": "123 Main St",
+              "City": "San Francisco",
+              "State": "CA",
+              "CountryCode": "US",
+              "ZipCode": "94102",
+              "PhoneNumber": "+1.5551234567",
+              "Email": "registrant@footprintmaps.com"
+            }' \
+            --tech-contact '{
+              "FirstName": "Wouter",
+              "LastName": "De Vriendt",
+              "ContactType": "PERSON",
+              "AddressLine1": "123 Main St",
+              "City": "San Francisco",
+              "State": "CA",
+              "CountryCode": "US",
+              "ZipCode": "94102",
+              "PhoneNumber": "+1.5551234567",
+              "Email": "tech@footprintmaps.com"
+            }' \
+            --privacy-protect-admin-contact \
+            --privacy-protect-registrant-contact \
+            --privacy-protect-tech-contact || echo "Domain registration may have failed or domain already registered"
+
+      - name: Check if domain is registered
+        run: |
+          echo "Checking domain status..."
+          aws route53domains get-domain-detail --domain-name ${{ inputs.domain_name }} 2>/dev/null && echo "Domain is registered" || echo "Domain not found - may need to register first"
+
+      - name: List registered domains
+        run: |
+          echo "Listing all registered domains..."
+          aws route53domains list-domains
+
+  deploy-with-custom-domain:
+    needs: setup-domain
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python 3.11
+        run: uv python install 3.11
+
+      - name: Build Lambda package
+        run: |
+          cd infrastructure
+          uv venv
+          uv pip install -r requirements.txt
+          uv run python deploy_lambda.py
+
+      - name: Install Pulumi CLI
+        uses: pulumi/actions@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Install Python dependencies
+        run: |
+          cd infrastructure
+          uv venv
+          uv pip install -r requirements.txt
+
+      - name: Pulumi login
+        run: |
+          pulumi login ${{ env.PULUMI_BACKEND_URL }}
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+      - name: Select/create stack
+        run: |
+          cd infrastructure
+          pulumi stack select ${{ inputs.environment }} || pulumi stack init ${{ inputs.environment }}
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+      - name: Configure stack with custom domain
+        run: |
+          cd infrastructure
+          pulumi config set aws:region ${{ secrets.AWS_REGION }}
+          pulumi config set environment ${{ inputs.environment }}
+          pulumi config set domain_name ${{ inputs.domain_name }}
+          pulumi config set enable_custom_domain true
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+      - name: Pulumi preview
+        run: |
+          cd infrastructure
+          pulumi preview
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+      - name: Pulumi deploy
+        run: |
+          cd infrastructure
+          pulumi up --yes
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+      - name: Get deployment outputs
+        id: outputs
+        run: |
+          cd infrastructure
+          echo "## Deployment Outputs" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          pulumi stack output --json | jq -r 'to_entries[] | "- **\(.key)**: \(.value)"' >> $GITHUB_STEP_SUMMARY
+
+          # Check for nameservers to update domain
+          if pulumi stack output nameservers 2>/dev/null; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+            echo "Update your domain's nameservers to:" >> $GITHUB_STEP_SUMMARY
+            pulumi stack output nameservers --json | jq -r '.[]' | while read ns; do echo "- $ns"; done >> $GITHUB_STEP_SUMMARY
+          fi
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
