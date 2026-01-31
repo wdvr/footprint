@@ -356,6 +356,7 @@ if enable_custom_domain:
 
     # Create DNS validation records in Route53
     # Using dynamic indexing for domain validation options
+    # allow_overwrite=True handles case where CloudFront cert uses same validation record
     cert_validation_records = []
     for i in range(2):  # Main domain + wildcard
         record = aws.route53.Record(
@@ -365,6 +366,7 @@ if enable_custom_domain:
             type=certificate.domain_validation_options[i].resource_record_type,
             records=[certificate.domain_validation_options[i].resource_record_value],
             ttl=300,
+            allow_overwrite=True,
         )
         cert_validation_records.append(record)
 
@@ -489,6 +491,7 @@ if enable_custom_domain and hosted_zone:
     )
 
     # Create DNS validation records for CloudFront certificate in Route53
+    # allow_overwrite=True handles case where regional cert uses same validation record
     cf_cert_validation_records = []
     for i in range(2):  # Main domain + www subdomain
         record = aws.route53.Record(
@@ -498,6 +501,7 @@ if enable_custom_domain and hosted_zone:
             type=cloudfront_certificate.domain_validation_options[i].resource_record_type,
             records=[cloudfront_certificate.domain_validation_options[i].resource_record_value],
             ttl=300,
+            allow_overwrite=True,
         )
         cf_cert_validation_records.append(record)
 
