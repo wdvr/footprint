@@ -1,0 +1,83 @@
+name: Register Domain
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain_name:
+        description: 'Domain name to register'
+        type: string
+        default: 'footprintmaps.com'
+      duration_years:
+        description: 'Registration duration in years'
+        type: number
+        default: 1
+
+jobs:
+  register-domain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1  # Route53 domains requires us-east-1
+
+      - name: Check domain availability
+        run: |
+          echo "Checking availability of ${{ inputs.domain_name }}..."
+          aws route53domains check-domain-availability --domain-name ${{ inputs.domain_name }}
+
+      - name: Get domain price
+        run: |
+          echo "Getting price for ${{ inputs.domain_name }}..."
+          aws route53domains list-prices --tld com | jq '.Prices[] | select(.Name == "com")'
+
+      - name: Register domain
+        run: |
+          echo "Registering domain ${{ inputs.domain_name }}..."
+          aws route53domains register-domain \
+            --domain-name ${{ inputs.domain_name }} \
+            --duration-in-years ${{ inputs.duration_years }} \
+            --auto-renew \
+            --admin-contact '{
+              "FirstName": "Wouter",
+              "LastName": "De Vriendt",
+              "ContactType": "PERSON",
+              "AddressLine1": "Address Line 1",
+              "City": "City",
+              "CountryCode": "BE",
+              "ZipCode": "1000",
+              "PhoneNumber": "+32.123456789",
+              "Email": "wouter@footprintmaps.com"
+            }' \
+            --registrant-contact '{
+              "FirstName": "Wouter",
+              "LastName": "De Vriendt",
+              "ContactType": "PERSON",
+              "AddressLine1": "Address Line 1",
+              "City": "City",
+              "CountryCode": "BE",
+              "ZipCode": "1000",
+              "PhoneNumber": "+32.123456789",
+              "Email": "wouter@footprintmaps.com"
+            }' \
+            --tech-contact '{
+              "FirstName": "Wouter",
+              "LastName": "De Vriendt",
+              "ContactType": "PERSON",
+              "AddressLine1": "Address Line 1",
+              "City": "City",
+              "CountryCode": "BE",
+              "ZipCode": "1000",
+              "PhoneNumber": "+32.123456789",
+              "Email": "wouter@footprintmaps.com"
+            }' \
+            --privacy-protect-admin-contact \
+            --privacy-protect-registrant-contact \
+            --privacy-protect-tech-contact
+
+      - name: Check registration status
+        run: |
+          echo "Checking domain operations..."
+          aws route53domains list-operations --max-items 5
