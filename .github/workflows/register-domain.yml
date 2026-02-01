@@ -7,13 +7,16 @@ on:
         description: 'Domain name to register'
         type: string
         default: 'footprintmaps.com'
-      duration_years:
-        description: 'Registration duration in years'
-        type: number
-        default: 1
+      action:
+        description: 'Action to perform'
+        type: choice
+        options:
+          - check_only
+          - register
+          - list_owned
 
 jobs:
-  register-domain:
+  domain-action:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
@@ -21,24 +24,49 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  # Route53 domains requires us-east-1
+          aws-region: us-east-1
+
+      - name: List owned domains
+        if: inputs.action == 'list_owned' || inputs.action == 'check_only'
+        run: |
+          echo "## Domains owned in this AWS account:" >> $GITHUB_STEP_SUMMARY
+          aws route53domains list-domains --output json | tee domains.json
+          jq -r '.Domains[] | "- \(.DomainName) (expires: \(.Expiry))"' domains.json >> $GITHUB_STEP_SUMMARY || echo "No domains found" >> $GITHUB_STEP_SUMMARY
 
       - name: Check domain availability
+        if: inputs.action == 'check_only' || inputs.action == 'register'
         run: |
-          echo "Checking availability of ${{ inputs.domain_name }}..."
-          aws route53domains check-domain-availability --domain-name ${{ inputs.domain_name }}
+          echo "## Domain Availability Check" >> $GITHUB_STEP_SUMMARY
+          echo "Checking ${{ inputs.domain_name }}..." >> $GITHUB_STEP_SUMMARY
+          RESULT=$(aws route53domains check-domain-availability --domain-name ${{ inputs.domain_name }} --output json)
+          echo "$RESULT" | tee availability.json
+          AVAIL=$(echo "$RESULT" | jq -r '.Availability')
+          echo "**${{ inputs.domain_name }}**: $AVAIL" >> $GITHUB_STEP_SUMMARY
 
-      - name: Get domain price
-        run: |
-          echo "Getting price for ${{ inputs.domain_name }}..."
-          aws route53domains list-prices --tld com | jq '.Prices[] | select(.Name == "com")'
+          # Also check some alternatives
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Alternative domains:" >> $GITHUB_STEP_SUMMARY
+          for alt in "footprint-maps.com" "footprintmap.com" "myfootprint.app" "footprint.app" "getfootprint.app"; do
+            ALT_RESULT=$(aws route53domains check-domain-availability --domain-name $alt --output json 2>/dev/null || echo '{"Availability":"ERROR"}')
+            ALT_AVAIL=$(echo "$ALT_RESULT" | jq -r '.Availability')
+            echo "- **$alt**: $ALT_AVAIL" >> $GITHUB_STEP_SUMMARY
+          done
 
       - name: Register domain
+        if: inputs.action == 'register'
         run: |
-          echo "Registering domain ${{ inputs.domain_name }}..."
+          echo "Attempting to register ${{ inputs.domain_name }}..."
+
+          # First check if available
+          AVAIL=$(aws route53domains check-domain-availability --domain-name ${{ inputs.domain_name }} --query 'Availability' --output text)
+          if [ "$AVAIL" != "AVAILABLE" ]; then
+            echo "::error::Domain ${{ inputs.domain_name }} is not available (status: $AVAIL)"
+            exit 1
+          fi
+
           aws route53domains register-domain \
             --domain-name ${{ inputs.domain_name }} \
-            --duration-in-years ${{ inputs.duration_years }} \
+            --duration-in-years 1 \
             --auto-renew \
             --admin-contact '{
               "FirstName": "Wouter",
@@ -49,7 +77,7 @@ jobs:
               "CountryCode": "BE",
               "ZipCode": "1000",
               "PhoneNumber": "+32.123456789",
-              "Email": "wouter@footprintmaps.com"
+              "Email": "admin@example.com"
             }' \
             --registrant-contact '{
               "FirstName": "Wouter",
@@ -60,7 +88,7 @@ jobs:
               "CountryCode": "BE",
               "ZipCode": "1000",
               "PhoneNumber": "+32.123456789",
-              "Email": "wouter@footprintmaps.com"
+              "Email": "admin@example.com"
             }' \
             --tech-contact '{
               "FirstName": "Wouter",
@@ -71,13 +99,13 @@ jobs:
               "CountryCode": "BE",
               "ZipCode": "1000",
               "PhoneNumber": "+32.123456789",
-              "Email": "wouter@footprintmaps.com"
+              "Email": "admin@example.com"
             }' \
             --privacy-protect-admin-contact \
             --privacy-protect-registrant-contact \
             --privacy-protect-tech-contact
 
-      - name: Check registration status
-        run: |
-          echo "Checking domain operations..."
-          aws route53domains list-operations --max-items 5
+          echo "## Domain Registration Initiated" >> $GITHUB_STEP_SUMMARY
+          echo "Domain: ${{ inputs.domain_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "Check your email to confirm the registration." >> $GITHUB_STEP_SUMMARY
+
