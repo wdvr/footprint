@@ -366,10 +366,12 @@ jobs:
                 key_filepath: "~/.private_keys/AuthKey.p8"
               )
 
-              # Use cert to ensure certificate is available
+              # Use cert to get/create Distribution certificate
               cert(
                 team_id: "W53LT3VY3U",
-                output_path: "./certs"
+                output_path: "./certs",
+                development: false,
+                force: true
               )
 
               sigh(
