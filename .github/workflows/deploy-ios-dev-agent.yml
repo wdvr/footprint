@@ -135,6 +135,7 @@ jobs:
         run: |
           mkdir -p ios/iOSDevAgent/App
           mkdir -p ios/iOSDevAgent/Views
+          mkdir -p ios/iOSDevAgent/Resources/Assets.xcassets/AppIcon.appiconset
 
           cat > ios/project.yml << 'YAML'
           name: iOSDevAgent
@@ -156,7 +157,17 @@ jobs:
                 properties:
                   CFBundleDisplayName: iOSDevAgent
                   CFBundleShortVersionString: "1.0.0"
+                  CFBundleIconName: AppIcon
                   UILaunchScreen: {}
+                  UISupportedInterfaceOrientations:
+                    - UIInterfaceOrientationPortrait
+                    - UIInterfaceOrientationLandscapeLeft
+                    - UIInterfaceOrientationLandscapeRight
+                  UISupportedInterfaceOrientations~ipad:
+                    - UIInterfaceOrientationPortrait
+                    - UIInterfaceOrientationPortraitUpsideDown
+                    - UIInterfaceOrientationLandscapeLeft
+                    - UIInterfaceOrientationLandscapeRight
                   NSMicrophoneUsageDescription: "iOSDevAgent needs microphone access."
                   NSPhotoLibraryUsageDescription: "iOSDevAgent needs photo library access."
                   NSCameraUsageDescription: "iOSDevAgent needs camera access."
@@ -164,6 +175,7 @@ jobs:
                 base:
                   PRODUCT_BUNDLE_IDENTIFIER: com.wouterdevriendt.iosdevagent
                   MARKETING_VERSION: "1.0.0"
+                  ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
               dependencies:
                 - package: KeychainSwift
           YAML
@@ -179,8 +191,23 @@ jobs:
               <string>1.0.0</string>
               <key>CFBundleVersion</key>
               <string>1</string>
+              <key>CFBundleIconName</key>
+              <string>AppIcon</string>
               <key>UILaunchScreen</key>
               <dict/>
+              <key>UISupportedInterfaceOrientations</key>
+              <array>
+                  <string>UIInterfaceOrientationPortrait</string>
+                  <string>UIInterfaceOrientationLandscapeLeft</string>
+                  <string>UIInterfaceOrientationLandscapeRight</string>
+              </array>
+              <key>UISupportedInterfaceOrientations~ipad</key>
+              <array>
+                  <string>UIInterfaceOrientationPortrait</string>
+                  <string>UIInterfaceOrientationPortraitUpsideDown</string>
+                  <string>UIInterfaceOrientationLandscapeLeft</string>
+                  <string>UIInterfaceOrientationLandscapeRight</string>
+              </array>
               <key>NSMicrophoneUsageDescription</key>
               <string>iOSDevAgent needs microphone access.</string>
               <key>NSPhotoLibraryUsageDescription</key>
@@ -190,6 +217,74 @@ jobs:
           </dict>
           </plist>
           PLIST
+
+          # Create app icon asset catalog with Contents.json
+          cat > ios/iOSDevAgent/Resources/Assets.xcassets/Contents.json << 'JSON'
+          {
+            "info" : {
+              "author" : "xcode",
+              "version" : 1
+            }
+          }
+          JSON
+
+          cat > ios/iOSDevAgent/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json << 'JSON'
+          {
+            "images" : [
+              {
+                "filename" : "icon-1024.png",
+                "idiom" : "universal",
+                "platform" : "ios",
+                "size" : "1024x1024"
+              }
+            ],
+            "info" : {
+              "author" : "xcode",
+              "version" : 1
+            }
+          }
+          JSON
+
+          # Install Pillow for icon generation
+          pip3 install --break-system-packages Pillow
+
+          # Generate a simple app icon using Python (blue gradient with waveform symbol idea)
+          python3 << 'PYTHON'
+          from PIL import Image, ImageDraw
+          import math
+
+          size = 1024
+          img = Image.new('RGB', (size, size), '#007AFF')
+          draw = ImageDraw.Draw(img)
+
+          # Create gradient background
+          for y in range(size):
+              r = int(0 + (50 * y / size))
+              g = int(122 - (30 * y / size))
+              b = int(255 - (50 * y / size))
+              draw.line([(0, y), (size, y)], fill=(r, g, b))
+
+          # Draw waveform lines
+          center_y = size // 2
+          line_width = 40
+          gap = 60
+          num_lines = 7
+          start_x = (size - (num_lines * gap)) // 2
+
+          heights = [200, 350, 280, 400, 280, 350, 200]
+          for i, h in enumerate(heights):
+              x = start_x + i * gap
+              y1 = center_y - h // 2
+              y2 = center_y + h // 2
+              draw.rounded_rectangle(
+                  [(x, y1), (x + line_width, y2)],
+                  radius=line_width // 2,
+                  fill='white'
+              )
+
+          img.save('ios/iOSDevAgent/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png')
+          print("App icon created")
+          PYTHON
 
           cat > ios/iOSDevAgent/App/iOSDevAgentApp.swift << 'SWIFT'
           import SwiftUI
