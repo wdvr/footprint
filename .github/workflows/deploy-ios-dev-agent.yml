@@ -1,0 +1,35 @@
+name: Deploy iOS Dev Agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_infra:
+        description: 'Deploy S3 infrastructure'
+        type: boolean
+        default: true
+      deploy_testflight:
+        description: 'Deploy to TestFlight'
+        type: boolean
+        default: true
+      tester_email:
+        description: 'Tester email'
+        type: string
+        default: 'wouterdevriendt@gmail.com'
+
+jobs:
+  deploy:
+    uses: wdvr/ios-dev-agent/.github/workflows/4-called-deploy.yml@claude/image-upload-s3-XYqW2
+    with:
+      deploy_infra: ${{ inputs.deploy_infra }}
+      deploy_testflight: ${{ inputs.deploy_testflight }}
+      tester_email: ${{ inputs.tester_email }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+      DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.DISTRIBUTION_CERTIFICATE_BASE64 }}
+      DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.DISTRIBUTION_CERTIFICATE_PASSWORD }}
+      KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
