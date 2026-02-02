@@ -366,19 +366,18 @@ jobs:
                 key_filepath: "~/.private_keys/AuthKey.p8"
               )
 
-              # Use cert to get/create Distribution certificate
+              # Get Distribution certificate - download existing, don't create
               cert(
                 team_id: "W53LT3VY3U",
                 output_path: "./certs",
                 development: false,
-                force: true
+                generate_apple_certs: false
               )
 
               sigh(
                 app_identifier: "com.wouterdevriendt.iosdevagent",
                 team_id: "W53LT3VY3U",
-                force: true,
-                skip_certificate_verification: true
+                force: true
               )
 
               gym(
