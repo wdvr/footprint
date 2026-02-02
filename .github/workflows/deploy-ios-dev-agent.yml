@@ -367,25 +367,27 @@ jobs:
               )
 
               # Get development provisioning profile
-              sigh(
+              profile_uuid = sigh(
                 app_identifier: "com.wouterdevriendt.iosdevagent",
                 team_id: "W53LT3VY3U",
                 development: true,
-                force: true,
-                output_path: "./profiles"
+                force: true
+              )
+
+              # Update project with provisioning profile
+              update_code_signing_settings(
+                path: "iOSDevAgent.xcodeproj",
+                use_automatic_signing: false,
+                team_id: "W53LT3VY3U",
+                code_sign_identity: "Apple Development",
+                profile_uuid: profile_uuid
               )
 
               # Build development version first (no Distribution cert available)
               gym(
                 scheme: "iOSDevAgent",
                 export_method: "development",
-                clean: true,
-                export_options: {
-                  signingStyle: "manual",
-                  provisioningProfiles: {
-                    "com.wouterdevriendt.iosdevagent" => ENV["sigh_com.wouterdevriendt.iosdevagent_development"]
-                  }
-                }
+                clean: true
               )
 
               # Note: Cannot upload to TestFlight without Distribution certificate
