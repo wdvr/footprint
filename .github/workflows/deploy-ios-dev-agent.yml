@@ -303,10 +303,11 @@ jobs:
                 key_filepath: "~/.private_keys/AuthKey.p8"
               )
 
-              # Get or create Distribution certificate
+              # Create new Distribution certificate (force since we don't have private keys for existing ones)
               cert(
                 development: false,
-                generate_apple_certs: true
+                generate_apple_certs: true,
+                force: true
               )
 
               # Get or create App Store provisioning profile
