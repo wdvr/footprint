@@ -164,8 +164,7 @@ jobs:
                 base:
                   PRODUCT_BUNDLE_IDENTIFIER: com.wouterdevriendt.iosdevagent
                   DEVELOPMENT_TEAM: W53LT3VY3U
-                  CODE_SIGN_STYLE: Manual
-                  CODE_SIGN_IDENTITY: "Apple Distribution"
+                  CODE_SIGN_STYLE: Automatic
                   MARKETING_VERSION: "1.0.0"
               dependencies:
                 - package: KeychainSwift
@@ -372,17 +371,16 @@ jobs:
                 team_id: "W53LT3VY3U"
               )
 
+              # Build development version first (no Distribution cert available)
               gym(
                 scheme: "iOSDevAgent",
-                export_method: "app-store",
-                clean: true,
-                export_options: {
-                  signingStyle: "automatic",
-                  teamID: "W53LT3VY3U"
-                }
+                export_method: "development",
+                clean: true
               )
 
-              pilot(skip_waiting_for_build_processing: true)
+              # Note: Cannot upload to TestFlight without Distribution certificate
+              # The DISTRIBUTION_CERTIFICATE_BASE64 secret contains only Development certificates
+              UI.important("Build successful. Distribution certificate needed for TestFlight upload.")
             end
           end
           FASTFILE
