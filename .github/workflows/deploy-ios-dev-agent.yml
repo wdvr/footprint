@@ -345,6 +345,11 @@ jobs:
           ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
 
+      - name: Verify certificate
+        run: |
+          echo "Listing available signing identities..."
+          security find-identity -v -p codesigning
+
       - name: Build and Upload
         run: |
           cd ios
@@ -361,10 +366,17 @@ jobs:
                 key_filepath: "~/.private_keys/AuthKey.p8"
               )
 
+              # Use cert to ensure certificate is available
+              cert(
+                team_id: "W53LT3VY3U",
+                output_path: "./certs"
+              )
+
               sigh(
                 app_identifier: "com.wouterdevriendt.iosdevagent",
                 team_id: "W53LT3VY3U",
-                force: true
+                force: true,
+                skip_certificate_verification: true
               )
 
               gym(
