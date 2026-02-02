@@ -288,8 +288,9 @@ jobs:
       - name: Build and Upload
         run: |
           cd ios
+          mkdir -p fastlane
 
-          cat > Fastfile << 'FASTFILE'
+          cat > fastlane/Fastfile << 'FASTFILE'
           default_platform(:ios)
 
           platform :ios do
@@ -351,7 +352,9 @@ jobs:
 
       - name: Add tester
         run: |
-          cat > Fastfile << 'FASTFILE'
+          mkdir -p fastlane
+
+          cat > fastlane/Fastfile << 'FASTFILE'
           default_platform(:ios)
 
           platform :ios do
