@@ -375,7 +375,8 @@ jobs:
               gym(
                 scheme: "iOSDevAgent",
                 export_method: "development",
-                clean: true
+                clean: true,
+                xcargs: "-allowProvisioningUpdates"
               )
 
               # Note: Cannot upload to TestFlight without Distribution certificate
