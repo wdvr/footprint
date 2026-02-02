@@ -384,6 +384,46 @@ jobs:
             -authenticationKeyID ${{ secrets.APP_STORE_CONNECT_KEY_ID }} \
             -authenticationKeyIssuerID ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
 
+      - name: Install Fastlane
+        run: gem install fastlane
+
+      - name: Ensure app exists in App Store Connect
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          RUNNER_TEMP: ${{ runner.temp }}
+        run: |
+          # Setup fastlane with API key
+          mkdir -p fastlane
+          cat > fastlane/Fastfile << 'FASTFILE'
+          default_platform(:ios)
+
+          platform :ios do
+            lane :create_app do
+              api_key = app_store_connect_api_key(
+                key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+                issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+                key_filepath: ENV["KEY_PATH"]
+              )
+
+              produce(
+                app_identifier: "com.wouterdevriendt.iosdevagent",
+                app_name: "iOS Dev Agent",
+                language: "English",
+                app_version: "1.0",
+                sku: "iosdevagent",
+                team_id: ENV["TEAM_ID"],
+                skip_itc: false,
+                skip_devcenter: false
+              )
+            end
+          end
+          FASTFILE
+
+          KEY_PATH=$RUNNER_TEMP/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8 \
+          TEAM_ID=${{ env.TEAM_ID }} \
+          fastlane create_app || echo "App may already exist, continuing..."
+
       - name: Upload to App Store Connect
         env:
           API_PRIVATE_KEYS_DIR: ${{ runner.temp }}/private_keys
