@@ -366,24 +366,20 @@ jobs:
                 key_filepath: "~/.private_keys/AuthKey.p8"
               )
 
-              # Get Distribution certificate - download existing, don't create
-              cert(
-                team_id: "W53LT3VY3U",
-                output_path: "./certs",
-                development: false,
-                generate_apple_certs: false
-              )
-
-              sigh(
-                app_identifier: "com.wouterdevriendt.iosdevagent",
-                team_id: "W53LT3VY3U",
-                force: true
+              # Build with automatic code signing
+              enable_automatic_code_signing(
+                path: "iOSDevAgent.xcodeproj",
+                team_id: "W53LT3VY3U"
               )
 
               gym(
                 scheme: "iOSDevAgent",
                 export_method: "app-store",
-                clean: true
+                clean: true,
+                export_options: {
+                  signingStyle: "automatic",
+                  teamID: "W53LT3VY3U"
+                }
               )
 
               pilot(skip_waiting_for_build_processing: true)
