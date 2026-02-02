@@ -440,8 +440,18 @@ jobs:
                   print(f"HTTP {e.code}: {error_body}")
                   return None
 
+          # List all apps to debug
+          print("Listing all apps in account...")
+          all_apps = api_request('GET', 'https://api.appstoreconnect.apple.com/v1/apps?limit=50')
+          if all_apps and all_apps.get('data'):
+              for app in all_apps['data']:
+                  attrs = app.get('attributes', {})
+                  print(f"  - {attrs.get('bundleId')}: {attrs.get('name')}")
+          else:
+              print("  No apps found or unable to list apps")
+
           # Check if app exists
-          print(f"Checking if app {bundle_id} exists...")
+          print(f"\nChecking if app {bundle_id} exists...")
           apps = api_request('GET', f'https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]={bundle_id}')
           if apps and apps.get('data'):
               print(f"App already exists: {apps['data'][0]['id']}")
@@ -499,7 +509,18 @@ jobs:
               if app_result:
                   print(f"App created: {app_result['data']['id']}")
               else:
-                  print("Failed to create app - it may require manual creation in App Store Connect")
+                  print("ERROR: Failed to create app via API.")
+              print("")
+              print("Please create the app manually in App Store Connect:")
+              print("1. Go to https://appstoreconnect.apple.com")
+              print("2. Click 'My Apps' > '+' > 'New App'")
+              print(f"3. Select bundle ID: {bundle_id}")
+              print(f"4. Name: {app_name}")
+              print("5. SKU: iosdevagent")
+              print("6. Primary Language: English")
+              print("")
+              print("After creating the app, re-run this workflow.")
+              exit(1)
 
           PYTHON
 
