@@ -164,7 +164,8 @@ jobs:
                 base:
                   PRODUCT_BUNDLE_IDENTIFIER: com.wouterdevriendt.iosdevagent
                   DEVELOPMENT_TEAM: W53LT3VY3U
-                  CODE_SIGN_STYLE: Automatic
+                  CODE_SIGN_STYLE: Manual
+                  CODE_SIGN_IDENTITY: "Apple Development"
                   MARKETING_VERSION: "1.0.0"
               dependencies:
                 - package: KeychainSwift
@@ -365,10 +366,13 @@ jobs:
                 key_filepath: "~/.private_keys/AuthKey.p8"
               )
 
-              # Build with automatic code signing
-              enable_automatic_code_signing(
-                path: "iOSDevAgent.xcodeproj",
-                team_id: "W53LT3VY3U"
+              # Get development provisioning profile
+              sigh(
+                app_identifier: "com.wouterdevriendt.iosdevagent",
+                team_id: "W53LT3VY3U",
+                development: true,
+                force: true,
+                output_path: "./profiles"
               )
 
               # Build development version first (no Distribution cert available)
@@ -376,7 +380,12 @@ jobs:
                 scheme: "iOSDevAgent",
                 export_method: "development",
                 clean: true,
-                xcargs: "-allowProvisioningUpdates"
+                export_options: {
+                  signingStyle: "manual",
+                  provisioningProfiles: {
+                    "com.wouterdevriendt.iosdevagent" => ENV["sigh_com.wouterdevriendt.iosdevagent_development"]
+                  }
+                }
               )
 
               # Note: Cannot upload to TestFlight without Distribution certificate
