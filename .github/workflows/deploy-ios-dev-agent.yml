@@ -384,45 +384,124 @@ jobs:
             -authenticationKeyID ${{ secrets.APP_STORE_CONNECT_KEY_ID }} \
             -authenticationKeyIssuerID ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
 
-      - name: Install Fastlane
-        run: gem install fastlane
-
       - name: Ensure app exists in App Store Connect
         env:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           RUNNER_TEMP: ${{ runner.temp }}
         run: |
-          # Setup fastlane with API key
-          mkdir -p fastlane
-          cat > fastlane/Fastfile << 'FASTFILE'
-          default_platform(:ios)
+          pip3 install --break-system-packages PyJWT cryptography
 
-          platform :ios do
-            lane :create_app do
-              api_key = app_store_connect_api_key(
-                key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
-                issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
-                key_filepath: ENV["KEY_PATH"]
-              )
+          python3 << 'PYTHON'
+          import jwt
+          import time
+          import os
+          import json
+          import urllib.request
+          import urllib.error
 
-              produce(
-                app_identifier: "com.wouterdevriendt.iosdevagent",
-                app_name: "iOS Dev Agent",
-                language: "English",
-                app_version: "1.0",
-                sku: "iosdevagent",
-                team_id: ENV["TEAM_ID"],
-                skip_itc: false,
-                skip_devcenter: false
-              )
-            end
-          end
-          FASTFILE
+          key_id = os.environ['APP_STORE_CONNECT_KEY_ID']
+          issuer_id = os.environ['APP_STORE_CONNECT_ISSUER_ID']
+          key_path = f"{os.environ['RUNNER_TEMP']}/private_keys/AuthKey_{key_id}.p8"
+          team_id = "N324UX8D9M"
+          bundle_id = "com.wouterdevriendt.iosdevagent"
+          app_name = "iOS Dev Agent"
 
-          KEY_PATH=$RUNNER_TEMP/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8 \
-          TEAM_ID=${{ env.TEAM_ID }} \
-          fastlane create_app || echo "App may already exist, continuing..."
+          # Generate JWT
+          with open(key_path, 'r') as f:
+              private_key = f.read()
+
+          token = jwt.encode(
+              {
+                  'iss': issuer_id,
+                  'iat': int(time.time()),
+                  'exp': int(time.time()) + 1200,
+                  'aud': 'appstoreconnect-v1'
+              },
+              private_key,
+              algorithm='ES256',
+              headers={'kid': key_id}
+          )
+
+          headers = {
+              'Authorization': f'Bearer {token}',
+              'Content-Type': 'application/json'
+          }
+
+          def api_request(method, url, data=None):
+              req = urllib.request.Request(url, method=method, headers=headers)
+              if data:
+                  req.data = json.dumps(data).encode()
+              try:
+                  with urllib.request.urlopen(req) as resp:
+                      return json.loads(resp.read().decode())
+              except urllib.error.HTTPError as e:
+                  error_body = e.read().decode() if e.fp else ''
+                  print(f"HTTP {e.code}: {error_body}")
+                  return None
+
+          # Check if app exists
+          print(f"Checking if app {bundle_id} exists...")
+          apps = api_request('GET', f'https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]={bundle_id}')
+          if apps and apps.get('data'):
+              print(f"App already exists: {apps['data'][0]['id']}")
+          else:
+              print("App not found, creating...")
+
+              # First create the bundle ID in the developer portal
+              print("Step 1: Creating bundle ID...")
+              bundle_data = {
+                  'data': {
+                      'type': 'bundleIds',
+                      'attributes': {
+                          'identifier': bundle_id,
+                          'name': app_name.replace(' ', ''),
+                          'platform': 'IOS'
+                      }
+                  }
+              }
+              bundle_result = api_request('POST', 'https://api.appstoreconnect.apple.com/v1/bundleIds', bundle_data)
+              if bundle_result:
+                  bundle_id_resource = bundle_result['data']['id']
+                  print(f"Bundle ID created: {bundle_id_resource}")
+              else:
+                  # Try to find existing bundle ID
+                  existing = api_request('GET', f'https://api.appstoreconnect.apple.com/v1/bundleIds?filter[identifier]={bundle_id}')
+                  if existing and existing.get('data'):
+                      bundle_id_resource = existing['data'][0]['id']
+                      print(f"Using existing bundle ID: {bundle_id_resource}")
+                  else:
+                      print("Failed to create or find bundle ID")
+                      exit(1)
+
+              # Create the app in App Store Connect
+              print("Step 2: Creating app in App Store Connect...")
+              app_data = {
+                  'data': {
+                      'type': 'apps',
+                      'attributes': {
+                          'name': app_name,
+                          'primaryLocale': 'en-US',
+                          'sku': 'iosdevagent-2026',
+                          'bundleId': bundle_id
+                      },
+                      'relationships': {
+                          'bundleId': {
+                              'data': {
+                                  'type': 'bundleIds',
+                                  'id': bundle_id_resource
+                              }
+                          }
+                      }
+                  }
+              }
+              app_result = api_request('POST', 'https://api.appstoreconnect.apple.com/v1/apps', app_data)
+              if app_result:
+                  print(f"App created: {app_result['data']['id']}")
+              else:
+                  print("Failed to create app - it may require manual creation in App Store Connect")
+
+          PYTHON
 
       - name: Upload to App Store Connect
         env:
