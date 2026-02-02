@@ -19,6 +19,7 @@ on:
 env:
   BUNDLE_ID: com.wouterdevriendt.iosdevagent
   AWS_REGION: eu-west-1
+  TEAM_ID: 'N324UX8D9M'
 
 jobs:
   deploy-infra:
@@ -128,7 +129,7 @@ jobs:
 
   build-deploy:
     if: inputs.deploy_testflight
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Create iOS project
         run: |
@@ -162,7 +163,6 @@ jobs:
               settings:
                 base:
                   PRODUCT_BUNDLE_IDENTIFIER: com.wouterdevriendt.iosdevagent
-                  CODE_SIGN_STYLE: Manual
                   MARKETING_VERSION: "1.0.0"
               dependencies:
                 - package: KeychainSwift
@@ -253,9 +253,15 @@ jobs:
           }
           SWIFT
 
-      - uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '16.2'
+      - name: Select Xcode
+        run: |
+          XCODE_PATH=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XCODE_PATH" ]; then
+            XCODE_PATH="/Applications/Xcode.app"
+          fi
+          echo "Using Xcode: $XCODE_PATH"
+          sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+          xcodebuild -version
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -263,128 +269,225 @@ jobs:
       - name: Generate project
         run: cd ios && xcodegen generate
 
-      - name: Setup signing
+      - name: Setup App Store Connect API Key
         run: |
-          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
-          security create-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" $KEYCHAIN_PATH
-          echo "${{ secrets.DISTRIBUTION_CERTIFICATE_BASE64 }}" | base64 --decode > $RUNNER_TEMP/cert.p12
-          security import $RUNNER_TEMP/cert.p12 -P "${{ secrets.DISTRIBUTION_CERTIFICATE_PASSWORD }}" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-          security list-keychain -d user -s $KEYCHAIN_PATH
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" $KEYCHAIN_PATH
+          mkdir -p $RUNNER_TEMP/private_keys
+          echo "${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}" | tr -d '\r' > $RUNNER_TEMP/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8
+          chmod 600 $RUNNER_TEMP/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8
 
-      - name: Setup API Key
+      - name: Install certificates
+        env:
+          DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.DISTRIBUTION_CERTIFICATE_BASE64 }}
+          DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
-          mkdir -p ~/.private_keys
-          echo "${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}" > ~/.private_keys/AuthKey.p8
+          set -euo pipefail
 
-      - name: Install Fastlane
-        run: gem install fastlane
+          if [ -z "${DISTRIBUTION_CERTIFICATE_BASE64:-}" ]; then
+            echo "::warning::DISTRIBUTION_CERTIFICATE_BASE64 not provided - will rely on automatic signing"
+            exit 0
+          fi
+          if [ -z "${DISTRIBUTION_CERTIFICATE_PASSWORD:-}" ]; then
+            echo "::warning::DISTRIBUTION_CERTIFICATE_PASSWORD not provided - skipping certificate installation"
+            exit 0
+          fi
+          if [ -z "${KEYCHAIN_PASSWORD:-}" ]; then
+            KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+          fi
 
-      - name: Verify certificate
-        run: |
-          echo "Listing available signing identities..."
-          security find-identity -v -p codesigning
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
 
-      - name: Build and Upload to TestFlight
+          echo "Creating keychain..."
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          echo "Decoding certificate..."
+          echo -n "$DISTRIBUTION_CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          echo "Certificate decoded: $(wc -c < "$CERTIFICATE_PATH") bytes"
+
+          echo "Importing certificate..."
+          security import "$CERTIFICATE_PATH" -P "$DISTRIBUTION_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+
+          echo "Setting key partition list..."
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          echo "Configuring keychain search list..."
+          security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain-db
+
+          echo "Certificate installation complete"
+
+      - name: Resolve Swift Package Dependencies
         run: |
           cd ios
-          mkdir -p fastlane
+          xcodebuild -resolvePackageDependencies \
+            -project iOSDevAgent.xcodeproj \
+            -scheme iOSDevAgent
 
-          cat > fastlane/Fastfile << 'FASTFILE'
-          default_platform(:ios)
-
-          platform :ios do
-            lane :release do
-              api_key = app_store_connect_api_key(
-                key_id: ENV["ASC_KEY_ID"],
-                issuer_id: ENV["ASC_ISSUER_ID"],
-                key_filepath: "~/.private_keys/AuthKey.p8"
-              )
-
-              # Create new Distribution certificate (force since we don't have private keys for existing ones)
-              cert(
-                development: false,
-                generate_apple_certs: true,
-                force: true
-              )
-
-              # Get or create App Store provisioning profile
-              sigh(
-                app_identifier: "com.wouterdevriendt.iosdevagent",
-                adhoc: false,
-                development: false,
-                force: true
-              )
-
-              # Update project signing settings
-              update_code_signing_settings(
-                path: "iOSDevAgent.xcodeproj",
-                use_automatic_signing: false,
-                code_sign_identity: "Apple Distribution",
-                profile_name: lane_context[SharedValues::SIGH_NAME]
-              )
-
-              # Build for App Store
-              gym(
-                scheme: "iOSDevAgent",
-                export_method: "app-store",
-                clean: true
-              )
-
-              # Upload to TestFlight
-              pilot(
-                skip_waiting_for_build_processing: true,
-                skip_submission: true
-              )
-            end
-          end
-          FASTFILE
-
-          fastlane release
-        env:
-          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-
-  add-tester:
-    needs: build-deploy
-    if: inputs.deploy_testflight && inputs.tester_email != ''
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup API Key
+      - name: Calculate build number
+        id: version
         run: |
-          mkdir -p ~/.private_keys
-          echo "${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}" > ~/.private_keys/AuthKey.p8
+          BUILD=$(date +%Y%m%d%H%M)
+          VERSION="1.0.0"
+          cd ios
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" iOSDevAgent/App/Info.plist
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build=$BUILD" >> $GITHUB_OUTPUT
+          echo "Building version $VERSION ($BUILD)"
 
-      - name: Install Fastlane
-        run: sudo gem install fastlane
-
-      - name: Add tester
+      - name: Archive app
         run: |
-          mkdir -p fastlane
+          cd ios
+          xcodebuild archive \
+            -project iOSDevAgent.xcodeproj \
+            -scheme iOSDevAgent \
+            -configuration Release \
+            -archivePath $RUNNER_TEMP/Export/App.xcarchive \
+            -destination 'generic/platform=iOS' \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath $RUNNER_TEMP/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.APP_STORE_CONNECT_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
+            CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM=${{ env.TEAM_ID }}
 
-          cat > fastlane/Fastfile << 'FASTFILE'
-          default_platform(:ios)
+      - name: Create ExportOptions.plist
+        run: |
+          cat > /tmp/ExportOptions.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store-connect</string>
+              <key>teamID</key>
+              <string>${{ env.TEAM_ID }}</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+              <key>uploadSymbols</key>
+              <true/>
+              <key>destination</key>
+              <string>export</string>
+          </dict>
+          </plist>
+          EOF
 
-          platform :ios do
-            lane :add_tester do
-              app_store_connect_api_key(
-                key_id: ENV["ASC_KEY_ID"],
-                issuer_id: ENV["ASC_ISSUER_ID"],
-                key_filepath: "~/.private_keys/AuthKey.p8"
-              )
+      - name: Export IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/Export/App.xcarchive \
+            -exportPath $RUNNER_TEMP/Export \
+            -exportOptionsPlist /tmp/ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath $RUNNER_TEMP/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.APP_STORE_CONNECT_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
 
-              pilot(
-                app_identifier: "com.wouterdevriendt.iosdevagent",
-                skip_waiting_for_build_processing: false,
-                distribute_external: false
-              )
-            end
-          end
-          FASTFILE
-
-          fastlane add_tester || echo "Tester management complete"
+      - name: Upload to App Store Connect
         env:
-          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          API_PRIVATE_KEYS_DIR: ${{ runner.temp }}/private_keys
+        run: |
+          IPA_PATH=$(find $RUNNER_TEMP/Export -name "*.ipa" | head -1)
+          echo "Uploading $IPA_PATH to App Store Connect..."
+          xcrun altool --upload-app \
+            --type ios \
+            --file "$IPA_PATH" \
+            --apiKey "${{ secrets.APP_STORE_CONNECT_KEY_ID }}" \
+            --apiIssuer "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}"
+
+      - name: Install PyJWT
+        run: pip3 install --break-system-packages PyJWT cryptography
+
+      - name: Wait for processing & distribute
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          RUNNER_TEMP: ${{ runner.temp }}
+        run: |
+          JWT=$(python3 -c "import jwt,time,os;k=os.environ['APP_STORE_CONNECT_KEY_ID'];i=os.environ['APP_STORE_CONNECT_ISSUER_ID'];t=os.environ['RUNNER_TEMP'];print(jwt.encode({'iss':i,'iat':int(time.time()),'exp':int(time.time())+1200,'aud':'appstoreconnect-v1'},open(f'{t}/private_keys/AuthKey_{k}.p8').read(),algorithm='ES256',headers={'kid':k}))")
+
+          BUILD="${{ steps.version.outputs.build }}"
+
+          # Get app ID
+          APP_RESPONSE=$(curl -g -s -H "Authorization: Bearer $JWT" \
+            "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=${{ env.BUNDLE_ID }}")
+          APP_ID=$(echo "$APP_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data'][0]['id'])" 2>/dev/null)
+          echo "App ID: $APP_ID"
+
+          # Wait for build to be processed
+          echo "Waiting for build $BUILD to be processed..."
+          for i in {1..40}; do
+            BUILDS_RESPONSE=$(curl -g -s -H "Authorization: Bearer $JWT" \
+              "https://api.appstoreconnect.apple.com/v1/builds?filter[app]=$APP_ID&filter[version]=$BUILD")
+
+            BUILD_ID=$(echo "$BUILDS_RESPONSE" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          for build in data.get('data', []):
+            if build.get('attributes', {}).get('version') == '$BUILD':
+              print(build['id'])
+              break
+          " 2>/dev/null)
+
+            if [ -n "$BUILD_ID" ]; then
+              STATE=$(echo "$BUILDS_RESPONSE" | python3 -c "
+          import sys, json
+          for build in json.load(sys.stdin).get('data', []):
+            if build['id'] == '$BUILD_ID':
+              print(build.get('attributes', {}).get('processingState', 'UNKNOWN'))
+          " 2>/dev/null)
+
+              echo "Build $BUILD_ID state: $STATE"
+              if [ "$STATE" = "VALID" ]; then
+                break
+              fi
+            fi
+            echo "Waiting... (attempt $i/40)"
+            sleep 30
+          done
+
+          if [ -z "$BUILD_ID" ]; then
+            echo "Build not found after waiting"
+            exit 1
+          fi
+
+          # Set export compliance
+          curl -g -s -X PATCH \
+            -H "Authorization: Bearer $JWT" \
+            -H "Content-Type: application/json" \
+            -d "{\"data\":{\"type\":\"builds\",\"id\":\"$BUILD_ID\",\"attributes\":{\"usesNonExemptEncryption\":false}}}" \
+            "https://api.appstoreconnect.apple.com/v1/builds/$BUILD_ID"
+
+          # Add to internal beta groups
+          GROUPS_RESPONSE=$(curl -g -s -H "Authorization: Bearer $JWT" \
+            "https://api.appstoreconnect.apple.com/v1/apps/$APP_ID/betaGroups")
+
+          echo "$GROUPS_RESPONSE" | python3 -c "
+          import sys, json
+          for group in json.load(sys.stdin).get('data', []):
+            if group.get('attributes', {}).get('isInternalGroup', False):
+              print(group['id'])
+          " 2>/dev/null | while read -r GROUP_ID; do
+            echo "Adding build to internal group: $GROUP_ID"
+            curl -g -s -X POST \
+              -H "Authorization: Bearer $JWT" \
+              -H "Content-Type: application/json" \
+              -d "{\"data\":[{\"type\":\"builds\",\"id\":\"$BUILD_ID\"}]}" \
+              "https://api.appstoreconnect.apple.com/v1/betaGroups/$GROUP_ID/relationships/builds"
+          done
+
+          echo "Internal TestFlight distribution complete!"
+
+      - name: Summary
+        run: |
+          echo "## iOS Dev Agent TestFlight Build" >> $GITHUB_STEP_SUMMARY
+          echo "- **Bundle ID**: ${{ env.BUNDLE_ID }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.version.outputs.version }} (${{ steps.version.outputs.build }})" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: Distributed to internal testers" >> $GITHUB_STEP_SUMMARY
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -rf $RUNNER_TEMP/private_keys $RUNNER_TEMP/Export
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true
