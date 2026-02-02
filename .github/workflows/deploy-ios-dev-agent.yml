@@ -317,7 +317,6 @@ jobs:
               sigh(
                 app_identifier: "com.wouterdevriendt.iosdevagent",
                 team_id: "W53LT3VY3U",
-                readonly: false,
                 force: true
               )
 
