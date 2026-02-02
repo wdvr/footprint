@@ -18,7 +18,6 @@ on:
 
 env:
   BUNDLE_ID: com.wouterdevriendt.iosdevagent
-  TEAM_ID: W53LT3VY3U
   AWS_REGION: eu-west-1
 
 jobs:
@@ -163,9 +162,7 @@ jobs:
               settings:
                 base:
                   PRODUCT_BUNDLE_IDENTIFIER: com.wouterdevriendt.iosdevagent
-                  DEVELOPMENT_TEAM: W53LT3VY3U
                   CODE_SIGN_STYLE: Manual
-                  CODE_SIGN_IDENTITY: "Apple Development"
                   MARKETING_VERSION: "1.0.0"
               dependencies:
                 - package: KeychainSwift
@@ -285,72 +282,12 @@ jobs:
       - name: Install Fastlane
         run: gem install fastlane
 
-      - name: Create App in App Store Connect
-        run: |
-          gem install spaceship
-
-          cat > create_app.rb << 'RUBY'
-          require 'spaceship'
-          require 'json'
-
-          key_id = ENV['ASC_KEY_ID']
-          issuer_id = ENV['ASC_ISSUER_ID']
-          key_content = File.read(File.expand_path("~/.private_keys/AuthKey.p8"))
-
-          Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(
-            key_id: key_id,
-            issuer_id: issuer_id,
-            key: key_content
-          )
-
-          bundle_id = "com.wouterdevriendt.iosdevagent"
-
-          # Check if app exists
-          apps = Spaceship::ConnectAPI::App.all.select { |a| a.bundle_id == bundle_id }
-
-          if apps.empty?
-            puts "Creating app..."
-            # First create Bundle ID in Developer Portal
-            begin
-              Spaceship::ConnectAPI::BundleId.create(
-                name: "iOSDevAgent",
-                identifier: bundle_id,
-                platform: Spaceship::ConnectAPI::BundleIdPlatform::IOS
-              )
-              puts "Bundle ID created"
-            rescue => e
-              puts "Bundle ID may already exist: #{e.message}"
-            end
-
-            # Then create app in App Store Connect
-            begin
-              Spaceship::ConnectAPI::App.create(
-                name: "iOSDevAgent",
-                version_string: "1.0.0",
-                sku: "iosdevagent.2026",
-                primary_locale: "en-US",
-                bundle_id: bundle_id
-              )
-              puts "App created in App Store Connect"
-            rescue => e
-              puts "App creation: #{e.message}"
-            end
-          else
-            puts "App already exists"
-          end
-          RUBY
-
-          ruby create_app.rb || echo "App setup attempted"
-        env:
-          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-
       - name: Verify certificate
         run: |
           echo "Listing available signing identities..."
           security find-identity -v -p codesigning
 
-      - name: Build and Upload
+      - name: Build and Upload to TestFlight
         run: |
           cd ios
           mkdir -p fastlane
@@ -360,39 +297,46 @@ jobs:
 
           platform :ios do
             lane :release do
-              app_store_connect_api_key(
+              api_key = app_store_connect_api_key(
                 key_id: ENV["ASC_KEY_ID"],
                 issuer_id: ENV["ASC_ISSUER_ID"],
                 key_filepath: "~/.private_keys/AuthKey.p8"
               )
 
-              # Get development provisioning profile
-              profile_uuid = sigh(
+              # Get or create Distribution certificate
+              cert(
+                development: false,
+                generate_apple_certs: true
+              )
+
+              # Get or create App Store provisioning profile
+              sigh(
                 app_identifier: "com.wouterdevriendt.iosdevagent",
-                team_id: "W53LT3VY3U",
-                development: true,
+                adhoc: false,
+                development: false,
                 force: true
               )
 
-              # Update project with provisioning profile
+              # Update project signing settings
               update_code_signing_settings(
                 path: "iOSDevAgent.xcodeproj",
                 use_automatic_signing: false,
-                team_id: "W53LT3VY3U",
-                code_sign_identity: "Apple Development",
-                profile_uuid: profile_uuid
+                code_sign_identity: "Apple Distribution",
+                profile_name: lane_context[SharedValues::SIGH_NAME]
               )
 
-              # Build development version first (no Distribution cert available)
+              # Build for App Store
               gym(
                 scheme: "iOSDevAgent",
-                export_method: "development",
+                export_method: "app-store",
                 clean: true
               )
 
-              # Note: Cannot upload to TestFlight without Distribution certificate
-              # The DISTRIBUTION_CERTIFICATE_BASE64 secret contains only Development certificates
-              UI.important("Build successful. Distribution certificate needed for TestFlight upload.")
+              # Upload to TestFlight
+              pilot(
+                skip_waiting_for_build_processing: true,
+                skip_submission: true
+              )
             end
           end
           FASTFILE
@@ -432,7 +376,6 @@ jobs:
 
               pilot(
                 app_identifier: "com.wouterdevriendt.iosdevagent",
-                team_id: "W53LT3VY3U",
                 skip_waiting_for_build_processing: false,
                 distribute_external: false
               )
