@@ -285,6 +285,66 @@ jobs:
       - name: Install Fastlane
         run: gem install fastlane
 
+      - name: Create App in App Store Connect
+        run: |
+          gem install spaceship
+
+          cat > create_app.rb << 'RUBY'
+          require 'spaceship'
+          require 'json'
+
+          key_id = ENV['ASC_KEY_ID']
+          issuer_id = ENV['ASC_ISSUER_ID']
+          key_content = File.read(File.expand_path("~/.private_keys/AuthKey.p8"))
+
+          Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(
+            key_id: key_id,
+            issuer_id: issuer_id,
+            key: key_content
+          )
+
+          bundle_id = "com.wouterdevriendt.iosdevagent"
+
+          # Check if app exists
+          apps = Spaceship::ConnectAPI::App.all.select { |a| a.bundle_id == bundle_id }
+
+          if apps.empty?
+            puts "Creating app..."
+            # First create Bundle ID in Developer Portal
+            begin
+              Spaceship::ConnectAPI::BundleId.create(
+                name: "iOSDevAgent",
+                identifier: bundle_id,
+                platform: Spaceship::ConnectAPI::BundleIdPlatform::IOS
+              )
+              puts "Bundle ID created"
+            rescue => e
+              puts "Bundle ID may already exist: #{e.message}"
+            end
+
+            # Then create app in App Store Connect
+            begin
+              Spaceship::ConnectAPI::App.create(
+                name: "iOSDevAgent",
+                version_string: "1.0.0",
+                sku: "iosdevagent.2026",
+                primary_locale: "en-US",
+                bundle_id: bundle_id
+              )
+              puts "App created in App Store Connect"
+            rescue => e
+              puts "App creation: #{e.message}"
+            end
+          else
+            puts "App already exists"
+          end
+          RUBY
+
+          ruby create_app.rb || echo "App setup attempted"
+        env:
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+
       - name: Build and Upload
         run: |
           cd ios
@@ -300,19 +360,6 @@ jobs:
                 issuer_id: ENV["ASC_ISSUER_ID"],
                 key_filepath: "~/.private_keys/AuthKey.p8"
               )
-
-              begin
-                produce(
-                  app_identifier: "com.wouterdevriendt.iosdevagent",
-                  app_name: "iOSDevAgent",
-                  language: "English",
-                  app_version: "1.0.0",
-                  sku: "iosdevagent.2026",
-                  team_id: "W53LT3VY3U"
-                )
-              rescue => e
-                puts "App registration: #{e.message}"
-              end
 
               sigh(
                 app_identifier: "com.wouterdevriendt.iosdevagent",
