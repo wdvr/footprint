@@ -1,0 +1,29 @@
+name: Setup iOS Dev Agent
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create ios-dev-agent repo
+        env:
+          GH_TOKEN: ${{ secrets.RUNNER_PAT }}
+        run: |
+          gh repo view wdvr/ios-dev-agent 2>/dev/null || \
+          gh repo create wdvr/ios-dev-agent --private -d "iOS Dev Agent - Voice feedback for Claude agents"
+
+      - name: Copy secrets to ios-dev-agent
+        env:
+          GH_TOKEN: ${{ secrets.RUNNER_PAT }}
+        run: |
+          echo "${{ secrets.AWS_ACCESS_KEY_ID }}" | gh secret set AWS_ACCESS_KEY_ID -R wdvr/ios-dev-agent
+          echo "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | gh secret set AWS_SECRET_ACCESS_KEY -R wdvr/ios-dev-agent
+          echo "${{ secrets.PULUMI_CONFIG_PASSPHRASE }}" | gh secret set PULUMI_ACCESS_TOKEN -R wdvr/ios-dev-agent
+          echo "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}" | gh secret set APP_STORE_CONNECT_ISSUER_ID -R wdvr/ios-dev-agent
+          echo "${{ secrets.APP_STORE_CONNECT_KEY_ID }}" | gh secret set APP_STORE_CONNECT_KEY_ID -R wdvr/ios-dev-agent
+          echo "${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}" | gh secret set APP_STORE_CONNECT_PRIVATE_KEY -R wdvr/ios-dev-agent
+          echo "${{ secrets.DISTRIBUTION_CERTIFICATE_BASE64 }}" | gh secret set DISTRIBUTION_CERTIFICATE_BASE64 -R wdvr/ios-dev-agent
+          echo "${{ secrets.DISTRIBUTION_CERTIFICATE_PASSWORD }}" | gh secret set DISTRIBUTION_CERTIFICATE_PASSWORD -R wdvr/ios-dev-agent
+          echo "${{ secrets.KEYCHAIN_PASSWORD }}" | gh secret set KEYCHAIN_PASSWORD -R wdvr/ios-dev-agent
