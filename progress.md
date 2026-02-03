@@ -1,12 +1,58 @@
 # Footprint Travel Tracker - Progress & Tasks
 
 ## Project Status: MVP DEVELOPMENT
-**Last Updated**: 2026-01-30
+**Last Updated**: 2026-02-03
 
 ## Source of Truth: GitHub Issues
 
 All open tasks, bugs, and feature requests are tracked in GitHub Issues:
 https://github.com/wdvr/footprint/issues
+
+## ✅ NEW: International States/Provinces (2026-02-03)
+
+Added state/province tracking for 8 new countries:
+
+| Country | Subdivisions | Count |
+|---------|-------------|-------|
+| 🇷🇺 Russia | Federal subjects | 84 |
+| 🇬🇧 United Kingdom | Counties/Districts | 232 |
+| 🇫🇷 France | Departments | 101 |
+| 🇮🇹 Italy | Provinces | 110 |
+| 🇪🇸 Spain | Provinces | 52 |
+| 🇳🇱 Netherlands | Provinces | 15 |
+| 🇧🇪 Belgium | Provinces | 11 |
+| 🇦🇷 Argentina | Provinces | 24 |
+
+**Implementation Details:**
+- Downloaded GeoJSON boundaries from Natural Earth Data
+- Added region types to VisitedPlace model
+- Added state arrays to GeographicData
+- Updated StateMapView to center on correct country
+- Fixed state selection overlay to work for all countries
+
+**Bug Fixes (same commit):**
+- Fixed auth persistence (Keychain now uses proper service/accessibility attributes)
+- Fixed map jumping to US when selecting states for other countries
+
+## ✅ RESOLVED: Domain & Auth Issues (2026-02-03)
+
+### Problem (FIXED)
+- ~~Google Sign In fails: "server with hostname could not be found"~~
+- ~~Apple Sign In also fails with same error~~
+- ~~`api.footprintmaps.com` not resolving correctly~~
+
+### Root Cause
+Domain registered in [default] AWS account, infrastructure in [personal] account. DNS was pointing to stale API Gateway endpoint.
+
+### Resolution (2026-02-03)
+1. ✅ Deployed actual FastAPI Lambda code (38 MB package) to personal account
+2. ✅ Created ACM certificate for `api.footprintmaps.com` in personal account
+3. ✅ Created API Gateway custom domain: `d-o89prx28nk.execute-api.us-east-1.amazonaws.com`
+4. ✅ Updated Route53 A record in default account to point to new custom domain
+5. ✅ DNS propagating globally (authoritative NS returns correct IPs: 52.5.194.95, 44.220.97.148)
+6. ✅ API health check working: `{"status":"healthy","service":"footprint-api"}`
+
+**Note**: Local DNS cache may take time to update. Google/Apple Sign In should work on devices once DNS propagates.
 
 ### Open Bugs
 | Issue | Title | Labels |
@@ -15,6 +61,19 @@ https://github.com/wdvr/footprint/issues
 | [#31](https://github.com/wdvr/footprint/issues/31) | Reduce console logging spam on device | ios |
 | LOCAL | Apple Photos import doesn't resume - re-processes all images on restart | bug, ios |
 | LOCAL | Apple Photos import misses coastal photos (geocoding fails for near-ocean coordinates) | bug, ios |
+
+## ✅ Already Implemented Features
+
+### Photo Pins with Clustering
+- **Status**: ✅ ALREADY IN MAIN
+- **Location**: `ios/Footprint/Map/CountryMapView.swift`
+- Photo locations show as pins on map
+- Clusters automatically when zoomed out (MKClusterAnnotation)
+- Expands to individual pins when zoomed in
+
+### Cities/Provinces for International Regions
+- **Status**: ✅ MERGED (PR #76)
+- Cities and provinces tracking for multiple countries
 
 ### Apple Photos Import Issues (Detailed Analysis) - FIXED
 
@@ -49,6 +108,7 @@ https://github.com/wdvr/footprint/issues
 ### Recently Completed
 | Issue | Title | Labels |
 |-------|-------|--------|
+| [#17](https://github.com/wdvr/footprint/issues/17) | States/provinces for other countries (RU, GB, FR, IT, ES, NL, BE, AR) | feature |
 | [#11](https://github.com/wdvr/footprint/issues/11) | Auth token persistence (Keychain-based) | bug |
 | [#12](https://github.com/wdvr/footprint/issues/12) | Push notifications configured | bug, infrastructure, ios |
 | [#14](https://github.com/wdvr/footprint/issues/14) | In-app feedback and feature requests | feature, ios, backend |
@@ -63,7 +123,6 @@ https://github.com/wdvr/footprint/issues
 ### Planned Features
 | Issue | Title | Labels |
 |-------|-------|--------|
-| [#17](https://github.com/wdvr/footprint/issues/17) | States/provinces for other countries | feature |
 | [#18](https://github.com/wdvr/footprint/issues/18) | Cities & Landmarks tracking | feature |
 | [#19](https://github.com/wdvr/footprint/issues/19) | macOS app (Universal purchase) | feature |
 | [#20](https://github.com/wdvr/footprint/issues/20) | Data export - share travel maps | feature, ios |
