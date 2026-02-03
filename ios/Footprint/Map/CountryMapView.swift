@@ -2,18 +2,197 @@ import MapKit
 import SwiftUI
 import UIKit
 
+/// Playful bubble-style annotation view for photo pins
+class PhotoBubbleAnnotationView: MKAnnotationView {
+    private let bubbleView = UIView()
+    private let iconView = UIImageView()
+    private let badgeView = UIView()
+    private let badgeLabel = UILabel()
+    private var gradientLayer: CAGradientLayer?
+
+    override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
+        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
+        setupView()
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        super.init(coder: aDecoder)
+        setupView()
+    }
+
+    private func setupView() {
+        canShowCallout = false
+        frame = CGRect(x: 0, y: 0, width: 44, height: 52)
+        centerOffset = CGPoint(x: 0, y: -26)
+        displayPriority = .defaultHigh
+
+        // Main bubble - circular with playful gradient
+        let bubbleSize: CGFloat = 44
+        bubbleView.frame = CGRect(x: 0, y: 0, width: bubbleSize, height: bubbleSize)
+        bubbleView.layer.cornerRadius = bubbleSize / 2
+        bubbleView.clipsToBounds = true
+        addSubview(bubbleView)
+
+        // Gradient background
+        let gradient = CAGradientLayer()
+        gradient.frame = bubbleView.bounds
+        gradient.cornerRadius = bubbleSize / 2
+        gradient.startPoint = CGPoint(x: 0, y: 0)
+        gradient.endPoint = CGPoint(x: 1, y: 1)
+        bubbleView.layer.addSublayer(gradient)
+        gradientLayer = gradient
+
+        // White inner ring for depth
+        let innerRing = UIView(frame: bubbleView.bounds.insetBy(dx: 2, dy: 2))
+        innerRing.backgroundColor = .clear
+        innerRing.layer.cornerRadius = (bubbleSize - 4) / 2
+        innerRing.layer.borderWidth = 2
+        innerRing.layer.borderColor = UIColor.white.withAlphaComponent(0.5).cgColor
+        bubbleView.addSubview(innerRing)
+
+        // Photo icon in center
+        let iconSize: CGFloat = 22
+        iconView.frame = CGRect(
+            x: (bubbleSize - iconSize) / 2,
+            y: (bubbleSize - iconSize) / 2,
+            width: iconSize,
+            height: iconSize
+        )
+        iconView.contentMode = .scaleAspectFit
+        iconView.tintColor = .white
+        bubbleView.addSubview(iconView)
+
+        // Badge for count - positioned at bottom right
+        let badgeSize: CGFloat = 20
+        badgeView.frame = CGRect(
+            x: bubbleSize - badgeSize + 4,
+            y: bubbleSize - badgeSize + 4,
+            width: badgeSize,
+            height: badgeSize
+        )
+        badgeView.backgroundColor = .white
+        badgeView.layer.cornerRadius = badgeSize / 2
+        badgeView.layer.shadowColor = UIColor.black.cgColor
+        badgeView.layer.shadowOffset = CGSize(width: 0, height: 1)
+        badgeView.layer.shadowRadius = 2
+        badgeView.layer.shadowOpacity = 0.3
+        addSubview(badgeView)
+
+        // Badge label
+        badgeLabel.frame = badgeView.bounds
+        badgeLabel.font = .systemFont(ofSize: 10, weight: .bold)
+        badgeLabel.textAlignment = .center
+        badgeLabel.adjustsFontSizeToFitWidth = true
+        badgeLabel.minimumScaleFactor = 0.6
+        badgeView.addSubview(badgeLabel)
+
+        // Soft shadow under bubble
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOffset = CGSize(width: 0, height: 3)
+        layer.shadowRadius = 6
+        layer.shadowOpacity = 0.2
+    }
+
+    func configure(photoCount: Int, isCluster: Bool) {
+        // Format count
+        let countText: String
+        if photoCount >= 10000 {
+            countText = "\(photoCount / 1000)k"
+        } else if photoCount >= 1000 {
+            countText = String(format: "%.1fk", Double(photoCount) / 1000.0)
+        } else {
+            countText = "\(photoCount)"
+        }
+
+        // Set icon
+        let config = UIImage.SymbolConfiguration(weight: .medium)
+        let iconName = isCluster ? "photo.stack.fill" : "camera.fill"
+        iconView.image = UIImage(systemName: iconName, withConfiguration: config)
+
+        // Fun gradient colors based on count
+        let colors: [CGColor]
+        let badgeColor: UIColor
+
+        if photoCount >= 1000 {
+            // Hot pink to orange gradient
+            colors = [
+                UIColor(red: 1.0, green: 0.4, blue: 0.6, alpha: 1.0).cgColor,
+                UIColor(red: 1.0, green: 0.6, blue: 0.3, alpha: 1.0).cgColor
+            ]
+            badgeColor = UIColor(red: 1.0, green: 0.4, blue: 0.5, alpha: 1.0)
+        } else if photoCount >= 100 {
+            // Purple to pink gradient
+            colors = [
+                UIColor(red: 0.6, green: 0.4, blue: 1.0, alpha: 1.0).cgColor,
+                UIColor(red: 1.0, green: 0.5, blue: 0.8, alpha: 1.0).cgColor
+            ]
+            badgeColor = UIColor(red: 0.7, green: 0.4, blue: 0.9, alpha: 1.0)
+        } else if photoCount >= 10 {
+            // Teal to green gradient
+            colors = [
+                UIColor(red: 0.2, green: 0.8, blue: 0.8, alpha: 1.0).cgColor,
+                UIColor(red: 0.4, green: 0.9, blue: 0.6, alpha: 1.0).cgColor
+            ]
+            badgeColor = UIColor(red: 0.2, green: 0.7, blue: 0.7, alpha: 1.0)
+        } else {
+            // Sky blue to light purple gradient
+            colors = [
+                UIColor(red: 0.4, green: 0.7, blue: 1.0, alpha: 1.0).cgColor,
+                UIColor(red: 0.7, green: 0.6, blue: 1.0, alpha: 1.0).cgColor
+            ]
+            badgeColor = UIColor(red: 0.5, green: 0.6, blue: 0.95, alpha: 1.0)
+        }
+
+        gradientLayer?.colors = colors
+        badgeLabel.text = countText
+        badgeLabel.textColor = badgeColor
+
+        // Adjust badge size for larger numbers
+        let textWidth = countText.size(withAttributes: [.font: badgeLabel.font!]).width
+        let newBadgeWidth = max(20, textWidth + 8)
+        badgeView.frame = CGRect(
+            x: 44 - newBadgeWidth + 4,
+            y: 44 - 20 + 4,
+            width: newBadgeWidth,
+            height: 20
+        )
+        badgeView.layer.cornerRadius = 10
+        badgeLabel.frame = badgeView.bounds
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        badgeLabel.text = nil
+        iconView.image = nil
+    }
+}
+
+/// Helper to normalize country codes between boundary data and app data
+/// Some boundary data uses different codes (e.g., CN-TW for Taiwan vs TW in app)
+private func normalizedCountryCode(_ boundaryCode: String) -> String {
+    // Map boundary codes to app codes
+    let boundaryToAppMapping = [
+        "CN-TW": "TW",  // Taiwan
+    ]
+    return boundaryToAppMapping[boundaryCode] ?? boundaryCode
+}
+
 /// Custom annotation for photo locations
 class PhotoPinAnnotation: NSObject, MKAnnotation {
     dynamic var coordinate: CLLocationCoordinate2D
     let photoCount: Int
     let countryCode: String?
     let regionName: String?
+    let photoAssetIDs: [String]
+    let gridKey: String
 
     init(photoLocation: PhotoLocation) {
         self.coordinate = photoLocation.coordinate
         self.photoCount = photoLocation.photoCount
         self.countryCode = photoLocation.countryCode
         self.regionName = photoLocation.regionName
+        self.photoAssetIDs = photoLocation.photoAssetIDs
+        self.gridKey = photoLocation.gridKey
         super.init()
     }
 
@@ -39,6 +218,7 @@ struct CountryMapView: UIViewRepresentable {
     @Binding var selectedCountry: String?
     @Binding var centerOnUserLocation: Bool
     var onCountryTapped: ((String) -> Void)?
+    var onPhotoPinTapped: (([String]) -> Void)?  // Called with photo asset IDs
     var showUserLocation: Bool = false
     var showPhotoPins: Bool = false
 
@@ -77,6 +257,7 @@ struct CountryMapView: UIViewRepresentable {
         context.coordinator.visitedStateCodes = visitedStateCodes
         context.coordinator.bucketListStateCodes = bucketListStateCodes
         context.coordinator.onCountryTapped = onCountryTapped
+        context.coordinator.onPhotoPinTapped = onPhotoPinTapped
         mapView.showsUserLocation = showUserLocation
 
         // Center on user location if requested
@@ -119,6 +300,7 @@ struct CountryMapView: UIViewRepresentable {
         var bucketListStateCodes: Set<String>
         var selectedCountryCode: String?
         var onCountryTapped: ((String) -> Void)?
+        var onPhotoPinTapped: (([String]) -> Void)?
         weak var mapView: MKMapView?
         var photoPinsShown: Bool = false
 
@@ -147,6 +329,12 @@ struct CountryMapView: UIViewRepresentable {
             // Add photo pins if showing and not already shown
             if show && !photoPinsShown {
                 let photoLocations = PhotoLocationStore.shared.load()
+                // Debug: Check if photoAssetIDs are populated
+                let locationsWithIDs = photoLocations.filter { !$0.photoAssetIDs.isEmpty }
+                print("[CountryMapView] Loading \(photoLocations.count) locations, \(locationsWithIDs.count) have asset IDs")
+                if let first = locationsWithIDs.first {
+                    print("[CountryMapView] Sample: \(first.photoCount) photos, \(first.photoAssetIDs.count) IDs")
+                }
                 let annotations = photoLocations.map { PhotoPinAnnotation(photoLocation: $0) }
                 mapView.addAnnotations(annotations)
                 photoPinsShown = true
@@ -160,23 +348,40 @@ struct CountryMapView: UIViewRepresentable {
             self.mapView = mapView
 
             let tapPoint = gesture.location(in: mapView)
+
+            // Check if tap was on an annotation (photo pin or cluster)
+            // If so, let the annotation selection handle it
+            for annotation in mapView.annotations {
+                if annotation is MKUserLocation { continue }
+                if let view = mapView.view(for: annotation) {
+                    let annotationPoint = mapView.convert(annotation.coordinate, toPointTo: mapView)
+                    let hitRect = view.frame.insetBy(dx: -20, dy: -20)  // Generous hit area
+                    if hitRect.contains(tapPoint) {
+                        // Tap was on an annotation, don't handle as country tap
+                        return
+                    }
+                }
+            }
+
             let tapCoordinate = mapView.convert(tapPoint, toCoordinateFrom: mapView)
             let mapPoint = MKMapPoint(tapCoordinate)
 
             // Find which country was tapped
             for (countryCode, boundary) in countryBoundaries {
                 if isPoint(mapPoint, inside: boundary.overlay) {
+                    // Normalize code for app use (e.g., CN-TW -> TW)
+                    let normalizedCode = normalizedCountryCode(countryCode)
                     // Update selection
                     DispatchQueue.main.async {
                         self.selectedCountryCode = countryCode
-                        self.parent.selectedCountry = countryCode
+                        self.parent.selectedCountry = normalizedCode
                         self.updateOverlayColors(in: mapView)
 
                         // Zoom to the country
                         self.zoomToCountry(boundary, in: mapView)
 
-                        // Notify callback
-                        self.onCountryTapped?(countryCode)
+                        // Notify callback with normalized code
+                        self.onCountryTapped?(normalizedCode)
                     }
                     return
                 }
@@ -306,8 +511,9 @@ struct CountryMapView: UIViewRepresentable {
                 } else if code == "US" || code == "CA" {
                     // Don't fill US/Canada - let state overlays show through to base map
                     // But keep green outline to show country is visited
-                    let isVisited = visitedCountryCodes.contains(code)
-                    let isBucketList = bucketListCountryCodes.contains(code)
+                    let normalizedCode = normalizedCountryCode(code)
+                    let isVisited = visitedCountryCodes.contains(normalizedCode)
+                    let isBucketList = bucketListCountryCodes.contains(normalizedCode)
                     renderer.fillColor = .clear
                     if isVisited {
                         renderer.strokeColor = UIColor.systemGreen
@@ -321,9 +527,10 @@ struct CountryMapView: UIViewRepresentable {
                     }
                 } else {
                     // Country rendering
-                    let isVisited = visitedCountryCodes.contains(code)
-                    let isBucketList = bucketListCountryCodes.contains(code)
-                    let isSelected = code == selectedCountryCode
+                    let normalizedCode = normalizedCountryCode(code)
+                    let isVisited = visitedCountryCodes.contains(normalizedCode)
+                    let isBucketList = bucketListCountryCodes.contains(normalizedCode)
+                    let isSelected = code == selectedCountryCode || normalizedCode == selectedCountryCode
 
                     if isSelected {
                         // Selected country: blue highlight with thick border
@@ -360,56 +567,41 @@ struct CountryMapView: UIViewRepresentable {
                 return nil
             }
 
-            // Handle photo pin annotations
+            // Handle photo pin annotations with playful bubble style
             if let photoPin = annotation as? PhotoPinAnnotation {
-                let identifier = "PhotoPin"
-                var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView
+                let identifier = "PhotoPinAnnotation"
+                var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? PhotoBubbleAnnotationView
 
                 if annotationView == nil {
-                    annotationView = MKMarkerAnnotationView(annotation: photoPin, reuseIdentifier: identifier)
-                    annotationView?.canShowCallout = true
-                    annotationView?.clusteringIdentifier = "PhotoCluster"
+                    annotationView = PhotoBubbleAnnotationView(annotation: photoPin, reuseIdentifier: identifier)
                 } else {
                     annotationView?.annotation = photoPin
                 }
 
-                // Style based on photo count
-                if photoPin.photoCount >= 10 {
-                    annotationView?.markerTintColor = .systemRed
-                    annotationView?.glyphText = "\(photoPin.photoCount)"
-                } else if photoPin.photoCount >= 5 {
-                    annotationView?.markerTintColor = .systemOrange
-                    annotationView?.glyphText = "\(photoPin.photoCount)"
-                } else {
-                    annotationView?.markerTintColor = .systemBlue
-                    annotationView?.glyphImage = UIImage(systemName: "photo")
-                }
-
-                annotationView?.displayPriority = .defaultHigh
+                // Always set clustering identifier (important for reused views)
+                annotationView?.clusteringIdentifier = "PhotoPinCluster"
+                annotationView?.configure(photoCount: photoPin.photoCount, isCluster: false)
 
                 return annotationView
             }
 
-            // Handle cluster annotations
+            // Handle cluster annotations with playful bubble style
             if let cluster = annotation as? MKClusterAnnotation {
-                let identifier = "PhotoCluster"
-                var clusterView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView
+                let identifier = "PhotoPinClusterAnnotation"
+                var clusterView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? PhotoBubbleAnnotationView
 
                 if clusterView == nil {
-                    clusterView = MKMarkerAnnotationView(annotation: cluster, reuseIdentifier: identifier)
-                    clusterView?.canShowCallout = true
+                    clusterView = PhotoBubbleAnnotationView(annotation: cluster, reuseIdentifier: identifier)
                 } else {
                     clusterView?.annotation = cluster
                 }
 
-                // Calculate total photos in cluster
+                // Calculate total photos in cluster (sum of all member pin counts)
                 let totalPhotos = cluster.memberAnnotations
                     .compactMap { $0 as? PhotoPinAnnotation }
                     .reduce(0) { $0 + $1.photoCount }
 
-                clusterView?.markerTintColor = .systemPurple
-                clusterView?.glyphText = "\(totalPhotos)"
-                clusterView?.displayPriority = .defaultHigh
+                clusterView?.configure(photoCount: totalPhotos, isCluster: true)
 
                 return clusterView
             }
@@ -418,7 +610,24 @@ struct CountryMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, didSelect annotation: MKAnnotation) {
-            // Handle annotation selection if needed
+            // Handle photo pin selection
+            if let photoPin = annotation as? PhotoPinAnnotation {
+                mapView.deselectAnnotation(annotation, animated: false)
+                DispatchQueue.main.async {
+                    self.onPhotoPinTapped?(photoPin.photoAssetIDs)
+                }
+            } else if let cluster = annotation as? MKClusterAnnotation {
+                // Collect all photo asset IDs from the cluster
+                let allAssetIDs = cluster.memberAnnotations
+                    .compactMap { $0 as? PhotoPinAnnotation }
+                    .flatMap { $0.photoAssetIDs }
+                if !allAssetIDs.isEmpty {
+                    mapView.deselectAnnotation(annotation, animated: false)
+                    DispatchQueue.main.async {
+                        self.onPhotoPinTapped?(allAssetIDs)
+                    }
+                }
+            }
         }
     }
 }
@@ -434,6 +643,9 @@ struct CountryMapView: UIViewRepresentable {
         centerOnUserLocation: .constant(false),
         onCountryTapped: { code in
             print("Tapped country: \(code)")
+        },
+        onPhotoPinTapped: { assetIDs in
+            print("Tapped photo pin with \(assetIDs.count) photos")
         }
     )
 }

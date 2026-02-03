@@ -7,12 +7,37 @@ final class VisitedPlace {
         case country = "country"
         case usState = "us_state"
         case canadianProvince = "canadian_province"
+        // International regions
+        case australianState = "australian_state"
+        case mexicanState = "mexican_state"
+        case brazilianState = "brazilian_state"
+        case germanState = "german_state"
+        case frenchRegion = "french_region"
+        case spanishCommunity = "spanish_community"
+        case italianRegion = "italian_region"
+        case dutchProvince = "dutch_province"
+        case belgianProvince = "belgian_province"
+        case ukCountry = "uk_country"
+        case russianFederalSubject = "russian_federal_subject"
+        case argentineProvince = "argentine_province"
 
         var displayName: String {
             switch self {
             case .country: return "Country"
             case .usState: return "US State"
             case .canadianProvince: return "Canadian Province"
+            case .australianState: return "Australian State"
+            case .mexicanState: return "Mexican State"
+            case .brazilianState: return "Brazilian State"
+            case .germanState: return "German State"
+            case .frenchRegion: return "French Region"
+            case .spanishCommunity: return "Spanish Community"
+            case .italianRegion: return "Italian Region"
+            case .dutchProvince: return "Dutch Province"
+            case .belgianProvince: return "Belgian Province"
+            case .ukCountry: return "UK Country"
+            case .russianFederalSubject: return "Russian Federal Subject"
+            case .argentineProvince: return "Argentine Province"
             }
         }
     }

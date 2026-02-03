@@ -24,7 +24,7 @@ repos:
       - id: check-yaml
         args: [--unsafe]
       - id: check-added-large-files
-        args: ['--maxkb=1000']
+        args: ['--maxkb=1500']  # Increased for GeoJSON boundary files
       - id: check-merge-conflict
       - id: detect-private-key
 

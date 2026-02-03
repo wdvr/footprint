@@ -17,20 +17,7 @@ struct StateMapView: UIViewRepresentable {
         mapView.showsScale = true
 
         // Set initial region based on country
-        let region: MKCoordinateRegion
-        if countryCode == "US" {
-            // Center on continental US
-            region = MKCoordinateRegion(
-                center: CLLocationCoordinate2D(latitude: 39.8, longitude: -98.5),
-                span: MKCoordinateSpan(latitudeDelta: 50, longitudeDelta: 60)
-            )
-        } else {
-            // Center on Canada
-            region = MKCoordinateRegion(
-                center: CLLocationCoordinate2D(latitude: 56, longitude: -96),
-                span: MKCoordinateSpan(latitudeDelta: 50, longitudeDelta: 80)
-            )
-        }
+        let region = Self.regionForCountry(countryCode)
         mapView.setRegion(region, animated: false)
 
         // Add tap gesture recognizer for state selection
@@ -60,6 +47,102 @@ struct StateMapView: UIViewRepresentable {
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
+    }
+
+    /// Returns the appropriate map region for a given country code
+    private static func regionForCountry(_ countryCode: String) -> MKCoordinateRegion {
+        switch countryCode {
+        case "US":
+            // Continental US
+            return MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 39.8, longitude: -98.5),
+                span: MKCoordinateSpan(latitudeDelta: 50, longitudeDelta: 60)
+            )
+        case "CA":
+            // Canada
+            return MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 56, longitude: -96),
+                span: MKCoordinateSpan(latitudeDelta: 50, longitudeDelta: 80)
+            )
+        case "RU":
+            // Russia - centered to show European and Asian parts
+            return MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 62, longitude: 94),
+                span: MKCoordinateSpan(latitudeDelta: 50, longitudeDelta: 100)
+            )
+        case "GB":
+            // United Kingdom
+            return MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 54.5, longitude: -3),
+                span: MKCoordinateSpan(latitudeDelta: 10, longitudeDelta: 12)
+            )
+        case "FR":
+            // France (metropolitan)
+            return MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 46.6, longitude: 2.5),
+                span: MKCoordinateSpan(latitudeDelta: 10, longitudeDelta: 12)
+            )
+        case "ES":
+            // Spain
+            return MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 40.0, longitude: -3.7),
+                span: MKCoordinateSpan(latitudeDelta: 10, longitudeDelta: 14)
+            )
+        case "IT":
+            // Italy
+            return MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 42.5, longitude: 12.5),
+                span: MKCoordinateSpan(latitudeDelta: 10, longitudeDelta: 12)
+            )
+        case "DE":
+            // Germany
+            return MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 51.2, longitude: 10.4),
+                span: MKCoordinateSpan(latitudeDelta: 8, longitudeDelta: 10)
+            )
+        case "NL":
+            // Netherlands
+            return MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 52.2, longitude: 5.3),
+                span: MKCoordinateSpan(latitudeDelta: 3.5, longitudeDelta: 4)
+            )
+        case "BE":
+            // Belgium
+            return MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 50.5, longitude: 4.5),
+                span: MKCoordinateSpan(latitudeDelta: 2.5, longitudeDelta: 3.5)
+            )
+        case "AR":
+            // Argentina
+            return MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: -38.5, longitude: -63.6),
+                span: MKCoordinateSpan(latitudeDelta: 35, longitudeDelta: 25)
+            )
+        case "BR":
+            // Brazil
+            return MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: -14.2, longitude: -51.9),
+                span: MKCoordinateSpan(latitudeDelta: 40, longitudeDelta: 40)
+            )
+        case "AU":
+            // Australia
+            return MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: -25.3, longitude: 134.5),
+                span: MKCoordinateSpan(latitudeDelta: 35, longitudeDelta: 45)
+            )
+        case "MX":
+            // Mexico
+            return MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 23.6, longitude: -102.5),
+                span: MKCoordinateSpan(latitudeDelta: 20, longitudeDelta: 25)
+            )
+        default:
+            // Default fallback - world view
+            return MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 20, longitude: 0),
+                span: MKCoordinateSpan(latitudeDelta: 100, longitudeDelta: 180)
+            )
+        }
     }
 
     class Coordinator: NSObject, MKMapViewDelegate {
@@ -134,12 +217,8 @@ struct StateMapView: UIViewRepresentable {
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 guard let self = self else { return }
 
-                let boundaries: [GeoJSONParser.StateBoundary]
-                if countryCode == "US" {
-                    boundaries = GeoJSONParser.parseUSStates()
-                } else {
-                    boundaries = GeoJSONParser.parseCanadianProvinces()
-                }
+                // Use generic state parsing for all countries
+                let boundaries = GeoJSONParser.parseStates(forCountry: countryCode)
 
                 print("StateMapView: Parsed \(boundaries.count) boundaries for \(countryCode)")
 

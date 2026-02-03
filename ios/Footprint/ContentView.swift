@@ -233,8 +233,8 @@ struct SettingsView: View {
                     }
                 }
 
-                #if DEBUG
-                // Developer Section (Debug only)
+                // Developer Section - hidden for now (set to true to show)
+                #if false
                 Section("Developer") {
                     HStack {
                         Text("Photo limit")
@@ -542,6 +542,8 @@ struct WorldMapView: View {
     @State private var showListView = false
     @State private var centerOnUserLocation = false
     @State private var showPhotoPins = false
+    @State private var showingPhotoGallery = false
+    @State private var selectedPhotoAssetIDs: [String] = []
 
     private var visitedCountryCodes: Set<String> {
         Set(
@@ -644,6 +646,10 @@ struct WorldMapView: View {
                         onCountryTapped: { countryCode in
                             selectedCountry = countryCode
                         },
+                        onPhotoPinTapped: { assetIDs in
+                            selectedPhotoAssetIDs = assetIDs
+                            showingPhotoGallery = true
+                        },
                         showUserLocation: LocationManager.shared.isTracking,
                         showPhotoPins: showPhotoPins
                     )
@@ -711,8 +717,8 @@ struct WorldMapView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack(spacing: 16) {
-                        // Photo pins toggle
-                        if !showListView && PhotoLocationStore.shared.load().count > 0 {
+                        // Photo pins toggle - always visible when on map view
+                        if !showListView {
                             Button {
                                 conditionalWithAnimation(.easeInOut, reduceMotion: reduceMotion) {
                                     showPhotoPins.toggle()
@@ -803,6 +809,9 @@ struct WorldMapView: View {
                     )
                 }
             }
+            .sheet(isPresented: $showingPhotoGallery) {
+                PhotoGalleryView(photoAssetIDs: selectedPhotoAssetIDs)
+            }
         }
     }
 
@@ -838,6 +847,8 @@ struct WorldMapView: View {
             place.isDeleted = true
             place.lastModifiedAt = Date()
             place.isSynced = false
+            // Explicit save to ensure persistence
+            try? modelContext.save()
         }
     }
 
@@ -852,6 +863,7 @@ struct WorldMapView: View {
                 place.isDeleted = true
                 place.lastModifiedAt = Date()
                 place.isSynced = false
+                try? modelContext.save()
             }
         } else {
             // Add to visited - reuse existing deleted record if available
@@ -871,6 +883,7 @@ struct WorldMapView: View {
                 )
                 modelContext.insert(place)
             }
+            try? modelContext.save()
         }
     }
 
@@ -905,6 +918,7 @@ struct WorldMapView: View {
                 modelContext.insert(place)
             }
         }
+        try? modelContext.save()
     }
 
     private func setupLocationCallbacks() {
@@ -1268,28 +1282,32 @@ struct StateMapSheet: View {
     @State private var selectedState: String?
     @State private var showingStatePopup = false
 
+    private var regionType: VisitedPlace.RegionType {
+        GeographicData.regionType(for: countryCode) ?? .usState
+    }
+
     private var visitedStateCodes: Set<String> {
-        let regionType: String = countryCode == "US"
-            ? VisitedPlace.RegionType.usState.rawValue
-            : VisitedPlace.RegionType.canadianProvince.rawValue
         return Set(
             visitedPlaces
-                .filter { $0.regionType == regionType && !$0.isDeleted }
+                .filter { $0.regionType == regionType.rawValue && !$0.isDeleted }
                 .map { $0.regionCode }
         )
     }
 
     private var countryName: String {
-        countryCode == "US" ? "United States" : "Canada"
+        GeographicData.countries.first { $0.id == countryCode }?.name ?? countryCode
     }
 
     private var stateLabel: String {
-        countryCode == "US" ? "States" : "Provinces"
+        regionType.displayName + "s"
     }
 
     private var selectedStateInfo: StateProvince? {
         guard let code = selectedState else { return nil }
-        return GeographicData.states(for: countryCode).first { $0.id == code }
+        // GeoJSON uses full ISO codes like "RU-AL", but GeographicData uses short codes like "AL"
+        // Try both formats for compatibility
+        let shortCode = code.contains("-") ? String(code.split(separator: "-").last ?? "") : code
+        return GeographicData.states(for: countryCode).first { $0.id == code || $0.id == shortCode }
     }
 
     private var isSelectedStateVisited: Bool {
@@ -1403,7 +1421,6 @@ struct StateMapSheet: View {
     }
 
     private func toggleStateDirectly(_ state: StateProvince) {
-        let regionType: VisitedPlace.RegionType = countryCode == "US" ? .usState : .canadianProvince
         let isCurrentlyVisited = visitedStateCodes.contains(state.id)
 
         if isCurrentlyVisited {
@@ -1412,6 +1429,7 @@ struct StateMapSheet: View {
             }) {
                 place.isDeleted = true
                 place.lastModifiedAt = Date()
+                try? modelContext.save()
             }
         } else {
             let place = VisitedPlace(
@@ -1420,18 +1438,18 @@ struct StateMapSheet: View {
                 regionName: state.name
             )
             modelContext.insert(place)
+            try? modelContext.save()
         }
     }
 
     private func toggleStateVisited(_ state: StateProvince) {
-        let regionType: VisitedPlace.RegionType = countryCode == "US" ? .usState : .canadianProvince
-
         if isSelectedStateVisited {
             if let place = visitedPlaces.first(where: {
                 $0.regionType == regionType.rawValue && $0.regionCode == state.id
             }) {
                 place.isDeleted = true
                 place.lastModifiedAt = Date()
+                try? modelContext.save()
             }
         } else {
             let place = VisitedPlace(
@@ -1440,6 +1458,7 @@ struct StateMapSheet: View {
                 regionName: state.name
             )
             modelContext.insert(place)
+            try? modelContext.save()
         }
     }
 }

@@ -209,6 +209,44 @@ struct GeoJSONParser {
         }
     }
 
+    /// Parse states/provinces for any country using the XX_states.geojson naming convention
+    static func parseStates(forCountry countryCode: String) -> [StateBoundary] {
+        // Map country codes to file names
+        let fileName: String
+        switch countryCode {
+        case "US":
+            return parseUSStates()
+        case "CA":
+            return parseCanadianProvinces()
+        default:
+            fileName = "\(countryCode)_states"
+        }
+
+        let url = Bundle.main.url(
+            forResource: fileName,
+            withExtension: "geojson",
+            subdirectory: "GeoData"
+        ) ?? Bundle.main.url(
+            forResource: fileName,
+            withExtension: "geojson"
+        )
+
+        guard let url else {
+            print("\(countryCode) states GeoJSON file not found in bundle: \(fileName).geojson")
+            return []
+        }
+
+        do {
+            let data = try Data(contentsOf: url)
+            let boundaries = try parseStateGeoJSON(data)
+            print("Loaded \(boundaries.count) \(countryCode) state/province boundaries")
+            return boundaries
+        } catch {
+            print("Error parsing \(countryCode) states GeoJSON: \(error)")
+            return []
+        }
+    }
+
     /// Parse state/province GeoJSON data
     private static func parseStateGeoJSON(_ data: Data) throws -> [StateBoundary] {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
