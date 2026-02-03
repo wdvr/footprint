@@ -4,6 +4,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 
 from ...models.feedback import (
     Feedback,
@@ -16,6 +17,48 @@ from ...services.dynamodb import db_service
 from .auth import get_current_user
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
+
+
+# Public feedback model (for website)
+class PublicFeedbackCreate(BaseModel):
+    """Public feedback submission from website."""
+
+    name: str | None = None
+    email: str | None = None
+    type: str = "feedback"
+    message: str
+    source: str = "website"
+
+
+class PublicFeedbackResponse(BaseModel):
+    """Response for public feedback submission."""
+
+    feedback_id: str
+    message: str
+
+
+@router.post(
+    "/public",
+    response_model=PublicFeedbackResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def submit_public_feedback(feedback: PublicFeedbackCreate):
+    """Submit anonymous feedback from website (no auth required)."""
+    feedback_id = str(uuid.uuid4())
+
+    db_service.create_public_feedback(
+        feedback_id=feedback_id,
+        feedback_type=feedback.type,
+        message=feedback.message,
+        name=feedback.name,
+        email=feedback.email,
+        source=feedback.source,
+    )
+
+    return PublicFeedbackResponse(
+        feedback_id=feedback_id,
+        message="Thank you for your feedback!",
+    )
 
 
 @router.post("/", response_model=FeedbackResponse, status_code=status.HTTP_201_CREATED)

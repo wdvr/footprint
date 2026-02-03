@@ -419,6 +419,36 @@ class DynamoDBService:
         )
         return response.get("Items", [])
 
+    def create_public_feedback(
+        self,
+        feedback_id: str,
+        feedback_type: str,
+        message: str,
+        name: str | None = None,
+        email: str | None = None,
+        source: str = "website",
+    ) -> dict[str, Any]:
+        """Create anonymous/public feedback (from website)."""
+        now = datetime.now(UTC).isoformat()
+        item = {
+            "pk": "PUBLIC_FEEDBACK",
+            "sk": f"FEEDBACK#{feedback_id}",
+            "gsi1pk": "FEEDBACK",
+            "gsi1sk": f"{now}#{feedback_id}",
+            "entity_type": "public_feedback",
+            "feedback_id": feedback_id,
+            "type": feedback_type,
+            "message": message,
+            "name": name,
+            "email": email,
+            "source": source,
+            "status": "new",
+            "created_at": now,
+            "updated_at": now,
+        }
+        table.put_item(Item=item)
+        return item
+
     def update_feedback_status(
         self, user_id: str, feedback_id: str, status: str
     ) -> dict[str, Any]:

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { FiSend, FiCheckCircle, FiAlertCircle } from 'react-icons/fi'
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api.footprint.travel'
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.footprintmaps.com'
 
 function FeedbackPage() {
   const [formData, setFormData] = useState({
@@ -24,7 +24,7 @@ function FeedbackPage() {
     setErrorMessage('')
 
     try {
-      const response = await fetch(`${API_URL}/v1/feedback`, {
+      const response = await fetch(`${API_URL}/v1/feedback/public`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
