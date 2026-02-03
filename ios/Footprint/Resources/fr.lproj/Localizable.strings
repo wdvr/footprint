@@ -149,3 +149,20 @@
 "continent.north_america" = "Amérique du Nord";
 "continent.oceania" = "Océanie";
 "continent.south_america" = "Amérique du Sud";
+
+// MARK: - Onboarding Features and Benefits
+"onboarding.feature.map" = "Visualisez vos voyages sur une carte interactive";
+"onboarding.feature.bucket_list" = "Créez une liste de destinations à visiter";
+"onboarding.feature.photos" = "Importez des lieux depuis vos photos";
+
+"onboarding.photos.benefit.map" = "Voyez les épingles de vos photos sur votre carte";
+"onboarding.photos.benefit.automatic" = "Trouvez automatiquement vos voyages passés";
+"onboarding.photos.benefit.privacy" = "Vos photos restent sur votre appareil";
+
+"onboarding.location.benefit.auto_detect" = "Détection automatique des nouveaux pays";
+"onboarding.location.benefit.notifications" = "Recevez une notification en visitant de nouveaux lieux";
+"onboarding.location.benefit.battery" = "Suivi en arrière-plan économe en batterie";
+
+"onboarding.tip.tap_country" = "Appuyez sur un pays pour le marquer comme visité";
+"onboarding.tip.bucket_list" = "Appuyez longuement pour ajouter à votre liste de destinations";
+"onboarding.tip.photo_import" = "Importez des photos depuis Réglages pour voir les épingles sur la carte";

@@ -149,3 +149,20 @@
 "continent.north_america" = "北アメリカ";
 "continent.oceania" = "オセアニア";
 "continent.south_america" = "南アメリカ";
+
+// MARK: - Onboarding Features and Benefits
+"onboarding.feature.map" = "インタラクティブマップで旅を可視化";
+"onboarding.feature.bucket_list" = "訪問したい場所のバケットリストを作成";
+"onboarding.feature.photos" = "写真から場所をインポート";
+
+"onboarding.photos.benefit.map" = "マップ上に写真ピンを表示";
+"onboarding.photos.benefit.automatic" = "過去の旅を自動で検出";
+"onboarding.photos.benefit.privacy" = "写真はデバイスに保存";
+
+"onboarding.location.benefit.auto_detect" = "新しい国を自動検出";
+"onboarding.location.benefit.notifications" = "新しい場所を訪問したら通知";
+"onboarding.location.benefit.battery" = "バッテリー効率的なバックグラウンドトラッキング";
+
+"onboarding.tip.tap_country" = "国をタップして訪問済みにマーク";
+"onboarding.tip.bucket_list" = "長押しでバケットリストに追加";
+"onboarding.tip.photo_import" = "設定から写真をインポートしてマップにピンを表示";
