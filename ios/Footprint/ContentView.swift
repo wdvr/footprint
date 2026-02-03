@@ -1307,12 +1307,32 @@ struct StateMapSheet: View {
         // GeoJSON uses full ISO codes like "RU-AL", but GeographicData uses short codes like "AL"
         // Try both formats for compatibility
         let shortCode = code.contains("-") ? String(code.split(separator: "-").last ?? "") : code
-        return GeographicData.states(for: countryCode).first { $0.id == code || $0.id == shortCode }
+
+        let states = GeographicData.states(for: countryCode)
+
+        // First try exact match with the full code
+        if let state = states.first(where: { $0.id == code }) {
+            return state
+        }
+
+        // Then try with the short code (for countries like Russia that use full ISO in GeoJSON)
+        if let state = states.first(where: { $0.id == shortCode }) {
+            return state
+        }
+
+        // Finally, try case-insensitive match
+        if let state = states.first(where: { $0.id.uppercased() == shortCode.uppercased() }) {
+            return state
+        }
+
+        return nil
     }
 
     private var isSelectedStateVisited: Bool {
         guard let code = selectedState else { return false }
-        return visitedStateCodes.contains(code)
+        // GeoJSON uses full ISO codes like "RU-AL", but visitedStateCodes uses short codes like "AL"
+        let shortCode = code.contains("-") ? String(code.split(separator: "-").last ?? "") : code
+        return visitedStateCodes.contains(code) || visitedStateCodes.contains(shortCode)
     }
 
     @State private var showStateList = false
@@ -1407,6 +1427,24 @@ struct StateMapSheet: View {
                         isVisited: isSelectedStateVisited,
                         onToggle: {
                             toggleStateVisited(state)
+                        },
+                        onDismiss: {
+                            showingStatePopup = false
+                            selectedState = nil
+                        }
+                    )
+                    .presentationDetents([.height(180)])
+                    .presentationDragIndicator(.visible)
+                } else if let code = selectedState {
+                    // Fallback view for when state info isn't found in our data
+                    // Extract short code and name from code
+                    let shortCode = code.contains("-") ? String(code.split(separator: "-").last ?? "") : code
+                    let fallbackState = StateProvince(shortCode, shortCode, country: countryCode)
+                    StateInfoPopup(
+                        state: fallbackState,
+                        isVisited: visitedStateCodes.contains(shortCode),
+                        onToggle: {
+                            toggleStateDirectly(fallbackState)
                         },
                         onDismiss: {
                             showingStatePopup = false
