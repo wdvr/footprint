@@ -1,0 +1,161 @@
+/*
+ * Footprint Travel Tracker - Italian Localization
+ * Main user interface strings
+ */
+
+// MARK: - Tab Bar
+"tab.map" = "Mappa";
+"tab.countries" = "Paesi";
+"tab.stats" = "Statistiche";
+"tab.settings" = "Impostazioni";
+
+// MARK: - Authentication
+"auth.signed_in" = "Accesso effettuato";
+"auth.signed_in_with" = "Accesso con %@";
+"auth.offline_mode" = "Modalità Offline";
+"auth.offline_description" = "Dati archiviati solo localmente";
+"auth.sign_out" = "Esci";
+"auth.sign_out_confirmation" = "Sei sicuro di voler uscire? I tuoi dati locali verranno conservati.";
+
+// MARK: - Sync
+"sync.force_full_sync" = "Sincronizzazione Completa Forzata";
+"sync.syncing" = "Sincronizzazione in corso...";
+"sync.sync_error" = "Errore di Sincronizzazione";
+"sync.synced" = "Sincronizzato";
+"sync.last_sync" = "Ultimo: %@";
+"sync.never_synced" = "Mai sincronizzato";
+"sync.sync_now" = "Sincronizza ora";
+
+// MARK: - Location & Permissions
+"location.background_tracking" = "Tracciamento Posizione in Background";
+"location.background_description" = "Ricevi notifiche quando visiti nuovi luoghi";
+"location.header" = "Posizione";
+"location.always_permission" = "Richiede il permesso di posizione 'Sempre'. Vai su Impostazioni > Privacy > Servizi di localizzazione per abilitare.";
+"location.battery_efficiency" = "Utilizza i cambiamenti significativi della posizione per l'efficienza della batteria.";
+"location.center_current" = "Centra sulla posizione attuale";
+"location.start_tracking" = "Inizia a tracciare la posizione";
+
+// MARK: - Import
+"import.sources" = "Fonti di Importazione";
+"import.sources_description" = "Gmail, Calendario, Foto";
+"import.photo_limit" = "Limite foto";
+"import.photo_limit_none" = "Nessuno";
+
+// MARK: - Data Management
+"data.backup" = "Backup Dati";
+"data.restore_backup" = "Ripristina Backup";
+"data.clear_all" = "Cancella Tutti i Luoghi Visitati";
+"data.delete_account" = "Elimina Account";
+"data.delete_account_warning" = "Questo eliminerà permanentemente il tuo account e tutti i dati. Questa azione non può essere annullata.";
+"data.clear_all_confirmation" = "Verranno rimossi tutti i %d luoghi visitati. Questa azione non può essere annullata.";
+"data.backup_success" = "Il tuo backup è stato salvato in Documenti/footprint_backup.json";
+"data.restore_confirmation" = "Questo sostituirà tutti i dati attuali con il backup. Continuare?";
+"data.restore_success" = "Il tuo backup è stato ripristinato.";
+
+// MARK: - App Information
+"app.version" = "Versione";
+"app.build" = "Build";
+
+// MARK: - Countries & Places
+"places.countries" = "paesi";
+"places.visited" = "Visitati";
+"places.bucket_list" = "Lista dei Desideri";
+"places.remove" = "Rimuovi";
+"places.mark_visited" = "Segna come Visitato";
+"places.view_states" = "Visualizza Stati";
+"places.view_provinces" = "Visualizza Province";
+"places.territory_of" = "Territorio di %@ • %@";
+"places.code" = "Codice: %@";
+"places.search_countries" = "Cerca paesi";
+
+// MARK: - Stats
+"stats.your_travel_stats" = "Le Tue Statistiche di Viaggio";
+"stats.total_regions_visited" = "Regioni Totali Visitate";
+"stats.bucket_list_description" = "%d luoghi nella tua lista dei desideri";
+"stats.by_continent" = "Per Continente";
+"stats.time_zones" = "Fusi Orari";
+"stats.time_zones_visited_percent" = "%d%% dei fusi orari visitati";
+"stats.farthest_west" = "Più a Ovest";
+"stats.farthest_east" = "Più a Est";
+"stats.achievements" = "Risultati";
+"stats.next_achievement" = "Prossimo Risultato";
+"stats.visit_types" = "Tipi di Visita";
+
+// MARK: - Onboarding
+"onboarding.skip" = "Salta";
+"onboarding.back" = "Indietro";
+"onboarding.next" = "Avanti";
+"onboarding.get_started" = "Inizia";
+"onboarding.welcome.title" = "Benvenuto a Footprint";
+"onboarding.welcome.description" = "Traccia i luoghi che hai visitato e crea la tua mappa dei viaggi personale";
+"onboarding.photos.title" = "Importa da Foto";
+"onboarding.photos.description" = "Footprint può scansionare la tua libreria fotografica per scoprire i luoghi che hai visitato in base alle posizioni delle foto";
+"onboarding.photos.enabled" = "Accesso alle foto abilitato";
+"onboarding.photos.enable" = "Abilita Accesso alle Foto";
+"onboarding.photos.optional" = "Questo è facoltativo - puoi abilitarlo in seguito in Impostazioni";
+"onboarding.location.title" = "Traccia la Tua Posizione";
+"onboarding.location.description" = "Abilita il tracciamento della posizione per contrassegnare automaticamente i paesi mentre viaggi";
+"onboarding.location.enabled" = "Accesso alla posizione abilitato";
+"onboarding.location.enable" = "Abilita Accesso alla Posizione";
+"onboarding.location.optional" = "Questo è facoltativo - puoi sempre aggiungere luoghi manualmente";
+"onboarding.complete.title" = "Tutto Pronto!";
+"onboarding.complete.description" = "Inizia a esplorare la mappa e marca i luoghi che hai visitato";
+
+// MARK: - Map & UI Controls
+"map.show_photo_pins" = "Mostra marcatori foto";
+"map.hide_photo_pins" = "Nascondi marcatori foto";
+"map.show_list" = "Mostra elenco";
+"map.show_map" = "Mostra mappa";
+"map.expand_states" = "Espandi stati";
+"map.collapse_states" = "Comprimi stati";
+
+// MARK: - Common Actions
+"action.cancel" = "Annulla";
+"action.delete" = "Elimina";
+"action.ok" = "OK";
+"action.done" = "Fatto";
+"action.restore" = "Ripristina";
+
+// MARK: - Accessibility Labels
+"accessibility.visited_status" = "%@, %@";
+"accessibility.visited" = "visitato";
+"accessibility.not_visited" = "non visitato";
+"accessibility.continent_stats" = "%@, %d di %d paesi visitati";
+"accessibility.bucket_list_count" = "%d %@ nella lista dei desideri";
+"accessibility.stats_percentage" = "%@: %d di %d, %d percento";
+"accessibility.total_regions" = "Regioni totali visitate: %d";
+
+// MARK: - Error Messages
+"error.unknown" = "Errore sconosciuto";
+"error.backup_failed" = "Backup non riuscito";
+"error.restore_failed" = "Ripristino non riuscito";
+
+// MARK: - Place Names & Geographic Terms
+"geographic.continent" = "Continente";
+"geographic.country" = "Paese";
+"geographic.state" = "Stato";
+"geographic.province" = "Provincia";
+"geographic.territory" = "Territorio";
+
+// MARK: - Continents
+"continent.africa" = "Africa";
+"continent.antarctica" = "Antartide";
+"continent.asia" = "Asia";
+"continent.europe" = "Europa";
+"continent.north_america" = "America del Nord";
+"continent.oceania" = "Oceania";
+"continent.south_america" = "America del Sud";
+
+// MARK: - Onboarding Features and Benefits
+"onboarding.feature.map" = "Visualizza i tuoi viaggi su una mappa interattiva";
+"onboarding.feature.bucket_list" = "Crea una lista dei desideri dei luoghi da visitare";
+"onboarding.feature.photos" = "Importa posizioni dalle tue foto";
+"onboarding.photos.benefit.map" = "Vedi i marcatori delle foto sulla tua mappa";
+"onboarding.photos.benefit.automatic" = "Scopri automaticamente i tuoi viaggi passati";
+"onboarding.photos.benefit.privacy" = "Le foto rimangono sul tuo dispositivo";
+"onboarding.location.benefit.auto_detect" = "Rileva automaticamente i nuovi paesi";
+"onboarding.location.benefit.notifications" = "Ricevi notifiche quando visiti nuovi luoghi";
+"onboarding.location.benefit.battery" = "Tracciamento in background efficiente per la batteria";
+"onboarding.tip.tap_country" = "Tocca un paese per contrassegnarlo come visitato";
+"onboarding.tip.bucket_list" = "Tocca a lungo per aggiungere alla tua lista dei desideri";
+"onboarding.tip.photo_import" = "Importa foto da Impostazioni per vedere i marcatori sulla mappa";
