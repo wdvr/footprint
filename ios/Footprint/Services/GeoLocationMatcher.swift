@@ -2,22 +2,32 @@ import CoreLocation
 import Foundation
 import MapKit
 
-/// Utility for matching coordinates to countries/states using on-device GeoJSON boundaries.
-/// Used as a fallback when reverse geocoding fails (e.g., for coastal locations).
-@MainActor
-final class GeoLocationMatcher {
-    static let shared = GeoLocationMatcher()
+/// Thread-safe storage for loaded boundary data
+/// Uses a class with nonisolated(unsafe) to allow concurrent read access after initial load
+private final class BoundaryStorage: @unchecked Sendable {
+    static let shared = BoundaryStorage()
 
-    private var countryBoundaries: [GeoJSONParser.CountryBoundary] = []
-    private var usStateBoundaries: [GeoJSONParser.StateBoundary] = []
-    private var canadianProvinceBoundaries: [GeoJSONParser.StateBoundary] = []
-    private var isLoaded = false
+    // These are only written once during initialization, then read-only
+    nonisolated(unsafe) private(set) var countryBoundaries: [GeoJSONParser.CountryBoundary] = []
+    nonisolated(unsafe) private(set) var usStateBoundaries: [GeoJSONParser.StateBoundary] = []
+    nonisolated(unsafe) private(set) var canadianProvinceBoundaries: [GeoJSONParser.StateBoundary] = []
+    nonisolated(unsafe) private(set) var isLoaded = false
+
+    private let loadLock = NSLock()
 
     private init() {}
 
-    /// Load boundary data (call once at startup or before first use)
-    func loadBoundariesIfNeeded() {
-        guard !isLoaded else { return }
+    /// Thread-safe boundary loading - only loads once
+    func loadIfNeeded() {
+        // Fast path: already loaded
+        if isLoaded { return }
+
+        // Slow path: acquire lock and load
+        loadLock.lock()
+        defer { loadLock.unlock() }
+
+        // Double-check after acquiring lock
+        if isLoaded { return }
 
         countryBoundaries = GeoJSONParser.parseCountries()
         usStateBoundaries = GeoJSONParser.parseUSStates()
@@ -26,9 +36,23 @@ final class GeoLocationMatcher {
 
         print("[GeoLocationMatcher] Loaded \(countryBoundaries.count) countries, \(usStateBoundaries.count) US states, \(canadianProvinceBoundaries.count) CA provinces")
     }
+}
+
+/// Utility for matching coordinates to countries/states using on-device GeoJSON boundaries.
+/// Used as a fallback when reverse geocoding fails (e.g., for coastal locations).
+@MainActor
+final class GeoLocationMatcher {
+    static let shared = GeoLocationMatcher()
+
+    private init() {}
+
+    /// Load boundary data (call once at startup or before first use)
+    func loadBoundariesIfNeeded() {
+        BoundaryStorage.shared.loadIfNeeded()
+    }
 
     /// Result of a location match
-    struct MatchResult {
+    struct MatchResult: Sendable {
         let countryCode: String
         let countryName: String
         let stateCode: String?
@@ -40,19 +64,25 @@ final class GeoLocationMatcher {
     /// - Parameter coordinate: The coordinate to match
     /// - Returns: MatchResult if found, nil if coordinate is not in any known boundary
     func matchCoordinate(_ coordinate: CLLocationCoordinate2D) -> MatchResult? {
-        loadBoundariesIfNeeded()
+        Self.matchCoordinateNonisolated(coordinate)
+    }
+
+    /// Nonisolated version for parallel processing
+    static nonisolated func matchCoordinateNonisolated(_ coordinate: CLLocationCoordinate2D) -> MatchResult? {
+        let storage = BoundaryStorage.shared
+        storage.loadIfNeeded()
 
         let mapPoint = MKMapPoint(coordinate)
 
         // First, check countries
-        for country in countryBoundaries {
+        for country in storage.countryBoundaries {
             if isPoint(mapPoint, inside: country.overlay) {
                 // Found country, now check for state/province
                 var stateCode: String?
                 var stateName: String?
 
                 if country.id == "US" {
-                    for state in usStateBoundaries {
+                    for state in storage.usStateBoundaries {
                         if isPoint(mapPoint, inside: state.overlay) {
                             stateCode = state.id
                             stateName = state.name
@@ -60,7 +90,7 @@ final class GeoLocationMatcher {
                         }
                     }
                 } else if country.id == "CA" {
-                    for province in canadianProvinceBoundaries {
+                    for province in storage.canadianProvinceBoundaries {
                         if isPoint(mapPoint, inside: province.overlay) {
                             stateCode = province.id
                             stateName = province.name
@@ -82,7 +112,7 @@ final class GeoLocationMatcher {
     }
 
     /// Check if a point is inside a multi-polygon
-    private nonisolated func isPoint(_ point: MKMapPoint, inside multiPolygon: MKMultiPolygon) -> Bool {
+    private static nonisolated func isPoint(_ point: MKMapPoint, inside multiPolygon: MKMultiPolygon) -> Bool {
         for polygon in multiPolygon.polygons {
             if isPoint(point, insidePolygon: polygon) {
                 return true
@@ -92,7 +122,7 @@ final class GeoLocationMatcher {
     }
 
     /// Check if a point is inside a polygon using ray-casting algorithm
-    private nonisolated func isPoint(_ point: MKMapPoint, insidePolygon polygon: MKPolygon) -> Bool {
+    private static nonisolated func isPoint(_ point: MKMapPoint, insidePolygon polygon: MKPolygon) -> Bool {
         let renderer = MKPolygonRenderer(polygon: polygon)
         let mapPoint = renderer.point(for: point)
         return renderer.path?.contains(mapPoint) ?? false
@@ -108,8 +138,16 @@ final class GeoLocationMatcher {
         _ coordinate: CLLocationCoordinate2D,
         toleranceMeters: Double = 500
     ) -> MatchResult? {
+        Self.matchCoordinateWithToleranceNonisolated(coordinate, toleranceMeters: toleranceMeters)
+    }
+
+    /// Nonisolated version for parallel processing - can be called from any thread
+    static nonisolated func matchCoordinateWithToleranceNonisolated(
+        _ coordinate: CLLocationCoordinate2D,
+        toleranceMeters: Double = 500
+    ) -> MatchResult? {
         // First try exact match
-        if let result = matchCoordinate(coordinate) {
+        if let result = matchCoordinateNonisolated(coordinate) {
             return result
         }
 
@@ -136,7 +174,7 @@ final class GeoLocationMatcher {
                 latitude: coordinate.latitude + latOff,
                 longitude: coordinate.longitude + lonOff
             )
-            if let result = matchCoordinate(nearbyCoord) {
+            if let result = matchCoordinateNonisolated(nearbyCoord) {
                 return result
             }
         }

@@ -22,7 +22,7 @@ struct PhotoImportView: View {
                         onStartScan: startScan,
                         onFullRescan: startFullRescan,
                         hasPendingScan: importManager.hasPendingScan,
-                        hasCompletedScanBefore: importManager.lastScannedPhotoDate != nil,
+                        hasCompletedScanBefore: importManager.lastScannedPhotoDate != nil || importManager.processedPhotoCount > 0,
                         onResume: resumeScan
                     )
 
@@ -228,6 +228,14 @@ private struct IdleView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
 
+                    // Show how many photos are already tracked
+                    let trackedCount = PhotoImportManager.shared.processedPhotoCount
+                    if trackedCount > 0 {
+                        Text("\(trackedCount.formatted()) photos already scanned")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
                     Button(action: onFullRescan) {
                         Text("Full Rescan (All Photos)")
                             .font(.subheadline)
@@ -297,15 +305,15 @@ private struct CollectingView: View {
             .frame(width: 120, height: 120)
 
             VStack(spacing: 8) {
-                Text("Collecting Photos...")
+                Text("Checking Photos...")
                     .font(.headline)
 
-                Text("Scanning \(displayedCount.formatted()) of \(totalPhotos.formatted()) photos")
+                Text("Checking \(displayedCount.formatted()) of \(totalPhotos.formatted()) photos")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .contentTransition(.numericText())
 
-                Text("Grouping by location")
+                Text("Finding new photos to process")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -785,9 +793,25 @@ private struct StatisticsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // Incremental scan info
+            if statistics.wasIncrementalScan {
+                HStack(spacing: 6) {
+                    Image(systemName: "bolt.fill")
+                        .foregroundStyle(.green)
+                    Text("Incremental scan - \(statistics.photosSkipped) photos skipped")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                }
+                .padding(.bottom, 4)
+            }
+
             // Photo counts
             Group {
-                StatRow(label: "Photos scanned", value: "\(statistics.totalPhotosScanned)")
+                if statistics.totalPhotosInLibrary > 0 && statistics.totalPhotosInLibrary != statistics.totalPhotosScanned {
+                    StatRow(label: "Total photos in library", value: "\(statistics.totalPhotosInLibrary)")
+                    StatRow(label: "Photos skipped (already scanned)", value: "\(statistics.photosSkipped)", color: .blue)
+                }
+                StatRow(label: "New photos scanned", value: "\(statistics.totalPhotosScanned)")
                 StatRow(label: "With location data", value: "\(statistics.photosWithLocation)", color: .green)
                 StatRow(label: "Without location data", value: "\(statistics.photosWithoutLocation)", color: statistics.photosWithoutLocation > 0 ? .orange : .secondary)
             }
