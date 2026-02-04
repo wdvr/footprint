@@ -216,7 +216,7 @@ function HomePage() {
               <h3>Buy Me a Coffee</h3>
               <p>Help fund development, server costs, and my Claude subscription!</p>
               <a
-                href="https://buymeacoffee.com"
+                href="https://buymeacoffee.com/wdvr"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-secondary"
