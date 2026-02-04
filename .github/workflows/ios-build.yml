@@ -130,6 +130,7 @@ jobs:
           -configuration Release \
           -archivePath $RUNNER_TEMP/Export/App.xcarchive \
           -destination 'generic/platform=iOS' \
+          -allowProvisioningUpdates \
           -authenticationKeyPath $RUNNER_TEMP/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8 \
           -authenticationKeyID ${{ secrets.APP_STORE_CONNECT_KEY_ID }} \
           -authenticationKeyIssuerID ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
@@ -165,6 +166,7 @@ jobs:
           -archivePath $RUNNER_TEMP/Export/App.xcarchive \
           -exportPath $RUNNER_TEMP/Export \
           -exportOptionsPlist /tmp/ExportOptions.plist \
+          -allowProvisioningUpdates \
           -authenticationKeyPath $RUNNER_TEMP/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8 \
           -authenticationKeyID ${{ secrets.APP_STORE_CONNECT_KEY_ID }} \
           -authenticationKeyIssuerID ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
