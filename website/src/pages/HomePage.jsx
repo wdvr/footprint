@@ -9,10 +9,7 @@ import {
   FiGithub,
   FiCoffee,
   FiMessageCircle,
-  FiDownload,
   FiCamera,
-  FiCalendar,
-  FiMail,
   FiTrendingUp
 } from 'react-icons/fi'
 import { BsApple } from 'react-icons/bs'
@@ -30,14 +27,9 @@ function HomePage() {
       description: 'Automatically discover places you\'ve been from your photo library\'s location data.'
     },
     {
-      icon: <FiCalendar />,
-      title: 'Google Calendar Import',
-      description: 'Import your travel history from Google Calendar events - flights, hotels, and trips.'
-    },
-    {
-      icon: <FiMail />,
-      title: 'Gmail Import',
-      description: 'Extract travel data from flight confirmations and booking emails in your inbox.'
+      icon: <FiMapPin />,
+      title: 'Background Tracking',
+      description: 'Get notified when you visit new countries. Footprint tracks your travels automatically.'
     },
     {
       icon: <FiWifi />,
@@ -48,12 +40,17 @@ function HomePage() {
       icon: <FiUsers />,
       title: 'Share with Friends',
       description: 'Connect with friends, compare adventures, and see who\'s visited the most places.'
+    },
+    {
+      icon: <FiShield />,
+      title: 'Privacy Focused',
+      description: 'Sign in with Apple. No email collection, minimal data, your travels stay yours.'
     }
   ]
 
   const moreFeatures = [
     {
-      icon: <FiMapPin />,
+      icon: <FiGlobe />,
       title: '195+ Regions',
       description: 'Track all UN countries, US states, and Canadian provinces with accurate geographic boundaries.'
     },
@@ -63,14 +60,14 @@ function HomePage() {
       description: 'See your progress with beautiful statistics - continents, timezones, and achievements.'
     },
     {
-      icon: <FiShield />,
-      title: 'Privacy Focused',
-      description: 'Sign in with Apple. No email collection, minimal data, your travels stay yours.'
-    },
-    {
       icon: <FiSmartphone />,
       title: 'iOS Widgets',
       description: 'See your travel stats at a glance with beautiful home screen widgets.'
+    },
+    {
+      icon: <FiGithub />,
+      title: 'Open Source',
+      description: 'Footprint is open source. Contribute, report bugs, or build your own features.'
     }
   ]
 
@@ -95,7 +92,7 @@ function HomePage() {
               </h1>
               <p>
                 Track countries, US states, and Canadian provinces on an interactive world map.
-                Import from photos, Google Calendar, and Gmail. Share with friends and compare stats.
+                Import from your photo library. Share with friends and compare stats.
               </p>
               <div className="hero-buttons">
                 <a
@@ -152,7 +149,7 @@ function HomePage() {
         <div className="container">
           <div className="section-header">
             <h2>Smart import. <span className="text-gradient">Zero effort.</span></h2>
-            <p>Import your travel history automatically from your photos, calendar, and email.</p>
+            <p>Import your travel history automatically from your photo library.</p>
           </div>
 
           <div className="features-grid">

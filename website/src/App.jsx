@@ -5,6 +5,7 @@ import TermsPage from './pages/TermsPage'
 import PrivacyPage from './pages/PrivacyPage'
 import LicensePage from './pages/LicensePage'
 import FeedbackPage from './pages/FeedbackPage'
+import SupportPage from './pages/SupportPage'
 import './App.css'
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
         <Route path="privacy" element={<PrivacyPage />} />
         <Route path="license" element={<LicensePage />} />
         <Route path="feedback" element={<FeedbackPage />} />
+        <Route path="support" element={<SupportPage />} />
       </Route>
     </Routes>
   )

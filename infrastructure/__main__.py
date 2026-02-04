@@ -690,25 +690,26 @@ email_forwarder_code = """
 import boto3
 import email
 import os
-import re
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.application import MIMEApplication
 
 s3 = boto3.client('s3')
 ses = boto3.client('ses')
 
 FORWARD_TO = os.environ['FORWARD_TO']
 VERIFIED_EMAIL = os.environ['VERIFIED_EMAIL']
+EMAIL_BUCKET = os.environ['EMAIL_BUCKET']
 
 def handler(event, context):
-    # Get the email from S3
+    print(f"Received event: {event}")
+
+    # Get the email from S3 using messageId as key
     record = event['Records'][0]
-    bucket = record['ses']['receipt']['action']['bucketName']
-    key = record['ses']['receipt']['action']['objectKey']
+    message_id = record['ses']['mail']['messageId']
 
     # Fetch email from S3
-    response = s3.get_object(Bucket=bucket, Key=key)
+    print(f"Fetching email from s3://{EMAIL_BUCKET}/{message_id}")
+    response = s3.get_object(Bucket=EMAIL_BUCKET, Key=message_id)
     raw_email = response['Body'].read()
 
     # Parse the email
@@ -823,6 +824,7 @@ email_forwarder_lambda = aws.lambda_.Function(
         variables={
             "FORWARD_TO": "wouterdevriendt@gmail.com",
             "VERIFIED_EMAIL": f"noreply@{domain_name}",
+            "EMAIL_BUCKET": email_bucket.bucket,
         }
     ),
     tags=common_tags,
