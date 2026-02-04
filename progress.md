@@ -93,3 +93,36 @@ AWS_PROFILE=personal aws s3 sync dist s3://footprint-website-dev-383757231925 --
 - Google Calendar/Gmail import temporarily disabled (re-enable in ImportSourcesView.swift)
 - Swift 6 strict concurrency requires `nonisolated(unsafe)` for test properties
 - Domain registered in [default] AWS account, infrastructure in [personal] account
+
+---
+
+## v2.0.1 Work In Progress (2026-02-04)
+
+### Investigated Features & Fixes
+
+**Google Calendar/Gmail Import**: Already hidden on main branch (ImportSourcesView.swift lines 18-98)
+
+**Sharing Feature**: Issue #20 is open - "Data export - share travel maps". No dedicated branch exists yet.
+
+**Russia/Timezone Bug Investigation**:
+- The "visiting Russia marks all as visited" bug was not found in open issues
+- Russia federal subjects (85 regions) are properly implemented in GeographicData.swift
+- State matching uses short codes (e.g., "MOW" for Moscow) mapped from ISO format
+- No existing branch for timezone fixes found
+
+### CI/CD Improvements
+
+**TestFlight Deployment Fix**: Updated ios-build.yml to produce signed IPA artifacts:
+- Added App Store Connect API authentication
+- Added archive and export steps
+- Added artifact upload for TestFlight workflow consumption
+
+### Open Branches (Remote)
+
+| Branch | Purpose |
+|--------|---------|
+| `feature/cities-provinces-expansion` | International regions support |
+| `feature/i18n-translations` | Internationalization |
+| `feature/import-improvements` | Import flow enhancements |
+| `fix/auto-token-refresh` | Token refresh fixes |
+| `claude/google-login-integration-*` | Google OAuth integration |
