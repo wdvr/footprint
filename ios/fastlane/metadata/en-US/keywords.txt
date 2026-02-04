@@ -1,1 +1,1 @@
-travel,map,countries,visited,tracker,world,states,provinces,trip,journey
+travel,map,countries,visited,tracker,world,states,provinces,trip,journey,photo,import,timeline

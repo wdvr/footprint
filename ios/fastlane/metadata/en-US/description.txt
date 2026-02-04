@@ -1,18 +1,31 @@
-Track your travels and mark the countries, US states, and Canadian provinces you've visited on a beautiful interactive world map.
+Track your travels and mark the countries, states, and provinces you've visited on a beautiful interactive world map.
+
+AUTOMATIC PHOTO IMPORT:
+Let Footprint discover your travel history from your photo library. The app scans your photos' location data and automatically detects which countries and states you've visited - all processed privately on your device.
 
 FEATURES:
 • Interactive world map with tap-to-select regions
 • Track visits to all 195 UN member countries
-• Track all 50 US states plus Washington DC
-• Track 10 Canadian provinces and 3 territories
-• See your travel statistics and progress
+• Track US states, Canadian provinces, Russian oblasts, French regions, and more
+• Import travel history from photos (on-device processing)
+• Travel timeline showing your journey through time
+• Transit tracking for flights, trains, and road trips
+• See your travel statistics and progress by continent
+• Track timezones you've visited
+• Unlock achievement badges for travel milestones
 • Offline-first with background sync
 • Sign in with Apple for secure cloud backup
 
+SUPPORTED REGIONS:
+• All 195 UN member countries
+• 50 US states + Washington DC
+• 13 Canadian provinces and territories
+• Regions in Russia, France, Germany, Spain, Italy, Netherlands, Belgium, UK, and Argentina
+
 SIMPLE & BEAUTIFUL:
-Footprint focuses on what matters - tracking your travels without feature bloat. The clean, intuitive interface lets you mark visited places with a single tap.
+Footprint focuses on what matters - tracking your travels without feature bloat. The clean, intuitive interface lets you mark visited places with a single tap, or import your entire travel history from photos.
 
 PRIVACY FOCUSED:
-Your travel data stays yours. We collect minimal data and everything syncs securely with your Apple ID.
+Your travel data stays yours. Photo scanning happens entirely on your device - no images are ever uploaded. We collect minimal data and everything syncs securely with your Apple ID.
 
 Perfect for travelers who want to remember where they've been and plan where to go next.

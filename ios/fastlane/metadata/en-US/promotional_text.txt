@@ -1,1 +1,1 @@
-Track your travels on a beautiful interactive world map!
+NEW: Import your travel history from photos! Auto-detect countries and states you've visited.

@@ -1,0 +1,19 @@
+Footprint 2.0 - Major Update!
+
+NEW FEATURES:
+• Photo Import with State Tracking - Import your travel history from photos with automatic detection of US states, Canadian provinces, Russian oblasts, French regions, and more
+• Travel Timeline - See your journey through time with a visual timeline
+• Transit Mode - Track flights, trains, and road trips
+• Continent Progress - See how much of each continent you've explored
+• Timezone Tracking - Discover how many timezones you've visited
+• Achievement Badges - Unlock badges for travel milestones
+• Leaderboard - Compare your progress with friends
+
+IMPROVEMENTS:
+• Coastal tolerance - Beach and waterfront photos are now correctly matched
+• Better state/province detection for 11 countries
+• Firebase analytics for better app insights
+• Configurable tracking granularity (country-only or state-level)
+• Auto-rematch when new regions are added
+
+Perfect your travel map - import your photos and watch your world light up!
