@@ -61,7 +61,7 @@ function Layout() {
               <h4>App</h4>
               <ul className="footer-links">
                 <li><a href="#features">Features</a></li>
-                <li><a href="https://apps.apple.com" target="_blank" rel="noopener noreferrer">App Store</a></li>
+                <li><a href="https://apps.apple.com/app/footprint-travel-tracker" target="_blank" rel="noopener noreferrer">App Store</a></li>
                 <li><Link to="/feedback">Feedback</Link></li>
               </ul>
             </div>

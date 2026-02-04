@@ -9,7 +9,11 @@ import {
   FiGithub,
   FiCoffee,
   FiMessageCircle,
-  FiDownload
+  FiDownload,
+  FiCamera,
+  FiCalendar,
+  FiMail,
+  FiTrendingUp
 } from 'react-icons/fi'
 import { BsApple } from 'react-icons/bs'
 
@@ -18,12 +22,22 @@ function HomePage() {
     {
       icon: <FiGlobe />,
       title: 'Interactive World Map',
-      description: 'Tap to mark countries and regions with beautiful MapKit integration and smooth animations.'
+      description: 'Beautiful MapKit integration with smooth animations. Tap to mark countries you\'ve explored.'
     },
     {
-      icon: <FiMapPin />,
-      title: '195+ Regions',
-      description: 'Track all UN countries, US states, and Canadian provinces with accurate geographic boundaries.'
+      icon: <FiCamera />,
+      title: 'Import from Photos',
+      description: 'Automatically discover places you\'ve been from your photo library\'s location data.'
+    },
+    {
+      icon: <FiCalendar />,
+      title: 'Google Calendar Import',
+      description: 'Import your travel history from Google Calendar events - flights, hotels, and trips.'
+    },
+    {
+      icon: <FiMail />,
+      title: 'Gmail Import',
+      description: 'Extract travel data from flight confirmations and booking emails in your inbox.'
     },
     {
       icon: <FiWifi />,
@@ -31,18 +45,31 @@ function HomePage() {
       description: 'Works perfectly without internet. Your data syncs automatically when you\'re back online.'
     },
     {
+      icon: <FiUsers />,
+      title: 'Share with Friends',
+      description: 'Connect with friends, compare adventures, and see who\'s visited the most places.'
+    }
+  ]
+
+  const moreFeatures = [
+    {
+      icon: <FiMapPin />,
+      title: '195+ Regions',
+      description: 'Track all UN countries, US states, and Canadian provinces with accurate geographic boundaries.'
+    },
+    {
+      icon: <FiTrendingUp />,
+      title: 'Travel Stats',
+      description: 'See your progress with beautiful statistics - continents, timezones, and achievements.'
+    },
+    {
       icon: <FiShield />,
       title: 'Privacy Focused',
       description: 'Sign in with Apple. No email collection, minimal data, your travels stay yours.'
     },
     {
-      icon: <FiUsers />,
-      title: 'Share with Friends',
-      description: 'Connect with friends, compare adventures, and discover common destinations.'
-    },
-    {
       icon: <FiSmartphone />,
-      title: 'iOS Widget',
+      title: 'iOS Widgets',
       description: 'See your travel stats at a glance with beautiful home screen widgets.'
     }
   ]
@@ -51,7 +78,7 @@ function HomePage() {
     { number: '195', label: 'Countries' },
     { number: '50', label: 'US States' },
     { number: '13', label: 'CA Provinces' },
-    { number: '100%', label: 'Free' }
+    { number: '7', label: 'Continents' }
   ]
 
   return (
@@ -62,17 +89,17 @@ function HomePage() {
           <div className="hero-content">
             <div className="hero-text animate-slide-up">
               <h1>
-                See the world.
+                Your travels.
                 <br />
-                <span className="text-gradient">Track your travels.</span>
+                <span className="text-gradient">Beautifully mapped.</span>
               </h1>
               <p>
-                A beautiful iOS app for tracking your adventures on an interactive world map.
-                Mark countries, states, and provinces you've visited. Share your journey.
+                Track countries, US states, and Canadian provinces on an interactive world map.
+                Import from photos, Google Calendar, and Gmail. Share with friends and compare stats.
               </p>
               <div className="hero-buttons">
                 <a
-                  href="https://apps.apple.com"
+                  href="https://apps.apple.com/app/footprint-travel-tracker"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn btn-primary"
@@ -124,12 +151,32 @@ function HomePage() {
       <section className="features" id="features">
         <div className="container">
           <div className="section-header">
-            <h2>Everything you need to <span className="text-gradient">track your travels</span></h2>
-            <p>Simple, beautiful, and built for travelers who want to remember every adventure.</p>
+            <h2>Smart import. <span className="text-gradient">Zero effort.</span></h2>
+            <p>Import your travel history automatically from your photos, calendar, and email.</p>
           </div>
 
           <div className="features-grid">
             {features.map((feature, index) => (
+              <div key={index} className="card feature-card">
+                <div className="feature-icon">{feature.icon}</div>
+                <h3>{feature.title}</h3>
+                <p>{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* More Features Section */}
+      <section className="features">
+        <div className="container">
+          <div className="section-header">
+            <h2>And so much <span className="text-gradient">more</span></h2>
+            <p>Built for travelers who want to remember every adventure.</p>
+          </div>
+
+          <div className="features-grid features-grid-4">
+            {moreFeatures.map((feature, index) => (
               <div key={index} className="card feature-card">
                 <div className="feature-icon">{feature.icon}</div>
                 <h3>{feature.title}</h3>
@@ -199,11 +246,11 @@ function HomePage() {
       <section className="cta">
         <div className="container">
           <div className="cta-box">
-            <h2>Ready to start tracking?</h2>
-            <p>Download Footprint for free and begin your travel journey today.</p>
+            <h2>Start mapping your adventures</h2>
+            <p>Download Footprint for free. Import your travel history in seconds.</p>
             <div className="cta-buttons">
               <a
-                href="https://apps.apple.com"
+                href="https://apps.apple.com/app/footprint-travel-tracker"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-white"

@@ -181,3 +181,4 @@ Thumbs.db
 Desktop.ini
 ios/fastlane/vendor/
 ios/fastlane/.bundle/
+ios/fastlane/DerivedData/

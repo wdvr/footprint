@@ -39,8 +39,13 @@ launch_arguments([
   "-SampleDataMode YES"
 ])
 
-# For more information about all available options run
-# fastlane action snapshot
+# STABILITY OPTIONS - Critical for avoiding "signal kill" crashes
+concurrent_simulators(false)       # Run one simulator at a time to avoid resource exhaustion
+erase_simulator(true)              # Clean slate for each run
+reinstall_app(true)                # Force reinstall before testing
+
+# Disable headless mode - can help with simulator stability issues
+headless(false)
 
 # Remove the '#' to disable slide to type on the iOS simulator
 disable_slide_to_type(true)
@@ -49,9 +54,8 @@ disable_slide_to_type(true)
 # If you want to test all devices even if one fails, set this to false
 stop_after_first_error(false)
 
-# Configure whether or not to locale the simulator
-# If you're not localizing your app, you can set this to false
-localize_simulator(true)
+# Disable localization when using reinstall_app to avoid conflicts
+localize_simulator(false)
 
 # Configure build configuration
 configuration("Debug")
@@ -59,3 +63,6 @@ configuration("Debug")
 # Skip xcpretty to avoid Ruby version conflicts
 # (xcpretty subprocess tries to use system Ruby 2.6 which conflicts with Homebrew Ruby 4.0)
 xcodebuild_formatter("")
+
+# Use a consistent derived data path to avoid rebuild issues
+derived_data_path("./fastlane/DerivedData")

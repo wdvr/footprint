@@ -32,7 +32,7 @@ class GoogleService:
 
     def __init__(self):
         self.client_config = {
-            "installed": {
+            "web": {
                 "client_id": GOOGLE_CLIENT_ID,
                 "client_secret": GOOGLE_CLIENT_SECRET,
                 "redirect_uris": [GOOGLE_REDIRECT_URI],

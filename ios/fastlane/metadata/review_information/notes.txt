@@ -1,1 +1,11 @@
-No demo account needed. The app works without login.
+This app allows users to track countries, US states, and Canadian provinces they have visited on an interactive map.
+
+No login is required to use the app - users can optionally sign in with Apple to sync data across devices.
+
+To test:
+1. Launch the app
+2. Tap on countries on the map to mark them as visited
+3. View statistics in the Stats tab
+4. Explore the Countries list view
+
+The app works fully offline and requires no special credentials for review.
