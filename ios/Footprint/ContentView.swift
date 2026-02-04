@@ -172,7 +172,7 @@ struct SettingsView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Import Sources")
                                     .font(.body)
-                                Text("Gmail, Calendar, Photos")
+                                Text("Photos")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

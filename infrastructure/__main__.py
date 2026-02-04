@@ -497,9 +497,17 @@ if enable_custom_domain and hosted_zone:
         record = aws.route53.Record(
             f"{resource_name('cf-cert-validation')}-{i}",
             zone_id=hosted_zone.zone_id,
-            name=cloudfront_certificate.domain_validation_options[i].resource_record_name,
-            type=cloudfront_certificate.domain_validation_options[i].resource_record_type,
-            records=[cloudfront_certificate.domain_validation_options[i].resource_record_value],
+            name=cloudfront_certificate.domain_validation_options[
+                i
+            ].resource_record_name,
+            type=cloudfront_certificate.domain_validation_options[
+                i
+            ].resource_record_type,
+            records=[
+                cloudfront_certificate.domain_validation_options[
+                    i
+                ].resource_record_value
+            ],
             ttl=300,
             allow_overwrite=True,
         )
@@ -627,6 +635,306 @@ if enable_custom_domain and hosted_zone:
     export("cloudfront_hosted_zone_id", website_distribution.hosted_zone_id)
 
 # =============================================================================
+# SES Email Forwarding (support@footprintmaps.com -> Gmail)
+# =============================================================================
+
+# S3 bucket for storing incoming emails
+email_bucket = aws.s3.BucketV2(
+    resource_name("email"),
+    bucket=resource_name("email", include_account=True),
+    tags=common_tags,
+)
+
+# Lifecycle policy to delete old emails after 30 days
+email_bucket_lifecycle = aws.s3.BucketLifecycleConfigurationV2(
+    resource_name("email-lifecycle"),
+    bucket=email_bucket.id,
+    rules=[
+        aws.s3.BucketLifecycleConfigurationV2RuleArgs(
+            id="delete-old-emails",
+            status="Enabled",
+            expiration=aws.s3.BucketLifecycleConfigurationV2RuleExpirationArgs(
+                days=30,
+            ),
+        ),
+    ],
+)
+
+# S3 bucket policy to allow SES to write emails
+email_bucket_policy = aws.s3.BucketPolicy(
+    resource_name("email-policy"),
+    bucket=email_bucket.id,
+    policy=email_bucket.arn.apply(
+        lambda arn: json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Sid": "AllowSESPuts",
+                        "Effect": "Allow",
+                        "Principal": {"Service": "ses.amazonaws.com"},
+                        "Action": "s3:PutObject",
+                        "Resource": f"{arn}/*",
+                        "Condition": {
+                            "StringEquals": {"AWS:SourceAccount": aws_account_id}
+                        },
+                    }
+                ],
+            }
+        )
+    ),
+)
+
+# Lambda function for email forwarding
+email_forwarder_code = """
+import boto3
+import email
+import os
+import re
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
+
+s3 = boto3.client('s3')
+ses = boto3.client('ses')
+
+FORWARD_TO = os.environ['FORWARD_TO']
+VERIFIED_EMAIL = os.environ['VERIFIED_EMAIL']
+
+def handler(event, context):
+    # Get the email from S3
+    record = event['Records'][0]
+    bucket = record['ses']['receipt']['action']['bucketName']
+    key = record['ses']['receipt']['action']['objectKey']
+
+    # Fetch email from S3
+    response = s3.get_object(Bucket=bucket, Key=key)
+    raw_email = response['Body'].read()
+
+    # Parse the email
+    msg = email.message_from_bytes(raw_email)
+
+    # Create forwarded email
+    forward_msg = MIMEMultipart()
+    forward_msg['From'] = VERIFIED_EMAIL
+    forward_msg['To'] = FORWARD_TO
+    forward_msg['Subject'] = f"[Footprint] {msg['Subject']}"
+    forward_msg['Reply-To'] = msg['From']
+
+    # Add original headers as body prefix
+    original_from = msg['From']
+    original_to = msg['To']
+    header_info = f"--- Forwarded from {original_from} to {original_to} ---\\n\\n"
+
+    # Get body
+    body = ""
+    if msg.is_multipart():
+        for part in msg.walk():
+            content_type = part.get_content_type()
+            if content_type == "text/plain":
+                body = part.get_payload(decode=True).decode('utf-8', errors='replace')
+                break
+            elif content_type == "text/html" and not body:
+                body = part.get_payload(decode=True).decode('utf-8', errors='replace')
+    else:
+        body = msg.get_payload(decode=True).decode('utf-8', errors='replace')
+
+    forward_msg.attach(MIMEText(header_info + body, 'plain'))
+
+    # Forward the email
+    ses.send_raw_email(
+        Source=VERIFIED_EMAIL,
+        Destinations=[FORWARD_TO],
+        RawMessage={'Data': forward_msg.as_string()}
+    )
+
+    print(f"Forwarded email from {original_from} to {FORWARD_TO}")
+    return {'statusCode': 200}
+"""
+
+# Create the email forwarder Lambda
+email_forwarder_lambda_role = aws.iam.Role(
+    resource_name("email-forwarder-role"),
+    name=resource_name("email-forwarder-role"),
+    assume_role_policy=json.dumps(
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": "lambda.amazonaws.com"},
+                    "Action": "sts:AssumeRole",
+                }
+            ],
+        }
+    ),
+    tags=common_tags,
+)
+
+# Lambda basic execution
+aws.iam.RolePolicyAttachment(
+    resource_name("email-forwarder-basic"),
+    role=email_forwarder_lambda_role.name,
+    policy_arn="arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+)
+
+# S3 and SES permissions for email forwarder
+email_forwarder_policy = aws.iam.RolePolicy(
+    resource_name("email-forwarder-policy"),
+    role=email_forwarder_lambda_role.id,
+    policy=email_bucket.arn.apply(
+        lambda arn: json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:GetObject"],
+                        "Resource": f"{arn}/*",
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["ses:SendRawEmail", "ses:SendEmail"],
+                        "Resource": "*",
+                    },
+                ],
+            }
+        )
+    ),
+)
+
+# Write Lambda code to file
+email_forwarder_dir = os.path.join(os.path.dirname(__file__), "lambda_placeholder")
+os.makedirs(email_forwarder_dir, exist_ok=True)
+email_forwarder_file = os.path.join(email_forwarder_dir, "email_forwarder.py")
+with open(email_forwarder_file, "w") as f:
+    f.write(email_forwarder_code)
+
+email_forwarder_lambda = aws.lambda_.Function(
+    resource_name("email-forwarder"),
+    name=resource_name("email-forwarder"),
+    role=email_forwarder_lambda_role.arn,
+    handler="email_forwarder.handler",
+    runtime="python3.11",
+    code=AssetArchive({"email_forwarder.py": FileAsset(email_forwarder_file)}),
+    timeout=30,
+    memory_size=128,
+    environment=aws.lambda_.FunctionEnvironmentArgs(
+        variables={
+            "FORWARD_TO": "wouterdevriendt@gmail.com",
+            "VERIFIED_EMAIL": f"noreply@{domain_name}",
+        }
+    ),
+    tags=common_tags,
+)
+
+# Allow SES to invoke the Lambda
+email_forwarder_permission = aws.lambda_.Permission(
+    resource_name("email-forwarder-permission"),
+    action="lambda:InvokeFunction",
+    function=email_forwarder_lambda.name,
+    principal="ses.amazonaws.com",
+    source_account=aws_account_id,
+)
+
+# SES Domain Identity (verify domain for sending/receiving)
+ses_domain_identity = None
+ses_domain_dkim = None
+ses_receipt_rule_set = None
+ses_receipt_rule = None
+mx_record = None
+
+if enable_custom_domain and hosted_zone:
+    # Verify domain in SES
+    ses_domain_identity = aws.ses.DomainIdentity(
+        resource_name("ses-domain"),
+        domain=domain_name,
+    )
+
+    # DKIM for better deliverability
+    ses_domain_dkim = aws.ses.DomainDkim(
+        resource_name("ses-dkim"),
+        domain=domain_name,
+    )
+
+    # Create DKIM DNS records
+    for i in range(3):
+        aws.route53.Record(
+            f"{resource_name('ses-dkim-record')}-{i}",
+            zone_id=hosted_zone.zone_id,
+            name=ses_domain_dkim.dkim_tokens[i].apply(
+                lambda t: f"{t}._domainkey.{domain_name}"
+            ),
+            type="CNAME",
+            ttl=300,
+            records=[
+                ses_domain_dkim.dkim_tokens[i].apply(
+                    lambda t: f"{t}.dkim.amazonses.com"
+                )
+            ],
+        )
+
+    # SES domain verification TXT record
+    aws.route53.Record(
+        resource_name("ses-verification"),
+        zone_id=hosted_zone.zone_id,
+        name=f"_amazonses.{domain_name}",
+        type="TXT",
+        ttl=300,
+        records=[ses_domain_identity.verification_token],
+    )
+
+    # MX record for receiving email
+    mx_record = aws.route53.Record(
+        resource_name("mx-record"),
+        zone_id=hosted_zone.zone_id,
+        name=domain_name,
+        type="MX",
+        ttl=300,
+        records=["10 inbound-smtp.us-east-1.amazonaws.com"],
+    )
+
+    # SES Receipt Rule Set
+    ses_receipt_rule_set = aws.ses.ReceiptRuleSet(
+        resource_name("ses-ruleset"),
+        rule_set_name=resource_name("ses-ruleset"),
+    )
+
+    # Activate the rule set
+    aws.ses.ActiveReceiptRuleSet(
+        resource_name("ses-active-ruleset"),
+        rule_set_name=ses_receipt_rule_set.rule_set_name,
+    )
+
+    # SES Receipt Rule for support@
+    ses_receipt_rule = aws.ses.ReceiptRule(
+        resource_name("ses-rule-support"),
+        rule_set_name=ses_receipt_rule_set.rule_set_name,
+        name="forward-support",
+        recipients=[f"support@{domain_name}"],
+        enabled=True,
+        scan_enabled=True,
+        s3_actions=[
+            aws.ses.ReceiptRuleS3ActionArgs(
+                bucket_name=email_bucket.bucket,
+                position=1,
+            ),
+        ],
+        lambda_actions=[
+            aws.ses.ReceiptRuleLambdaActionArgs(
+                function_arn=email_forwarder_lambda.arn,
+                invocation_type="Event",
+                position=2,
+            ),
+        ],
+    )
+
+    pulumi.log.info(
+        f"Email forwarding: support@{domain_name} -> wouterdevriendt@gmail.com"
+    )
+    export("email_bucket", email_bucket.bucket)
+
+# =============================================================================
 # Exports
 # =============================================================================
 
@@ -665,8 +973,12 @@ if enable_custom_domain:
     pulumi.log.info("")
     pulumi.log.info("=== DOMAIN REGISTRATION NOTE ===")
     pulumi.log.info("If the domain is not yet registered:")
-    pulumi.log.info("1. Register domain via AWS Console: Route 53 > Registered domains > Register domain")
-    pulumi.log.info("2. Update the domain's nameservers to use the hosted zone nameservers")
+    pulumi.log.info(
+        "1. Register domain via AWS Console: Route 53 > Registered domains > Register domain"
+    )
+    pulumi.log.info(
+        "2. Update the domain's nameservers to use the hosted zone nameservers"
+    )
     pulumi.log.info("   (see 'nameservers' output after deployment)")
     pulumi.log.info("DNS records for API and website are automatically configured.")
 else:

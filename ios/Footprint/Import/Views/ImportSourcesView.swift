@@ -15,7 +15,9 @@ struct ImportSourcesView: View {
     var body: some View {
         NavigationStack {
             List {
-                // Google Section
+                // Google Section - temporarily disabled
+                // TODO: Re-enable when Google Calendar/Gmail import is ready
+                /*
                 Section {
                     ImportSourceRow(
                         title: "Google Calendar",
@@ -43,6 +45,7 @@ struct ImportSourcesView: View {
                         Text("Connect your Google account to import travel history from emails and calendar events.")
                     }
                 }
+                */
 
                 // Apple Photos Section
                 Section {
@@ -58,7 +61,8 @@ struct ImportSourcesView: View {
                     Text("Automatically find countries from photos with GPS data in your library.")
                 }
 
-                // Disconnect Section
+                // Disconnect Section - temporarily disabled with Google import
+                /*
                 if googleAuth.isConnected {
                     Section {
                         Button(role: .destructive) {
@@ -70,6 +74,7 @@ struct ImportSourcesView: View {
                         }
                     }
                 }
+                */
             }
             .navigationTitle("Import Sources")
             .navigationBarTitleDisplayMode(.inline)
@@ -80,15 +85,17 @@ struct ImportSourcesView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingGoogleImport) {
-                ImportView()
-            }
+            // Google import sheet - temporarily disabled
+            // .sheet(isPresented: $showingGoogleImport) {
+            //     ImportView()
+            // }
             .sheet(isPresented: $showingPhotoImport) {
                 PhotoImportView()
             }
-            .task {
-                await googleAuth.checkConnectionStatus()
-            }
+            // Google connection check - temporarily disabled
+            // .task {
+            //     await googleAuth.checkConnectionStatus()
+            // }
         }
     }
 }
