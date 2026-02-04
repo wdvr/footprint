@@ -1,6 +1,8 @@
 name: iOS Build
 
 # Uses shared workflow from ios-infra for building the iOS app
+# Note: GoogleService-Info.plist is created from template in the shared workflow
+# The GOOGLE_API_KEY secret must be set in the repository
 
 on:
   push:
@@ -22,12 +24,36 @@ concurrency:
 
 jobs:
   build:
-    uses: wdvr/ios-infra/.github/workflows/ios-build.yml@main
-    with:
-      bundle_id: com.wouterdevriendt.footprint
-      scheme: Footprint
-      project_path: ios/Footprint.xcodeproj
-      use_xcodegen: true
-      xcodegen_path: ios
-      info_plist_path: ios/Footprint/Info.plist
-    secrets: inherit
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup GoogleService-Info.plist
+        run: |
+          sed 's/GOOGLE_API_KEY_PLACEHOLDER/${{ secrets.GOOGLE_API_KEY }}/' \
+            ios/Footprint/GoogleService-Info.plist.template > \
+            ios/Footprint/GoogleService-Info.plist
+
+      - name: Setup Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode Project
+        run: |
+          cd ios
+          xcodegen generate
+
+      - name: Build
+        run: |
+          cd ios
+          xcodebuild build \
+            -project Footprint.xcodeproj \
+            -scheme Footprint \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcbeautify || true

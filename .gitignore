@@ -183,3 +183,4 @@ ios/fastlane/vendor/
 ios/fastlane/.bundle/
 ios/fastlane/.env
 ios/fastlane/DerivedData/
+ios/Footprint/GoogleService-Info.plist

@@ -213,6 +213,12 @@ jobs:
           echo "XcodeGen already installed: $(xcodegen --version)"
         fi
 
+    - name: Setup GoogleService-Info.plist
+      run: |
+        sed 's/GOOGLE_API_KEY_PLACEHOLDER/${{ secrets.GOOGLE_API_KEY }}/' \
+          ios/Footprint/GoogleService-Info.plist.template > \
+          ios/Footprint/GoogleService-Info.plist
+
     - name: Generate Xcode Project
       run: |
         cd ios
