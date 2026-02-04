@@ -55,3 +55,7 @@ localize_simulator(true)
 
 # Configure build configuration
 configuration("Debug")
+
+# Skip xcpretty to avoid Ruby version conflicts
+# (xcpretty subprocess tries to use system Ruby 2.6 which conflicts with Homebrew Ruby 4.0)
+xcodebuild_formatter("")

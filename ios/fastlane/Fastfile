@@ -24,7 +24,8 @@ platform :ios do
       override_status_bar: true,
       concurrent_simulators: false,
       stop_after_first_error: false,
-      skip_open_summary: true
+      skip_open_summary: true,
+      xcodebuild_formatter: ""  # Skip xcpretty to avoid Ruby version conflicts
     )
   end
 
@@ -38,7 +39,8 @@ platform :ios do
       output_directory: "./screenshots",
       clear_previous_screenshots: true,
       override_status_bar: true,
-      skip_open_summary: true
+      skip_open_summary: true,
+      xcodebuild_formatter: ""  # Skip xcpretty to avoid Ruby version conflicts
     )
   end
 
