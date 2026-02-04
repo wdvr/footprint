@@ -1,63 +1,56 @@
 import XCTest
 import MapKit
 
-// NOTE: Do NOT use @MainActor on XCTestCase classes - XCTest (Obj-C) doesn't support Swift actor isolation
-// This causes "Test crashed with signal kill" errors. Instead, use MainActor.assumeIsolated
-// for XCUITest API calls since UI tests actually run on the main thread.
+// NOTE: UI tests run on the main thread, so we use @MainActor on the class.
+// The nonisolated(unsafe) on app allows it to be set in setUp before MainActor context.
+@MainActor
 final class ScreenshotTests: XCTestCase {
-    var app: XCUIApplication!
+    nonisolated(unsafe) var app: XCUIApplication!
 
     override func setUpWithError() throws {
         continueAfterFailure = false
 
-        // All XCUITest APIs are @MainActor in Swift 6, so we need to use assumeIsolated
-        MainActor.assumeIsolated {
-            app = XCUIApplication()
-            setupSnapshot(app)
+        app = XCUIApplication()
+        setupSnapshot(app)
 
-            // Reset app state for consistent screenshots
-            app.launchArguments = [
-                "-ApplePersistenceIgnoreState", "YES",
-                "-UITestingMode", "YES",
-                "-DisableAnimations", "YES",
-                "-SampleDataMode", "YES"
-            ]
+        // Reset app state for consistent screenshots
+        app.launchArguments = [
+            "-ApplePersistenceIgnoreState", "YES",
+            "-UITestingMode", "YES",
+            "-DisableAnimations", "YES",
+            "-SampleDataMode", "YES"
+        ]
 
-            app.launch()
+        app.launch()
 
-            // Wait for app to fully load
-            _ = app.wait(for: .runningForeground, timeout: 10)
-        }
+        // Wait for app to fully load
+        _ = app.wait(for: .runningForeground, timeout: 10)
         Thread.sleep(forTimeInterval: 2) // Allow time for initial UI setup
     }
 
     override func tearDownWithError() throws {
-        MainActor.assumeIsolated {
-            app?.terminate()
-        }
+        app?.terminate()
         app = nil
     }
 
     // MARK: - Screenshots for App Store
 
     func testScreenshot01_MapViewWithVisitedCountries() throws {
-        MainActor.assumeIsolated {
-            // Skip authentication for screenshots
-            skipAuthenticationIfPresent()
+        // Skip authentication for screenshots
+        skipAuthenticationIfPresent()
 
-            // Navigate to map view (should be default)
-            let mapTab = app.tabBars.buttons["Map"]
-            if mapTab.exists {
-                mapTab.tap()
-            }
-
-            // Wait for map to load
-            let mapView = app.maps.firstMatch
-            XCTAssertTrue(mapView.waitForExistence(timeout: 5))
-
-            // Add some sample visited countries for the screenshot
-            addSampleVisitedCountries()
+        // Navigate to map view (should be default)
+        let mapTab = app.tabBars.buttons["Map"]
+        if mapTab.exists {
+            mapTab.tap()
         }
+
+        // Wait for map to load
+        let mapView = app.maps.firstMatch
+        XCTAssertTrue(mapView.waitForExistence(timeout: 5))
+
+        // Add some sample visited countries for the screenshot
+        addSampleVisitedCountries()
 
         // Wait for map overlays to render
         Thread.sleep(forTimeInterval: 3)
@@ -66,24 +59,20 @@ final class ScreenshotTests: XCTestCase {
     }
 
     func testScreenshot02_CountriesListView() throws {
-        MainActor.assumeIsolated {
-            skipAuthenticationIfPresent()
+        skipAuthenticationIfPresent()
 
-            // Navigate to countries tab
-            let countriesTab = app.tabBars.buttons["Countries"]
-            XCTAssertTrue(countriesTab.waitForExistence(timeout: 5))
-            countriesTab.tap()
-        }
+        // Navigate to countries tab
+        let countriesTab = app.tabBars.buttons["Countries"]
+        XCTAssertTrue(countriesTab.waitForExistence(timeout: 5))
+        countriesTab.tap()
 
         // Wait for list to load
         Thread.sleep(forTimeInterval: 2)
 
-        MainActor.assumeIsolated {
-            // Expand a continent section to show more detail
-            let africaButton = app.buttons["Africa: 8/54 countries"]
-            if africaButton.exists {
-                africaButton.tap()
-            }
+        // Expand a continent section to show more detail
+        let africaButton = app.buttons["Africa: 8/54 countries"]
+        if africaButton.exists {
+            africaButton.tap()
         }
         Thread.sleep(forTimeInterval: 1)
 
@@ -91,14 +80,12 @@ final class ScreenshotTests: XCTestCase {
     }
 
     func testScreenshot03_StatsView() throws {
-        MainActor.assumeIsolated {
-            skipAuthenticationIfPresent()
+        skipAuthenticationIfPresent()
 
-            // Navigate to stats tab
-            let statsTab = app.tabBars.buttons["Stats"]
-            XCTAssertTrue(statsTab.waitForExistence(timeout: 5))
-            statsTab.tap()
-        }
+        // Navigate to stats tab
+        let statsTab = app.tabBars.buttons["Stats"]
+        XCTAssertTrue(statsTab.waitForExistence(timeout: 5))
+        statsTab.tap()
 
         // Wait for stats to load
         Thread.sleep(forTimeInterval: 2)
@@ -107,29 +94,25 @@ final class ScreenshotTests: XCTestCase {
     }
 
     func testScreenshot04_StateMapView() throws {
-        MainActor.assumeIsolated {
-            skipAuthenticationIfPresent()
+        skipAuthenticationIfPresent()
 
-            // Go to map view first
-            let mapTab = app.tabBars.buttons["Map"]
-            if mapTab.exists {
-                mapTab.tap()
-            }
+        // Go to map view first
+        let mapTab = app.tabBars.buttons["Map"]
+        if mapTab.exists {
+            mapTab.tap()
         }
 
         // Wait for map to load
         Thread.sleep(forTimeInterval: 2)
 
-        MainActor.assumeIsolated {
-            // Tap on United States to show state view
-            let usRegion = app.maps.firstMatch
-            usRegion.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.45)).tap()
+        // Tap on United States to show state view
+        let usRegion = app.maps.firstMatch
+        usRegion.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.45)).tap()
 
-            // Look for "View States" button or state detail sheet
-            let viewStatesButton = app.buttons["View States"]
-            if viewStatesButton.waitForExistence(timeout: 3) {
-                viewStatesButton.tap()
-            }
+        // Look for "View States" button or state detail sheet
+        let viewStatesButton = app.buttons["View States"]
+        if viewStatesButton.waitForExistence(timeout: 3) {
+            viewStatesButton.tap()
         }
 
         // Wait for state map to load
@@ -139,14 +122,12 @@ final class ScreenshotTests: XCTestCase {
     }
 
     func testScreenshot05_SettingsView() throws {
-        MainActor.assumeIsolated {
-            skipAuthenticationIfPresent()
+        skipAuthenticationIfPresent()
 
-            // Navigate to settings tab
-            let settingsTab = app.tabBars.buttons["Settings"]
-            XCTAssertTrue(settingsTab.waitForExistence(timeout: 5))
-            settingsTab.tap()
-        }
+        // Navigate to settings tab
+        let settingsTab = app.tabBars.buttons["Settings"]
+        XCTAssertTrue(settingsTab.waitForExistence(timeout: 5))
+        settingsTab.tap()
 
         // Wait for settings to load
         Thread.sleep(forTimeInterval: 2)
@@ -154,9 +135,8 @@ final class ScreenshotTests: XCTestCase {
         snapshot("05_Settings")
     }
 
-    // MARK: - Helper Methods (must be called from MainActor.assumeIsolated context)
+    // MARK: - Helper Methods
 
-    @MainActor
     private func skipAuthenticationIfPresent() {
         // Look for login screen and skip it
         let continueWithoutAccountButton = app.buttons["Continue without account"]
@@ -176,7 +156,6 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
-    @MainActor
     private func addSampleVisitedCountries() {
         // In sample data mode, the app should have pre-populated data
         // This method ensures we have good visual data for screenshots
@@ -199,30 +178,5 @@ final class ScreenshotTests: XCTestCase {
             mapView.coordinate(withNormalizedOffset: location).tap()
             Thread.sleep(forTimeInterval: 0.5)
         }
-    }
-
-}
-
-// MARK: - Snapshot Helper
-
-extension ScreenshotTests {
-    func snapshot(_ name: String, timeWaitingForIdle timeout: TimeInterval = 20) {
-        // Use fastlane's snapshot function if available, otherwise XCUIScreen
-        #if SNAPSHOT
-        // UI tests run on the main thread, so we can use assumeIsolated
-        // This avoids needing @MainActor on the test class (which causes crashes)
-        MainActor.assumeIsolated {
-            Snapshot.snapshot(name, timeWaitingForIdle: timeout)
-        }
-        #else
-        // Fallback for manual testing
-        MainActor.assumeIsolated {
-            let screenshot = XCUIScreen.main.screenshot()
-            let attachment = XCTAttachment(screenshot: screenshot)
-            attachment.name = name
-            attachment.lifetime = .keepAlways
-            add(attachment)
-        }
-        #endif
     }
 }
