@@ -210,59 +210,40 @@ If `xcodebuild_formatter` or other settings in Fastfile aren't being applied, ad
 xcodebuild_formatter("")
 ```
 
-### Swift 6 @MainActor and XCTestCase (IMPORTANT)
+### Swift 6 Concurrency in UI Tests (IMPORTANT)
 ```
-Test crashed with signal kill while preparing to run tests
+Sending 'self' risks causing data races
 ```
-**Root Cause**: XCTestCase is written in Objective-C and doesn't support Swift 6 actor isolation. Using `@MainActor` on test classes causes crashes.
+**Root Cause**: Swift 6 strict concurrency requires proper actor isolation for UI tests.
 
-**Solution**: Never use `@MainActor` on XCTestCase subclasses:
+**Solution**: Use `@MainActor` on the test class with `nonisolated(unsafe)` for the app property:
 ```swift
-// BAD - causes "signal kill" crashes
 @MainActor
-final class ScreenshotTests: XCTestCase { ... }
-
-// GOOD - no actor annotation
-final class ScreenshotTests: XCTestCase { ... }
-```
-
-### Swift 6 Calling @MainActor Methods from Tests
-```
-calls to class method 'snapshot(_:timeWaitingForIdle:)' from outside of its actor context are implicitly asynchronous
-```
-**Root Cause**: In Swift 6, ALL XCUITest APIs are `@MainActor` (XCUIApplication, XCUIElement, etc.). Without the test class being `@MainActor`, Swift 6 won't allow calling them directly.
-
-**Solution**: Wrap all XCUITest API calls in `MainActor.assumeIsolated` blocks (UI tests run on the main thread, so this is safe):
-```swift
 final class ScreenshotTests: XCTestCase {
-    var app: XCUIApplication!
+    nonisolated(unsafe) var app: XCUIApplication!
 
     override func setUpWithError() throws {
-        MainActor.assumeIsolated {
-            app = XCUIApplication()
-            setupSnapshot(app)
-            app.launchArguments = ["-SampleDataMode", "YES"]
-            app.launch()
-            _ = app.wait(for: .runningForeground, timeout: 10)
-        }
+        continueAfterFailure = false
+        app = XCUIApplication()
+        setupSnapshot(app)
+        app.launchArguments = ["-SampleDataMode", "YES"]
+        app.launch()
+        _ = app.wait(for: .runningForeground, timeout: 10)
     }
 
     func testScreenshot() throws {
-        MainActor.assumeIsolated {
-            let tab = app.tabBars.buttons["Map"]
-            tab.tap()
-        }
+        let tab = app.tabBars.buttons["Map"]
+        tab.tap()
+        Thread.sleep(forTimeInterval: 2)
         snapshot("01_Map")
-    }
-
-    // Helper methods can use @MainActor annotation
-    @MainActor
-    private func skipAuthIfPresent() {
-        let button = app.buttons["Skip"]
-        if button.exists { button.tap() }
     }
 }
 ```
+
+This approach:
+- Works with Swift 6 strict concurrency
+- Avoids "data races" warnings
+- Keeps test code clean without `MainActor.assumeIsolated` blocks
 
 ### Recommended Snapfile Stability Settings
 For stable screenshot generation, add these to your Snapfile:
