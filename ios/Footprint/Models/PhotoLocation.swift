@@ -8,8 +8,9 @@ struct PhotoLocation: Identifiable, Codable, Equatable {
     let longitude: Double
     var photoCount: Int
     var earliestDate: Date?
-    let countryCode: String?
-    let regionName: String?
+    var countryCode: String?  // Made mutable for rematch
+    var stateCode: String?    // State/province code (e.g., "CA", "ON")
+    var regionName: String?   // Made mutable for rematch
     var photoAssetIDs: [String]  // Local identifiers of photos in this cluster
     let gridKey: String  // Grid cell key for merging clusters
 
@@ -20,6 +21,7 @@ struct PhotoLocation: Identifiable, Codable, Equatable {
         photoCount: Int,
         earliestDate: Date? = nil,
         countryCode: String? = nil,
+        stateCode: String? = nil,
         regionName: String? = nil,
         photoAssetIDs: [String] = [],
         gridKey: String = ""
@@ -30,6 +32,7 @@ struct PhotoLocation: Identifiable, Codable, Equatable {
         self.photoCount = photoCount
         self.earliestDate = earliestDate
         self.countryCode = countryCode
+        self.stateCode = stateCode
         self.regionName = regionName
         self.photoAssetIDs = photoAssetIDs
         self.gridKey = gridKey.isEmpty ? "\(Int(floor(latitude / 0.009))),\(Int(floor(longitude / 0.009)))" : gridKey
@@ -44,12 +47,22 @@ struct PhotoLocation: Identifiable, Codable, Equatable {
     }
 }
 
+/// Result of rematching photo locations
+struct RematchResult {
+    var locationsProcessed: Int = 0
+    var newMatches: Int = 0  // Previously unmatched, now matched
+    var statesFound: Int = 0  // New states/provinces found
+    var countriesFound: [String: Int] = [:]  // Country -> photo count
+    var statesByCountry: [String: [String: Int]] = [:]  // Country -> state -> photo count
+}
+
 /// Manager for storing and retrieving photo locations
 @MainActor
 class PhotoLocationStore {
     static let shared = PhotoLocationStore()
 
     private let userDefaultsKey = "photoLocations"
+    private let lastRematchVersionKey = "photoLocationLastRematchVersion"
 
     private init() {}
 
@@ -120,5 +133,105 @@ class PhotoLocationStore {
     /// Get location count
     var locationCount: Int {
         load().count
+    }
+
+    /// Get the last app version that performed a rematch
+    var lastRematchVersion: String? {
+        UserDefaults.standard.string(forKey: lastRematchVersionKey)
+    }
+
+    /// Check if rematch is needed (new app version with potentially new regions)
+    func needsRematch(currentVersion: String) -> Bool {
+        guard !load().isEmpty else { return false }
+        return lastRematchVersion != currentVersion
+    }
+
+    /// Rematch all stored coordinates against current geographic data
+    /// This allows finding new regions that were added in app updates
+    /// Returns a result with statistics about what was found
+    /// Uses 100m tolerance to catch beach/coastal photos
+    func rematchAllCoordinates() async -> RematchResult {
+        var result = RematchResult()
+        var locations = load()
+        result.locationsProcessed = locations.count
+
+        print("[PhotoLocationStore] Starting rematch of \(locations.count) locations with 100m coastal tolerance...")
+
+        for i in 0..<locations.count {
+            var location = locations[i]
+            let coord = CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)
+
+            // Try to match using GeoJSON boundaries with 100m tolerance for beach photos
+            if let match = GeoLocationMatcher.matchCoordinateWithToleranceNonisolated(coord, toleranceMeters: 100) {
+                let wasUnmatched = location.countryCode == nil
+                let hadNoState = location.stateCode == nil
+
+                location.countryCode = match.countryCode
+                location.regionName = match.countryName
+
+                if wasUnmatched {
+                    result.newMatches += 1
+                }
+
+                // Track country
+                result.countriesFound[match.countryCode, default: 0] += location.photoCount
+
+                // Check for state/province
+                if let stateCode = match.stateCode {
+                    location.stateCode = stateCode
+                    if hadNoState {
+                        result.statesFound += 1
+                    }
+                    result.statesByCountry[match.countryCode, default: [:]][stateCode, default: 0] += location.photoCount
+                }
+
+                locations[i] = location
+            }
+        }
+
+        // Save updated locations
+        save(locations)
+
+        // Mark this version as rematched
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        UserDefaults.standard.set(version, forKey: lastRematchVersionKey)
+
+        print("[PhotoLocationStore] Rematch complete: \(result.newMatches) new matches, \(result.statesFound) states found")
+        return result
+    }
+
+    /// Get all unmatched locations (no country code)
+    func unmatchedLocations() -> [PhotoLocation] {
+        load().filter { $0.countryCode == nil }
+    }
+
+    /// Get locations by country
+    func locations(forCountry countryCode: String) -> [PhotoLocation] {
+        load().filter { $0.countryCode == countryCode }
+    }
+
+    /// Get locations by state
+    func locations(forState stateCode: String, inCountry countryCode: String) -> [PhotoLocation] {
+        load().filter { $0.countryCode == countryCode && $0.stateCode == stateCode }
+    }
+
+    /// Get summary statistics for all stored locations
+    func getStatistics() -> (countries: [String: Int], states: [String: [String: Int]], unmatched: Int) {
+        var countries: [String: Int] = [:]
+        var states: [String: [String: Int]] = [:]
+        var unmatched = 0
+
+        for location in load() {
+            if let country = location.countryCode {
+                countries[country, default: 0] += location.photoCount
+                if let state = location.stateCode {
+                    states[country, default: [:]][state, default: 0] += location.photoCount
+                }
+            } else {
+                unmatched += location.photoCount
+            }
+        }
+
+        return (countries, states, unmatched)
     }
 }

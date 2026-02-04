@@ -246,6 +246,9 @@ struct RootView: View {
                                 hasRequestedNotifications = true
                                 _ = await PushNotificationManager.shared.requestPermission()
                             }
+
+                            // Check if we need to rematch photo locations (new app version with new regions)
+                            await checkAndPerformRematch()
                         }
                     }
             } else {
@@ -253,6 +256,25 @@ struct RootView: View {
             }
         }
         .environment(authManager)
+    }
+
+    /// Check if photo locations need to be rematched against updated geographic data
+    private func checkAndPerformRematch() async {
+        let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let store = PhotoLocationStore.shared
+
+        guard store.needsRematch(currentVersion: currentVersion) else {
+            print("[RootView] Photo locations already rematched for version \(currentVersion)")
+            return
+        }
+
+        print("[RootView] New app version detected, rematching \(store.locationCount) photo locations...")
+        let result = await store.rematchAllCoordinates()
+
+        if result.newMatches > 0 || result.statesFound > 0 {
+            print("[RootView] Rematch found \(result.newMatches) new country matches, \(result.statesFound) new states")
+            // Could show a notification or banner here if desired
+        }
     }
 }
 

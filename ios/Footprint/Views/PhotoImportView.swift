@@ -1,3 +1,5 @@
+import MapKit
+import Photos
 import SwiftData
 import SwiftUI
 
@@ -484,51 +486,55 @@ private struct NoLocationsFoundView: View {
     @State private var showingStats = false
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(spacing: 24) {
+                    Spacer(minLength: 40)
 
-            Image(systemName: "photo.badge.checkmark")
-                .font(.system(size: 60))
-                .foregroundStyle(.green)
+                    Image(systemName: "photo.badge.checkmark")
+                        .font(.system(size: 60))
+                        .foregroundStyle(.green)
 
-            VStack(spacing: 12) {
-                if totalFound > 0 {
-                    Text("All Caught Up!")
-                        .font(.title2)
-                        .fontWeight(.semibold)
+                    VStack(spacing: 12) {
+                        if totalFound > 0 {
+                            Text("All Caught Up!")
+                                .font(.title2)
+                                .fontWeight(.semibold)
 
-                    Text("Found \(totalFound) location\(totalFound == 1 ? "" : "s") in your photos, but \(alreadyVisited == totalFound ? "all" : "\(alreadyVisited)") \(alreadyVisited == 1 ? "is" : "are") already in your visited places.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                } else {
-                    Text("No Locations Found")
-                        .font(.title2)
-                        .fontWeight(.semibold)
+                            Text("Found \(totalFound) location\(totalFound == 1 ? "" : "s") in your photos, but \(alreadyVisited == totalFound ? "all" : "\(alreadyVisited)") \(alreadyVisited == 1 ? "is" : "are") already in your visited places.")
+                                .font(.body)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+                        } else {
+                            Text("No Locations Found")
+                                .font(.title2)
+                                .fontWeight(.semibold)
 
-                    Text("Your photos don't contain location data, or the locations couldn't be identified.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
+                            Text("Your photos don't contain location data, or the locations couldn't be identified.")
+                                .font(.body)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+                        }
+                    }
+
+                    // Statistics summary
+                    Button {
+                        showingStats.toggle()
+                    } label: {
+                        Label("View Scan Details", systemImage: showingStats ? "chevron.up" : "chevron.down")
+                            .font(.subheadline)
+                    }
+
+                    if showingStats {
+                        StatisticsView(statistics: statistics)
+                            .padding(.horizontal)
+                    }
+
+                    Spacer(minLength: 24)
                 }
             }
-
-            // Statistics summary
-            Button {
-                showingStats.toggle()
-            } label: {
-                Label("View Scan Details", systemImage: showingStats ? "chevron.up" : "chevron.down")
-                    .font(.subheadline)
-            }
-
-            if showingStats {
-                StatisticsView(statistics: statistics)
-                    .padding(.horizontal)
-            }
-
-            Spacer()
 
             Button("Done", action: onDismiss)
                 .font(.headline)
@@ -790,6 +796,7 @@ private struct ErrorView: View {
 private struct StatisticsView: View {
     let statistics: ImportStatistics
     @State private var showingUnmatched = false
+    @State private var showingUnmatchedMap = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -833,27 +840,22 @@ private struct StatisticsView: View {
                 )
             }
 
-            // Countries found
+            // Countries found with state breakdown
             if !statistics.countriesFound.isEmpty {
                 Divider()
 
-                Text("Photos by Country")
+                Text("Photos by Country (\(statistics.countriesFound.count))")
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(.secondary)
 
                 let sortedCountries = statistics.countriesFound.sorted { $0.value > $1.value }
-                ForEach(sortedCountries.prefix(10), id: \.key) { country, count in
-                    StatRow(
-                        label: countryName(for: country),
-                        value: "\(count) photos",
-                        color: .blue
+                ForEach(sortedCountries, id: \.key) { country, count in
+                    CountryStatRow(
+                        countryCode: country,
+                        photoCount: count,
+                        statesFound: statistics.statesFound[country] ?? [:]
                     )
-                }
-                if sortedCountries.count > 10 {
-                    Text("+ \(sortedCountries.count - 10) more countries")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -861,18 +863,28 @@ private struct StatisticsView: View {
             if !statistics.unmatchedCoordinates.isEmpty {
                 Divider()
 
-                Button {
-                    showingUnmatched.toggle()
-                } label: {
-                    HStack {
-                        Text("Unmatched Coordinates (\(statistics.unmatchedCoordinates.count) samples)")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                        Spacer()
-                        Image(systemName: showingUnmatched ? "chevron.up" : "chevron.down")
+                HStack {
+                    Button {
+                        showingUnmatched.toggle()
+                    } label: {
+                        HStack {
+                            Text("Unmatched Coordinates (\(statistics.unmatchedCoordinates.count) samples)")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                            Image(systemName: showingUnmatched ? "chevron.up" : "chevron.down")
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.red)
+                    }
+
+                    Spacer()
+
+                    Button {
+                        showingUnmatchedMap = true
+                    } label: {
+                        Label("Map", systemImage: "map")
                             .font(.caption)
                     }
-                    .foregroundStyle(.red)
                 }
 
                 if showingUnmatched {
@@ -899,10 +911,230 @@ private struct StatisticsView: View {
             }
         }
         .padding(.vertical, 8)
+        .sheet(isPresented: $showingUnmatchedMap) {
+            UnmatchedCoordinatesMapView(coordinates: statistics.unmatchedCoordinates)
+        }
+    }
+}
+
+// MARK: - Country Stat Row with State Breakdown
+
+private struct CountryStatRow: View {
+    let countryCode: String
+    let photoCount: Int
+    let statesFound: [String: Int]
+
+    private var countryName: String {
+        GeographicData.countries.first { $0.id == countryCode }?.name ?? countryCode
     }
 
-    private func countryName(for code: String) -> String {
-        GeographicData.countries.first { $0.id == code }?.name ?? code
+    private var totalStatesInCountry: Int {
+        GeographicData.states(for: countryCode).count
+    }
+
+    /// All states sorted by photo count, formatted as comma-separated list
+    private var allStatesList: String? {
+        guard !statesFound.isEmpty else { return nil }
+        let sortedStates = statesFound.sorted { $0.value > $1.value }
+        return sortedStates.map { $0.key }.joined(separator: ", ")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(countryName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(formatPhotoCount(photoCount))
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.blue)
+            }
+
+            // State breakdown if available - show ALL states
+            if let statesList = allStatesList, totalStatesInCountry > 0 {
+                HStack(alignment: .top) {
+                    Text(statesList)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(nil)  // Allow wrapping
+                    Spacer()
+                    Text("(\(statesFound.count)/\(totalStatesInCountry))")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            } else if !statesFound.isEmpty {
+                // Country has states but we don't have total count in GeographicData
+                Text(allStatesList ?? "")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(nil)
+            }
+        }
+    }
+
+    private func formatPhotoCount(_ count: Int) -> String {
+        if count >= 1000 {
+            let k = Double(count) / 1000.0
+            return String(format: "%.1fk photos", k)
+        }
+        return "\(count) photos"
+    }
+}
+
+// MARK: - Unmatched Coordinates Map View
+
+private struct UnmatchedCoordinatesMapView: View {
+    let coordinates: [UnmatchedCoordinate]
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedCoordinate: UnmatchedCoordinate?
+    @State private var cameraPosition: MapCameraPosition = .automatic
+
+    var body: some View {
+        NavigationStack {
+            Map(position: $cameraPosition) {
+                ForEach(coordinates) { coord in
+                    Annotation(
+                        "",
+                        coordinate: CLLocationCoordinate2D(latitude: coord.latitude, longitude: coord.longitude),
+                        anchor: .center
+                    ) {
+                        Button {
+                            selectedCoordinate = coord
+                        } label: {
+                            ZStack {
+                                Circle()
+                                    .fill(.red.opacity(0.8))
+                                    .frame(width: 30, height: 30)
+                                Text("\(coord.photoCount)")
+                                    .font(.caption2)
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                    }
+                }
+            }
+            .mapStyle(.standard)
+            .navigationTitle("Unmatched Locations (\(coordinates.count))")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .sheet(item: $selectedCoordinate) { coord in
+                UnmatchedPhotoDetailView(coordinate: coord)
+            }
+        }
+    }
+}
+
+// MARK: - Unmatched Photo Detail View
+
+private struct UnmatchedPhotoDetailView: View {
+    let coordinate: UnmatchedCoordinate
+    @Environment(\.dismiss) private var dismiss
+    @State private var photos: [UIImage] = []
+    @State private var isLoading = true
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                // Location info
+                VStack(spacing: 4) {
+                    Text(String(format: "%.6f, %.6f", coordinate.latitude, coordinate.longitude))
+                        .font(.headline)
+                        .monospaced()
+                    Text("\(coordinate.photoCount) photos at this location")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding()
+
+                // Mini map
+                Map {
+                    Marker(
+                        "Location",
+                        coordinate: CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude)
+                    )
+                    .tint(.red)
+                }
+                .frame(height: 150)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal)
+
+                // Photos
+                if isLoading {
+                    ProgressView("Loading photos...")
+                        .frame(maxHeight: .infinity)
+                } else if photos.isEmpty {
+                    Text("No photos available")
+                        .foregroundStyle(.secondary)
+                        .frame(maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 8) {
+                            ForEach(Array(photos.enumerated()), id: \.offset) { _, photo in
+                                Image(uiImage: photo)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 100, height: 100)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                        }
+                        .padding()
+                    }
+                }
+            }
+            .navigationTitle("Unmatched Location")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .task {
+                await loadPhotos()
+            }
+        }
+    }
+
+    private func loadPhotos() async {
+        guard !coordinate.photoAssetIDs.isEmpty else {
+            isLoading = false
+            return
+        }
+
+        let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: coordinate.photoAssetIDs, options: nil)
+        let imageManager = PHImageManager.default()
+        let options = PHImageRequestOptions()
+        options.deliveryMode = .opportunistic
+        options.isSynchronous = false
+
+        var loadedPhotos: [UIImage] = []
+
+        fetchResult.enumerateObjects { asset, _, _ in
+            let semaphore = DispatchSemaphore(value: 0)
+            imageManager.requestImage(
+                for: asset,
+                targetSize: CGSize(width: 200, height: 200),
+                contentMode: .aspectFill,
+                options: options
+            ) { image, _ in
+                if let image = image {
+                    loadedPhotos.append(image)
+                }
+                semaphore.signal()
+            }
+            semaphore.wait()
+        }
+
+        await MainActor.run {
+            photos = loadedPhotos
+            isLoading = false
+        }
     }
 }
 

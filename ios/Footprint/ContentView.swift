@@ -76,6 +76,9 @@ struct SettingsView: View {
     @State private var showingSignOutAlert = false
     @State private var showingDeleteAccountAlert = false
     @State private var showingClearAllAlert = false
+    @State private var isReprocessingBoundaries = false
+    @State private var rematchResult: RematchResult?
+    @State private var showingRematchResult = false
     #if DEBUG
     @State private var showingBackupSuccess = false
     @State private var showingRestoreAlert = false
@@ -226,6 +229,32 @@ struct SettingsView: View {
 
                 // Data Management
                 Section("Data") {
+                    // Reprocess photo boundaries (for when new regions are added)
+                    let storedLocations = PhotoLocationStore.shared.locationCount
+                    if storedLocations > 0 {
+                        Button {
+                            Task {
+                                isReprocessingBoundaries = true
+                                rematchResult = await PhotoLocationStore.shared.rematchAllCoordinates()
+                                isReprocessingBoundaries = false
+                                showingRematchResult = true
+                            }
+                        } label: {
+                            HStack {
+                                Label("Reprocess Photo Boundaries", systemImage: "arrow.triangle.2.circlepath")
+                                Spacer()
+                                if isReprocessingBoundaries {
+                                    ProgressView()
+                                } else {
+                                    Text("\(storedLocations) locations")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .disabled(isReprocessingBoundaries)
+                    }
+
                     Button(role: .destructive) {
                         showingClearAllAlert = true
                     } label: {
@@ -301,6 +330,15 @@ struct SettingsView: View {
                 }
             } message: {
                 Text("This will remove all \(visitedPlaces.count) visited places. This action cannot be undone.")
+            }
+            .alert("Boundary Reprocessing Complete", isPresented: $showingRematchResult) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                if let result = rematchResult {
+                    Text("Processed \(result.locationsProcessed) locations.\n\(result.newMatches) new country matches.\n\(result.statesFound) new state/province matches.\n\nCountries: \(result.countriesFound.count)\nStates: \(result.statesByCountry.values.reduce(0) { $0 + $1.count })")
+                } else {
+                    Text("Processing complete.")
+                }
             }
             #if DEBUG
             .alert("Backup Saved", isPresented: $showingBackupSuccess) {

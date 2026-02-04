@@ -6,17 +6,23 @@ import SwiftUI
 import UserNotifications
 
 /// Sample coordinate for debugging unmatched locations
-struct UnmatchedCoordinate: Identifiable, Codable, Equatable {
+struct UnmatchedCoordinate: Identifiable, Codable, Equatable, Hashable {
     let id: UUID
     let latitude: Double
     let longitude: Double
     let photoCount: Int
+    let photoAssetIDs: [String]  // Local identifiers of photos at this location
 
-    init(latitude: Double, longitude: Double, photoCount: Int) {
+    init(latitude: Double, longitude: Double, photoCount: Int, photoAssetIDs: [String] = []) {
         self.id = UUID()
         self.latitude = latitude
         self.longitude = longitude
         self.photoCount = photoCount
+        self.photoAssetIDs = photoAssetIDs
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }
 
@@ -32,6 +38,7 @@ struct ImportStatistics: Codable, Equatable {
     var clustersUnmatched: Int = 0
     var unmatchedCoordinates: [UnmatchedCoordinate] = [] // Sample of unmatched (max 50)
     var countriesFound: [String: Int] = [:] // Country code -> photo count
+    var statesFound: [String: [String: Int]] = [:] // Country code -> (state code -> photo count)
 
     var photosInUnmatchedClusters: Int {
         unmatchedCoordinates.reduce(0) { $0 + $1.photoCount }
@@ -1094,34 +1101,47 @@ final class PhotoImportManager: NSObject {
                             }
                         }
 
-                        // Check for US states or Canadian provinces
+                        // Check for states/provinces - works for all countries with state data
+                        // For US/CA: use adminArea from geocoding, convert to code
+                        // For other countries: use stateCode from GeoJSON boundary matching
+                        var stateCode: String?
                         if countryCode == "US" || countryCode == "CA" {
                             if let adminArea = result.adminArea {
-                                let stateCode = stateNameToCode(adminArea, country: countryCode)
-                                let regionType: VisitedPlace.RegionType = countryCode == "US" ? .usState : .canadianProvince
-                                let key = "\(regionType.rawValue):\(stateCode)"
+                                stateCode = stateNameToCode(adminArea, country: countryCode)
+                            }
+                        } else if let boundaryStateCode = result.stateCode {
+                            // Use state code from GeoJSON boundary matching
+                            stateCode = boundaryStateCode
+                        }
 
-                                // Track this as a found location
-                                if !allFoundLocations.contains(key) {
-                                    allFoundLocations.insert(key)
-                                    if existingCodes.contains(key) {
-                                        alreadyVisitedCount += 1
+                        if let stateCode = stateCode {
+                            // Track state for statistics
+                            stats.statesFound[countryCode, default: [:]][stateCode, default: 0] += cluster.photoCount
+
+                            // Get region type for this country
+                            let regionType = regionTypeForState(country: countryCode)
+                            let key = "\(regionType.rawValue):\(stateCode)"
+
+                            // Track this as a found location
+                            if !allFoundLocations.contains(key) {
+                                allFoundLocations.insert(key)
+                                if existingCodes.contains(key) {
+                                    alreadyVisitedCount += 1
+                                }
+                            }
+
+                            if !existingCodes.contains(key) {
+                                let stateName = GeographicData.states(for: countryCode)
+                                    .first { $0.id == stateCode }?.name ?? result.adminArea ?? stateCode
+
+                                var entry = locationCounts[key] ?? (regionType, stateCode, stateName, 0, nil)
+                                entry.count += cluster.photoCount
+                                if let clusterDate = cluster.earliestDate {
+                                    if entry.earliestDate == nil || clusterDate < entry.earliestDate! {
+                                        entry.earliestDate = clusterDate
                                     }
                                 }
-
-                                if !existingCodes.contains(key) {
-                                    let stateName = GeographicData.states(for: countryCode)
-                                        .first { $0.id == stateCode }?.name ?? adminArea
-
-                                    var entry = locationCounts[key] ?? (regionType, stateCode, stateName, 0, nil)
-                                    entry.count += cluster.photoCount
-                                    if let clusterDate = cluster.earliestDate {
-                                        if entry.earliestDate == nil || clusterDate < entry.earliestDate! {
-                                            entry.earliestDate = clusterDate
-                                        }
-                                    }
-                                    locationCounts[key] = entry
-                                }
+                                locationCounts[key] = entry
                             }
                         }
 
@@ -1143,7 +1163,8 @@ final class PhotoImportManager: NSObject {
                             stats.unmatchedCoordinates.append(UnmatchedCoordinate(
                                 latitude: cluster.representativeLocation.coordinate.latitude,
                                 longitude: cluster.representativeLocation.coordinate.longitude,
-                                photoCount: cluster.photoCount
+                                photoCount: cluster.photoCount,
+                                photoAssetIDs: Array(cluster.photoAssetIDs.prefix(10))  // Store up to 10 photo IDs per location
                             ))
                         }
                         // Still save location for map (without country info)
@@ -1389,6 +1410,27 @@ final class PhotoImportManager: NSObject {
             return caProvinces[name] ?? name
         }
         return name
+    }
+
+    /// Get the region type for a state/province based on country
+    private func regionTypeForState(country: String) -> VisitedPlace.RegionType {
+        switch country {
+        case "US": return .usState
+        case "CA": return .canadianProvince
+        case "AU": return .australianState
+        case "MX": return .mexicanState
+        case "BR": return .brazilianState
+        case "DE": return .germanState
+        case "FR": return .frenchRegion
+        case "ES": return .spanishCommunity
+        case "IT": return .italianRegion
+        case "NL": return .dutchProvince
+        case "BE": return .belgianProvince
+        case "GB": return .ukCountry
+        case "RU": return .russianFederalSubject
+        case "AR": return .argentineProvince
+        default: return .country  // Fallback, shouldn't happen
+        }
     }
 
     /// Mark scan as complete and save the date

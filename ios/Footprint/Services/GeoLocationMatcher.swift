@@ -7,10 +7,12 @@ import MapKit
 private final class BoundaryStorage: @unchecked Sendable {
     static let shared = BoundaryStorage()
 
+    /// Countries that have state/province GeoJSON data available
+    static let countriesWithStates = ["US", "CA", "RU", "FR", "DE", "ES", "IT", "NL", "BE", "GB", "AR"]
+
     // These are only written once during initialization, then read-only
     nonisolated(unsafe) private(set) var countryBoundaries: [GeoJSONParser.CountryBoundary] = []
-    nonisolated(unsafe) private(set) var usStateBoundaries: [GeoJSONParser.StateBoundary] = []
-    nonisolated(unsafe) private(set) var canadianProvinceBoundaries: [GeoJSONParser.StateBoundary] = []
+    nonisolated(unsafe) private(set) var stateBoundariesByCountry: [String: [GeoJSONParser.StateBoundary]] = [:]
     nonisolated(unsafe) private(set) var isLoaded = false
 
     private let loadLock = NSLock()
@@ -30,11 +32,19 @@ private final class BoundaryStorage: @unchecked Sendable {
         if isLoaded { return }
 
         countryBoundaries = GeoJSONParser.parseCountries()
-        usStateBoundaries = GeoJSONParser.parseUSStates()
-        canadianProvinceBoundaries = GeoJSONParser.parseCanadianProvinces()
+
+        // Load state boundaries for all countries that have them
+        for countryCode in Self.countriesWithStates {
+            let states = GeoJSONParser.parseStates(forCountry: countryCode)
+            if !states.isEmpty {
+                stateBoundariesByCountry[countryCode] = states
+            }
+        }
+
         isLoaded = true
 
-        print("[GeoLocationMatcher] Loaded \(countryBoundaries.count) countries, \(usStateBoundaries.count) US states, \(canadianProvinceBoundaries.count) CA provinces")
+        let totalStates = stateBoundariesByCountry.values.reduce(0) { $0 + $1.count }
+        print("[GeoLocationMatcher] Loaded \(countryBoundaries.count) countries, \(totalStates) states/provinces across \(stateBoundariesByCountry.count) countries")
     }
 }
 
@@ -77,23 +87,15 @@ final class GeoLocationMatcher {
         // First, check countries
         for country in storage.countryBoundaries {
             if isPoint(mapPoint, inside: country.overlay) {
-                // Found country, now check for state/province
+                // Found country, now check for state/province if available
                 var stateCode: String?
                 var stateName: String?
 
-                if country.id == "US" {
-                    for state in storage.usStateBoundaries {
+                if let stateBoundaries = storage.stateBoundariesByCountry[country.id] {
+                    for state in stateBoundaries {
                         if isPoint(mapPoint, inside: state.overlay) {
                             stateCode = state.id
                             stateName = state.name
-                            break
-                        }
-                    }
-                } else if country.id == "CA" {
-                    for province in storage.canadianProvinceBoundaries {
-                        if isPoint(mapPoint, inside: province.overlay) {
-                            stateCode = province.id
-                            stateName = province.name
                             break
                         }
                     }
