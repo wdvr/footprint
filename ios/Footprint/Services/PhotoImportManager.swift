@@ -1235,6 +1235,15 @@ final class PhotoImportManager: NSObject {
             state = .completed(locations: discoveredLocations, totalFound: totalFound, alreadyVisited: alreadyVisitedCount, statistics: stats)
             clearScanProgress()
 
+            // Track analytics
+            AnalyticsService.shared.trackPhotoScanCompleted(
+                photosScanned: stats.totalPhotosScanned,
+                photosWithLocation: stats.photosWithLocation,
+                countriesFound: stats.countriesFound.count,
+                statesFound: stats.statesFound.values.reduce(0) { $0 + $1.count },
+                locationsImported: discoveredLocations.count
+            )
+
             // Notify if in background
             endBackgroundTask()
             if isRunningInBackground {

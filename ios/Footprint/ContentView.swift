@@ -200,6 +200,23 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+
+                    // Tracking Granularity
+                    Picker(selection: Binding(
+                        get: { AppSettings.shared.trackingGranularity },
+                        set: { AppSettings.shared.trackingGranularity = $0 }
+                    )) {
+                        ForEach(AppSettings.TrackingGranularity.allCases, id: \.self) { granularity in
+                            Text(granularity.displayName).tag(granularity)
+                        }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Tracking Detail")
+                            Text(AppSettings.shared.trackingGranularity.description)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 } header: {
                     Text("Location")
                 } footer: {

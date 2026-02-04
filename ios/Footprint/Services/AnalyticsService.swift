@@ -71,6 +71,118 @@ final class AnalyticsService: @unchecked Sendable {
         ])
     }
 
+    // MARK: - Import Events
+
+    /// Track photo scan completed
+    func trackPhotoScanCompleted(
+        photosScanned: Int,
+        photosWithLocation: Int,
+        countriesFound: Int,
+        statesFound: Int,
+        locationsImported: Int
+    ) {
+        logEvent("photo_scan_completed", parameters: [
+            "photos_scanned": photosScanned,
+            "photos_with_location": photosWithLocation,
+            "countries_found": countriesFound,
+            "states_found": statesFound,
+            "locations_imported": locationsImported
+        ])
+    }
+
+    /// Track Google Calendar import
+    func trackCalendarImportCompleted(eventsScanned: Int, locationsFound: Int, locationsImported: Int) {
+        logEvent("calendar_import_completed", parameters: [
+            "events_scanned": eventsScanned,
+            "locations_found": locationsFound,
+            "locations_imported": locationsImported
+        ])
+    }
+
+    /// Track Gmail import
+    func trackGmailImportCompleted(emailsScanned: Int, locationsFound: Int, locationsImported: Int) {
+        logEvent("gmail_import_completed", parameters: [
+            "emails_scanned": emailsScanned,
+            "locations_found": locationsFound,
+            "locations_imported": locationsImported
+        ])
+    }
+
+    // MARK: - Place Management Events
+
+    /// Track country added/removed
+    func trackCountryChanged(countryCode: String, action: PlaceAction, source: PlaceSource) {
+        logEvent("country_changed", parameters: [
+            "country_code": countryCode,
+            "action": action.rawValue,
+            "source": source.rawValue
+        ])
+    }
+
+    /// Track state/province added/removed
+    func trackStateChanged(stateCode: String, countryCode: String, action: PlaceAction, source: PlaceSource) {
+        logEvent("state_changed", parameters: [
+            "state_code": stateCode,
+            "country_code": countryCode,
+            "action": action.rawValue,
+            "source": source.rawValue
+        ])
+    }
+
+    /// Track bucket list change
+    func trackBucketListChanged(regionCode: String, regionType: String, action: PlaceAction) {
+        logEvent("bucket_list_changed", parameters: [
+            "region_code": regionCode,
+            "region_type": regionType,
+            "action": action.rawValue
+        ])
+    }
+
+    /// Track auto-detection from location tracking
+    func trackAutoDetection(countryCode: String, stateCode: String?) {
+        logEvent("auto_detection", parameters: [
+            "country_code": countryCode,
+            "state_code": stateCode ?? "none"
+        ])
+    }
+
+    /// Track boundary reprocess (migration)
+    func trackBoundaryReprocess(locationsProcessed: Int, newCountryMatches: Int, newStateMatches: Int) {
+        logEvent("boundary_reprocess", parameters: [
+            "locations_processed": locationsProcessed,
+            "new_country_matches": newCountryMatches,
+            "new_state_matches": newStateMatches
+        ])
+    }
+
+    /// Track granularity setting change
+    func trackGranularityChanged(granularity: TrackingGranularity) {
+        logEvent("granularity_changed", parameters: [
+            "granularity": granularity.rawValue
+        ])
+    }
+
+    // MARK: - Enums
+
+    enum PlaceAction: String {
+        case added = "added"
+        case removed = "removed"
+    }
+
+    enum PlaceSource: String {
+        case manual = "manual"
+        case photoImport = "photo_import"
+        case calendarImport = "calendar_import"
+        case gmailImport = "gmail_import"
+        case locationTracking = "location_tracking"
+        case migration = "migration"
+    }
+
+    enum TrackingGranularity: String {
+        case country = "country"
+        case state = "state"  // includes city-level for supported countries
+    }
+
     /// Track map viewed
     func trackMapViewed(placesCount: Int) {
         logEvent("map_viewed", parameters: [

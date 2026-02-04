@@ -196,6 +196,13 @@ class PhotoLocationStore {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         UserDefaults.standard.set(version, forKey: lastRematchVersionKey)
 
+        // Track analytics
+        AnalyticsService.shared.trackBoundaryReprocess(
+            locationsProcessed: result.locationsProcessed,
+            newCountryMatches: result.newMatches,
+            newStateMatches: result.statesFound
+        )
+
         print("[PhotoLocationStore] Rematch complete: \(result.newMatches) new matches, \(result.statesFound) states found")
         return result
     }
