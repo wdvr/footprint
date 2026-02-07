@@ -96,6 +96,7 @@ struct SettingsView: View {
                             Image(systemName: user.authProvider == "google" ? "g.circle.fill" : "apple.logo")
                                 .font(.title)
                                 .foregroundStyle(.tint)
+                                .accessibilityHidden(true)
                             VStack(alignment: .leading) {
                                 Text(user.displayName ?? "Signed In")
                                     .font(.headline)
@@ -110,11 +111,13 @@ struct SettingsView: View {
                             }
                         }
                         .padding(.vertical, 4)
+                        .accessibilityElement(children: .combine)
                     } else if AuthManager.shared.isOfflineMode {
                         HStack {
                             Image(systemName: "person.circle")
                                 .font(.title)
                                 .foregroundStyle(.secondary)
+                                .accessibilityHidden(true)
                             VStack(alignment: .leading) {
                                 Text("Offline Mode")
                                     .font(.headline)
@@ -124,6 +127,7 @@ struct SettingsView: View {
                             }
                         }
                         .padding(.vertical, 4)
+                        .accessibilityElement(children: .combine)
                     }
 
                     // Show Login button when in offline mode, Sign Out when logged in with account
@@ -554,6 +558,18 @@ struct SyncStatusRow: View {
 struct SyncIndicator: View {
     @State private var syncManager = SyncManager.shared
 
+    private var statusLabel: String {
+        if syncManager.isSyncing {
+            return "Syncing"
+        } else if syncManager.error != nil {
+            return "Sync error"
+        } else if syncManager.lastSyncAt != nil {
+            return "Synced"
+        } else {
+            return "Not synced"
+        }
+    }
+
     var body: some View {
         Group {
             if syncManager.isSyncing {
@@ -573,6 +589,7 @@ struct SyncIndicator: View {
                     .font(.caption)
             }
         }
+        .accessibilityLabel(statusLabel)
     }
 }
 
@@ -725,6 +742,7 @@ struct WorldMapView: View {
                                         Circle()
                                             .fill(.green)
                                             .frame(width: 8, height: 8)
+                                            .accessibilityHidden(true)
                                         Text("\(visitedCountryCodes.count)")
                                             .font(.headline)
                                     }
@@ -733,6 +751,7 @@ struct WorldMapView: View {
                                             Circle()
                                                 .fill(.orange)
                                                 .frame(width: 8, height: 8)
+                                                .accessibilityHidden(true)
                                             Text("\(bucketListCountryCodes.count)")
                                                 .font(.headline)
                                         }
@@ -745,6 +764,8 @@ struct WorldMapView: View {
                             .padding()
                             .background(.ultraThinMaterial)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("\(visitedCountryCodes.count) countries visited\(bucketListCountryCodes.isEmpty ? "" : ", \(bucketListCountryCodes.count) on bucket list")")
                             Spacer()
                         }
                         .padding()
@@ -1056,12 +1077,15 @@ struct CountryInfoPopup: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isHeader)
                 Spacer()
                 Button(action: onDismiss) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title2)
                         .foregroundStyle(.secondary)
                 }
+                .accessibilityLabel("Close")
             }
 
             // Status Buttons
@@ -1088,6 +1112,8 @@ struct CountryInfoPopup: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Mark \(country.name) as visited")
+                .accessibilityValue(isVisited ? "Currently visited" : "Not visited")
 
                 // Mark as Bucket List Button
                 Button(action: {
@@ -1111,6 +1137,8 @@ struct CountryInfoPopup: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Add \(country.name) to bucket list")
+                .accessibilityValue(isBucketList ? "On bucket list" : "Not on bucket list")
 
                 // Remove Button (only show if has status)
                 if hasStatus {
@@ -1131,6 +1159,7 @@ struct CountryInfoPopup: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Remove \(country.name) from \(isVisited ? "visited" : "bucket list")")
                 }
             }
 
@@ -1147,6 +1176,7 @@ struct CountryInfoPopup: View {
                             .font(.headline)
                         Spacer()
                         Image(systemName: "chevron.right")
+                            .accessibilityHidden(true)
                     }
                     .padding()
                     .background(Color.blue.opacity(0.1))
@@ -1154,6 +1184,7 @@ struct CountryInfoPopup: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
+                .accessibilityHint("Opens the \(country.id == "US" ? "states" : "provinces") map for \(country.name)")
             }
 
             Spacer()
@@ -1428,12 +1459,15 @@ struct StateMapSheet: View {
                             Image(systemName: showStateList ? "chevron.down" : "chevron.up")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                                .accessibilityHidden(true)
                         }
                         .padding(.horizontal)
                         .padding(.vertical, 12)
                         .background(.ultraThinMaterial)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("\(visitedStateCodes.count) of \(allStates.count) \(stateLabel) visited")
+                    .accessibilityHint("Double tap to \(showStateList ? "collapse" : "expand") \(stateLabel.lowercased()) list")
 
                     // State list (shown when expanded)
                     if showStateList {
@@ -1576,12 +1610,15 @@ struct StateInfoPopup: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isHeader)
                 Spacer()
                 Button(action: onDismiss) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title2)
                         .foregroundStyle(.secondary)
                 }
+                .accessibilityLabel("Close")
             }
 
             // Toggle Button
@@ -1602,6 +1639,8 @@ struct StateInfoPopup: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("\(state.name), \(isVisited ? "visited" : "not visited")")
+            .accessibilityHint("Double tap to toggle visited status")
 
             Spacer()
         }

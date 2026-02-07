@@ -41,6 +41,9 @@ struct PhotoGalleryView: View {
                                     .onTapGesture {
                                         selectedAsset = asset
                                     }
+                                    .accessibilityLabel("Photo\(asset.creationDate.map { " from \($0.formatted(date: .abbreviated, time: .omitted))" } ?? "")")
+                                    .accessibilityHint("Double tap to view full size")
+                                    .accessibilityAddTraits(.isButton)
                             }
                         }
                         .padding(2)
@@ -173,6 +176,7 @@ struct PhotoDetailView: View {
                             .font(.title2)
                             .foregroundStyle(.white.opacity(0.8))
                     }
+                    .accessibilityLabel("Close")
                 }
 
                 ToolbarItem(placement: .principal) {

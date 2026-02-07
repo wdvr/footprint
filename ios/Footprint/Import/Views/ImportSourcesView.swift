@@ -110,12 +110,25 @@ private struct ImportSourceRow: View {
     let lastImported: Date?
     let onAction: () -> Void
 
+    private var statusText: String {
+        if isConnected {
+            if let date = lastImported {
+                return "Last imported \(date.formatted(date: .abbreviated, time: .omitted))"
+            } else {
+                return "Not yet imported"
+            }
+        } else {
+            return "Not connected"
+        }
+    }
+
     var body: some View {
         HStack {
             Image(systemName: icon)
                 .font(.title2)
                 .foregroundStyle(isConnected ? iconColor : .secondary)
                 .frame(width: 32)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -142,8 +155,10 @@ private struct ImportSourceRow: View {
                 onAction()
             }
             .font(.subheadline)
+            .accessibilityLabel(isConnected ? "Reimport \(title)" : "Connect \(title)")
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -160,6 +175,30 @@ private struct PhotosRow: View {
         authStatus == .authorized || authStatus == .limited
     }
 
+    private var accessibilityStatusText: String {
+        if isConnected {
+            if isScanning {
+                return "Scanning in progress"
+            } else if let date = lastSynced {
+                return "Last synced \(date.formatted(date: .abbreviated, time: .omitted))"
+            } else {
+                return "Not yet synced"
+            }
+        } else {
+            return "Not connected"
+        }
+    }
+
+    private var accessibilityActionText: String {
+        if isScanning {
+            return "View scanning progress"
+        } else if isConnected {
+            return "Sync photos"
+        } else {
+            return "Connect Apple Photos"
+        }
+    }
+
     var body: some View {
         Button(action: onSync) {
             HStack {
@@ -167,6 +206,7 @@ private struct PhotosRow: View {
                     .font(.title2)
                     .foregroundStyle(isConnected ? .purple : .secondary)
                     .frame(width: 32)
+                    .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Apple Photos")
@@ -204,6 +244,7 @@ private struct PhotosRow: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                    .accessibilityHidden(true)
                 } else if isConnected {
                     Text("Sync")
                         .font(.subheadline)
@@ -218,6 +259,10 @@ private struct PhotosRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Apple Photos, \(accessibilityStatusText)")
+        .accessibilityHint(accessibilityActionText)
+        .accessibilityAddTraits(.isButton)
     }
 }
 

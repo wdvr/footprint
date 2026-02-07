@@ -128,6 +128,8 @@ struct FeedbackView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel("New feedback")
+                    .accessibilityHint("Submit new feedback or report a bug")
                 }
             }
             .sheet(isPresented: $showingNewFeedback) {
@@ -166,6 +168,7 @@ struct FeedbackRow: View {
                 .font(.title2)
                 .foregroundStyle(.secondary)
                 .frame(width: 32)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title)
@@ -177,8 +180,9 @@ struct FeedbackRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
-                    Text("•")
+                    Text("\u{2022}")
                         .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
 
                     Text(item.status.displayName)
                         .font(.caption)
@@ -191,6 +195,8 @@ struct FeedbackRow: View {
             }
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(item.title), \(item.type.displayName), status: \(item.status.displayName)")
     }
 }
 

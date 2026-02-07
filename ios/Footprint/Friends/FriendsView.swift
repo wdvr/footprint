@@ -137,6 +137,8 @@ struct FriendsView: View {
                     } label: {
                         Image(systemName: "person.badge.plus")
                     }
+                    .accessibilityLabel("Add friend")
+                    .accessibilityHint("Search contacts to send a friend request")
                 }
             }
             .sheet(isPresented: $showingAddFriend) {
@@ -298,6 +300,7 @@ struct FriendRequestRow: View {
                             .foregroundStyle(.green)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Accept friend request")
 
                     Button {
                         isProcessing = true
@@ -311,6 +314,7 @@ struct FriendRequestRow: View {
                             .foregroundStyle(.red)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Reject friend request")
                 }
             }
         }
@@ -769,6 +773,7 @@ struct ComparisonStat: View {
             Image(systemName: icon)
                 .font(.title2)
                 .foregroundStyle(color)
+                .accessibilityHidden(true)
 
             Text("\(count)")
                 .font(.title)
@@ -783,6 +788,8 @@ struct ComparisonStat: View {
         .padding()
         .background(color.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(count) countries")
     }
 }
 

@@ -66,9 +66,12 @@ struct ImportReviewView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(scannedEmails) emails scanned")
 
             Divider()
                 .frame(height: 30)
+                .accessibilityHidden(true)
 
             VStack(spacing: 4) {
                 Text("\(scannedEvents)")
@@ -78,9 +81,12 @@ struct ImportReviewView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(scannedEvents) calendar events scanned")
 
             Divider()
                 .frame(height: 30)
+                .accessibilityHidden(true)
 
             VStack(spacing: 4) {
                 Text("\(candidates.count)")
@@ -90,6 +96,8 @@ struct ImportReviewView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(candidates.count) countries found")
         }
     }
 
@@ -179,12 +187,15 @@ struct ImportCandidateRow: View {
                         .foregroundStyle(isSelected ? .blue : .gray)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("\(candidate.countryName), \(isSelected ? "selected" : "not selected")")
+                .accessibilityHint("Double tap to \(isSelected ? "deselect" : "select")")
 
                 // Country flag and name
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(flag(for: candidate.countryCode))
                             .font(.title3)
+                            .accessibilityHidden(true)
                         Text(candidate.countryName)
                             .font(.body)
                             .fontWeight(.medium)
@@ -202,6 +213,7 @@ struct ImportCandidateRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 }
+                .accessibilityHidden(true)
 
                 Spacer()
 
@@ -212,6 +224,7 @@ struct ImportCandidateRow: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(isExpanded ? "Collapse details for \(candidate.countryName)" : "Show details for \(candidate.countryName)")
                 }
             }
             .padding(.vertical, 8)
