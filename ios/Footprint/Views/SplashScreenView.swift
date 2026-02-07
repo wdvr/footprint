@@ -251,15 +251,15 @@ struct SplashScreenView: View {
             }
         }
 
-        // Phase 7: Fade out and finish (1.5s - 2.0s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation(.easeInOut(duration: 0.45)) {
+        // Phase 7: Fade out and finish (1.2s - 1.5s)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            withAnimation(.easeInOut(duration: 0.3)) {
                 fadeOut = true
             }
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            withAnimation(.easeOut(duration: 0.2)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation(.easeOut(duration: 0.15)) {
                 isFinished = true
             }
         }

@@ -181,6 +181,9 @@ final class PhotoImportManager: NSObject {
     /// Number of new photos detected since last scan
     var newPhotosAvailable: Int = 0
 
+    /// Earliest photo dates for already-existing places (to backfill visitedDate on import)
+    var existingPlacePhotoDates: [String: Date] = [:]
+
     // Note: CLGeocoder instances can only process one request at a time.
     // We create a new instance per geocoding request to enable true parallelism.
     #if !targetEnvironment(macCatalyst)
@@ -1007,6 +1010,9 @@ final class PhotoImportManager: NSObject {
         // Track discovered locations (new ones only)
         var locationCounts: [String: (type: VisitedPlace.RegionType, code: String, name: String, count: Int, earliestDate: Date?)] = [:]
 
+        // Track earliest photo dates for already-existing places (to backfill visitedDate)
+        var existingPlacePhotoDates: [String: Date] = [:]
+
         // Track ALL found locations (including already visited) for stats
         var allFoundLocations: Set<String> = []
         var alreadyVisitedCount = 0
@@ -1121,6 +1127,11 @@ final class PhotoImportManager: NSObject {
                                     }
                                 }
                                 locationCounts[key] = entry
+                            } else if let clusterDate = cluster.earliestDate {
+                                // Track earliest photo date for existing places (to backfill visitedDate)
+                                if existingPlacePhotoDates[key] == nil || clusterDate < existingPlacePhotoDates[key]! {
+                                    existingPlacePhotoDates[key] = clusterDate
+                                }
                             }
                         }
 
@@ -1165,6 +1176,11 @@ final class PhotoImportManager: NSObject {
                                     }
                                 }
                                 locationCounts[key] = entry
+                            } else if let clusterDate = cluster.earliestDate {
+                                // Track earliest photo date for existing places (to backfill visitedDate)
+                                if existingPlacePhotoDates[key] == nil || clusterDate < existingPlacePhotoDates[key]! {
+                                    existingPlacePhotoDates[key] = clusterDate
+                                }
                             }
                         }
 
@@ -1233,6 +1249,12 @@ final class PhotoImportManager: NSObject {
             Log.photoImport.info("Geocoding complete: \(totalFound) total locations found, \(alreadyVisitedCount) already visited, \(discoveredLocations.count) new")
             for loc in discoveredLocations.prefix(10) {
                 Log.photoImport.debug("  - \(loc.regionName) (\(loc.regionCode)): \(loc.photoCount) photos")
+            }
+
+            // Save earliest photo dates for existing places (used during import to backfill visitedDate)
+            self.existingPlacePhotoDates = existingPlacePhotoDates
+            if !existingPlacePhotoDates.isEmpty {
+                Log.photoImport.info("Found photo dates for \(existingPlacePhotoDates.count) already-visited places (will backfill visitedDate on import)")
             }
 
             // Mark scan complete (this enables delta scanning for future scans)
@@ -1418,8 +1440,9 @@ final class PhotoImportManager: NSObject {
         UserDefaults.standard.removeObject(forKey: progressKey)
     }
 
-    /// Import selected locations as visited places
+    /// Import selected locations as visited places and backfill visitedDate for existing places
     func importLocations(_ locations: [DiscoveredLocation], into modelContext: ModelContext) {
+        // Create new places
         for location in locations {
             let place = VisitedPlace(
                 regionType: location.visitedPlaceRegionType,
@@ -1429,6 +1452,28 @@ final class PhotoImportManager: NSObject {
             )
             modelContext.insert(place)
         }
+
+        // Backfill visitedDate for existing places that don't have one
+        if !existingPlacePhotoDates.isEmpty {
+            let descriptor = FetchDescriptor<VisitedPlace>()
+            if let allPlaces = try? modelContext.fetch(descriptor) {
+                var updatedCount = 0
+                for place in allPlaces where !place.isDeleted && place.visitedDate == nil {
+                    let key = "\(place.regionType):\(place.regionCode)"
+                    if let photoDate = existingPlacePhotoDates[key] {
+                        place.visitedDate = photoDate
+                        place.lastModifiedAt = Date()
+                        place.isSynced = false
+                        updatedCount += 1
+                    }
+                }
+                if updatedCount > 0 {
+                    Log.photoImport.info("Backfilled visitedDate for \(updatedCount) existing places from photo metadata")
+                }
+            }
+            existingPlacePhotoDates = [:]
+        }
+
         // Save the last sync date and mark scan complete
         UserDefaults.standard.set(Date(), forKey: "lastPhotoSync")
         markScanComplete()
