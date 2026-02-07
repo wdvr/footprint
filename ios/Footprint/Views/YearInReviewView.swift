@@ -118,7 +118,6 @@ struct YearInReviewView: View {
     let visitedPlaces: [VisitedPlace]
     @State private var selectedYear: Int
     @State private var currentPage = 0
-    @State private var animateContent = false
     @Environment(\.dismiss) private var dismiss
 
     private let availableYears: [Int]
@@ -204,17 +203,6 @@ struct YearInReviewView: View {
                 }
             }
             .toolbarColorScheme(.dark, for: .navigationBar)
-        }
-        .onChange(of: currentPage) {
-            animateContent = false
-            withAnimation(.easeOut(duration: 0.6).delay(0.2)) {
-                animateContent = true
-            }
-        }
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.6).delay(0.3)) {
-                animateContent = true
-            }
         }
     }
 
@@ -433,15 +421,22 @@ struct CountsCard: View {
         for step in 0...totalSteps {
             let delay = Double(step) * stepDuration + 0.4
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                let progress = Double(step) / Double(totalSteps)
-                // Use easeOut curve
-                let easedProgress = 1 - pow(1 - progress, 3)
-
                 withAnimation(.linear(duration: stepDuration)) {
-                    animatedTotal = Int(Double(data.totalNewPlaces) * easedProgress)
-                    animatedCountries = Int(Double(data.newCountriesCount) * easedProgress)
-                    animatedStates = Int(Double(data.newUSStatesCount) * easedProgress)
-                    animatedProvinces = Int(Double(data.newCanadianProvincesCount) * easedProgress)
+                    if step == totalSteps {
+                        // Ensure exact final values
+                        animatedTotal = data.totalNewPlaces
+                        animatedCountries = data.newCountriesCount
+                        animatedStates = data.newUSStatesCount
+                        animatedProvinces = data.newCanadianProvincesCount
+                    } else {
+                        let progress = Double(step) / Double(totalSteps)
+                        // Use easeOut curve
+                        let easedProgress = 1 - pow(1 - progress, 3)
+                        animatedTotal = Int(Double(data.totalNewPlaces) * easedProgress)
+                        animatedCountries = Int(Double(data.newCountriesCount) * easedProgress)
+                        animatedStates = Int(Double(data.newUSStatesCount) * easedProgress)
+                        animatedProvinces = Int(Double(data.newCanadianProvincesCount) * easedProgress)
+                    }
                 }
             }
         }
@@ -983,7 +978,9 @@ struct SummaryCard: View {
             // Share button
             Button {
                 renderShareImage()
-                showShareSheet = true
+                if renderedImage != nil {
+                    showShareSheet = true
+                }
             } label: {
                 HStack {
                     Image(systemName: "square.and.arrow.up")
