@@ -1467,7 +1467,7 @@ struct StateMapSheet: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("\(visitedStateCodes.count) of \(allStates.count) \(stateLabel) visited")
-                    .accessibilityHint("Double tap to \(showStateList ? "collapse" : "expand") state list")
+                    .accessibilityHint("Double tap to \(showStateList ? "collapse" : "expand") \(stateLabel.lowercased()) list")
 
                     // State list (shown when expanded)
                     if showStateList {

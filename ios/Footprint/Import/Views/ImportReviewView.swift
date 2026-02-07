@@ -224,7 +224,7 @@ struct ImportCandidateRow: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(isExpanded ? "Collapse details" : "Show details")
+                    .accessibilityLabel(isExpanded ? "Collapse details for \(candidate.countryName)" : "Show details for \(candidate.countryName)")
                 }
             }
             .padding(.vertical, 8)
