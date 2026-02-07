@@ -197,7 +197,9 @@ struct SplashScreenView: View {
 
             // Transition out after a brief pause
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                isFinished = true
+                withAnimation(.easeOut(duration: 0.2)) {
+                    isFinished = true
+                }
             }
             return
         }
@@ -257,7 +259,9 @@ struct SplashScreenView: View {
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            isFinished = true
+            withAnimation(.easeOut(duration: 0.2)) {
+                isFinished = true
+            }
         }
     }
 }
