@@ -30,11 +30,17 @@ struct ContentView: View {
                 }
                 .tag(2)
 
+            MemoriesView(visitedPlaces: visitedPlaces)
+                .tabItem {
+                    Label("Memories", systemImage: "photo.on.rectangle.angled")
+                }
+                .tag(3)
+
             SettingsView()
                 .tabItem {
                     Label("Settings", systemImage: "gear")
                 }
-                .tag(3)
+                .tag(4)
         }
         .onChange(of: visitedPlaces.count) {
             updateWidgetData()
@@ -616,6 +622,8 @@ struct WorldMapView: View {
     @State private var showPhotoPins = false
     @State private var showingPhotoGallery = false
     @State private var selectedPhotoAssetIDs: [String] = []
+    @State private var showingCountryMemories = false
+    @State private var memoriesCountryCode: String?
 
     private var visitedCountryCodes: Set<String> {
         Set(
@@ -844,9 +852,13 @@ struct WorldMapView: View {
                         onViewStates: country.hasStates ? {
                             stateMapCountry = country.id
                             showingStateMap = true
-                        } : nil
+                        } : nil,
+                        onViewMemories: {
+                            memoriesCountryCode = country.id
+                            showingCountryMemories = true
+                        }
                     )
-                    .presentationDetents([.height(country.hasStates ? 350 : 280)])
+                    .presentationDetents([.height(country.hasStates ? 400 : 330)])
                     .presentationDragIndicator(.visible)
                 } else if let code = selectedCountry {
                     // Territory or region not in our country list (e.g., French Guiana, Greenland)
@@ -887,6 +899,21 @@ struct WorldMapView: View {
             }
             .sheet(isPresented: $showingPhotoGallery) {
                 PhotoGalleryView(photoAssetIDs: selectedPhotoAssetIDs)
+            }
+            .sheet(isPresented: $showingCountryMemories) {
+                if let code = memoriesCountryCode {
+                    NavigationStack {
+                        CountryMemoriesView(countryCode: code)
+                            .toolbar {
+                                ToolbarItem(placement: .cancellationAction) {
+                                    Button("Done") {
+                                        showingCountryMemories = false
+                                        memoriesCountryCode = nil
+                                    }
+                                }
+                            }
+                    }
+                }
             }
         }
     }
@@ -1060,10 +1087,13 @@ struct CountryInfoPopup: View {
     let onRemove: () -> Void
     let onDismiss: () -> Void
     var onViewStates: (() -> Void)?
+    var onViewMemories: (() -> Void)?
 
     private var hasStatus: Bool {
         isVisited || isBucketList
     }
+
+    @State private var countryPhotoCount: Int = 0
 
     var body: some View {
         VStack(spacing: 16) {
@@ -1073,9 +1103,16 @@ struct CountryInfoPopup: View {
                     Text(country.name)
                         .font(.title2)
                         .fontWeight(.semibold)
-                    Text("\(country.continent) • \(country.id)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        Text("\(country.continent) • \(country.id)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        if countryPhotoCount > 0 {
+                            Label("\(countryPhotoCount) photos", systemImage: "photo")
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                        }
+                    }
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityAddTraits(.isHeader)
@@ -1086,6 +1123,10 @@ struct CountryInfoPopup: View {
                         .foregroundStyle(.secondary)
                 }
                 .accessibilityLabel("Close")
+            }
+            .onAppear {
+                let locations = PhotoLocationStore.shared.locations(forCountry: country.id)
+                countryPhotoCount = locations.reduce(0) { $0 + $1.photoCount }
             }
 
             // Status Buttons
@@ -1185,6 +1226,31 @@ struct CountryInfoPopup: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("Opens the \(country.id == "US" ? "states" : "provinces") map for \(country.name)")
+            }
+
+            // View Memories button (when photos exist for this country)
+            if countryPhotoCount > 0, let onViewMemories = onViewMemories {
+                Button(action: {
+                    onDismiss()
+                    onViewMemories()
+                }) {
+                    HStack {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.title2)
+                        Text("View Memories")
+                            .font(.headline)
+                        Spacer()
+                        Text("\(countryPhotoCount)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Image(systemName: "chevron.right")
+                    }
+                    .padding()
+                    .background(Color.purple.opacity(0.1))
+                    .foregroundStyle(.purple)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
             }
 
             Spacer()
