@@ -1,5 +1,13 @@
 import SwiftUI
 
+// MARK: - Date Formatting
+
+private let shareCardDateFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "MMMM yyyy"
+    return formatter
+}()
+
 // MARK: - Share Card Data
 
 /// Computed travel statistics for sharing
@@ -119,7 +127,7 @@ struct StatsShareCardView: View {
                     ShareStatItem(
                         value: "\(data.continentsVisited)",
                         label: "Continents",
-                        total: 6,
+                        total: LocalContinentStats.continentData.count,
                         color: colorScheme.accentColor
                     )
                 }
@@ -148,7 +156,7 @@ struct StatsShareCardView: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text(formattedDate())
+                    Text(shareCardDateFormatter.string(from: Date()))
                         .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
                 }
@@ -161,12 +169,6 @@ struct StatsShareCardView: View {
         .frame(width: 390)
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .shadow(color: .black.opacity(0.15), radius: 20, y: 10)
-    }
-
-    private func formattedDate() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        return formatter.string(from: Date())
     }
 }
 
@@ -231,7 +233,7 @@ struct MapShareCardView: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text(formattedDate())
+                    Text(shareCardDateFormatter.string(from: Date()))
                         .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
                 }
@@ -256,11 +258,6 @@ struct MapShareCardView: View {
         }
     }
 
-    private func formattedDate() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        return formatter.string(from: Date())
-    }
 }
 
 // MARK: - Simplified World Map
@@ -276,16 +273,14 @@ struct SimplifiedWorldMapView: View {
         let yRange: ClosedRange<Int>
     }
 
-    private var continentRegions: [ContinentRegion] {
-        [
-            ContinentRegion(name: "Europe", xRange: 10...14, yRange: 1...4),
-            ContinentRegion(name: "Asia", xRange: 14...21, yRange: 1...6),
-            ContinentRegion(name: "Africa", xRange: 10...14, yRange: 4...9),
-            ContinentRegion(name: "North America", xRange: 1...8, yRange: 1...6),
-            ContinentRegion(name: "South America", xRange: 4...8, yRange: 6...10),
-            ContinentRegion(name: "Oceania", xRange: 18...22, yRange: 6...10),
-        ]
-    }
+    private static let continentRegions: [ContinentRegion] = [
+        ContinentRegion(name: "Europe", xRange: 10...14, yRange: 1...4),
+        ContinentRegion(name: "Asia", xRange: 14...21, yRange: 1...6),
+        ContinentRegion(name: "Africa", xRange: 10...14, yRange: 4...9),
+        ContinentRegion(name: "North America", xRange: 1...8, yRange: 1...6),
+        ContinentRegion(name: "South America", xRange: 4...8, yRange: 6...10),
+        ContinentRegion(name: "Oceania", xRange: 18...22, yRange: 6...10),
+    ]
 
     private func visitedFraction(for continent: String) -> Double {
         guard let data = LocalContinentStats.continentData.first(where: { $0.name == continent })
@@ -305,7 +300,7 @@ struct SimplifiedWorldMapView: View {
             let offsetX = (size.width - CGFloat(cols) * dotSpacing) / 2
             let offsetY = (size.height - CGFloat(rows) * dotSpacing) / 2
 
-            for region in continentRegions {
+            for region in Self.continentRegions {
                 let fraction = visitedFraction(for: region.name)
 
                 for x in region.xRange {
@@ -569,7 +564,9 @@ struct ShareSheetView: View {
 
                     // Share button
                     Button {
-                        renderAndShare()
+                        Task {
+                            await renderAndShare()
+                        }
                     } label: {
                         HStack {
                             if isRendering {
@@ -588,6 +585,7 @@ struct ShareSheetView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
                     .disabled(isRendering)
+                    .accessibilityLabel(isRendering ? "Rendering share card" : "Share your travel card")
                     .padding(.horizontal)
                     .padding(.bottom, 20)
                 }
@@ -617,23 +615,27 @@ struct ShareSheetView: View {
     }
 
     @MainActor
-    private func renderAndShare() {
+    private func renderAndShare() async {
         isRendering = true
+        // Yield to let SwiftUI update the UI with the loading state
+        await Task.yield()
 
-        let cardView: AnyView
+        let uiImage: UIImage?
         switch selectedCardType {
         case .stats:
-            cardView = AnyView(
-                StatsShareCardView(
+            let renderer = ImageRenderer(
+                content: StatsShareCardView(
                     data: cardData,
                     colorScheme: selectedColorScheme
                 )
                 .padding(20)
                 .background(Color(.systemGroupedBackground))
             )
+            renderer.scale = 3.0
+            uiImage = renderer.uiImage
         case .map:
-            cardView = AnyView(
-                MapShareCardView(
+            let renderer = ImageRenderer(
+                content: MapShareCardView(
                     data: cardData,
                     visitedCountryCodes: visitedCountryCodes,
                     colorScheme: selectedColorScheme
@@ -641,12 +643,11 @@ struct ShareSheetView: View {
                 .padding(20)
                 .background(Color(.systemGroupedBackground))
             )
+            renderer.scale = 3.0
+            uiImage = renderer.uiImage
         }
 
-        let renderer = ImageRenderer(content: cardView)
-        renderer.scale = 3.0  // High resolution for social media
-
-        if let uiImage = renderer.uiImage {
+        if let uiImage {
             renderedImage = uiImage
             showShareSheet = true
         }
