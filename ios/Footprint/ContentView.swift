@@ -3,6 +3,196 @@ import SwiftData
 import SwiftUI
 import WidgetKit
 
+// MARK: - Visit Date Picker Sheet
+
+/// A lightweight bottom sheet that asks "When did you visit?" with quick options.
+/// Shown when marking a place as visited so the user can optionally set a visit date.
+struct VisitDatePickerSheet: View {
+    let placeName: String
+    let onDateSelected: (Date?) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var showYearPicker = false
+    @State private var showDatePicker = false
+    @State private var selectedYear = Calendar.current.component(.year, from: Date())
+    @State private var selectedDate = Date()
+
+    private var yearRange: ClosedRange<Int> {
+        1950...Calendar.current.component(.year, from: Date())
+    }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            // Header
+            VStack(spacing: 4) {
+                Text("When did you visit?")
+                    .font(.headline)
+                Text(placeName)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.top, 8)
+
+            if showYearPicker {
+                // Year picker mode
+                VStack(spacing: 12) {
+                    Picker("Year", selection: $selectedYear) {
+                        ForEach(Array(yearRange.reversed()), id: \.self) { year in
+                            Text(String(year)).tag(year)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(height: 150)
+
+                    Button {
+                        var components = DateComponents()
+                        components.year = selectedYear
+                        components.month = 1
+                        components.day = 1
+                        let date = Calendar.current.date(from: components) ?? Date()
+                        onDateSelected(date)
+                        dismiss()
+                    } label: {
+                        Text("Confirm")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.blue)
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal)
+            } else if showDatePicker {
+                // Full date picker mode
+                VStack(spacing: 12) {
+                    DatePicker(
+                        "Visit date",
+                        selection: $selectedDate,
+                        in: ...Date(),
+                        displayedComponents: .date
+                    )
+                    .datePickerStyle(.graphical)
+                    .labelsHidden()
+
+                    Button {
+                        onDateSelected(selectedDate)
+                        dismiss()
+                    } label: {
+                        Text("Confirm")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.blue)
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal)
+            } else {
+                // Quick options
+                VStack(spacing: 8) {
+                    Button {
+                        // Set to Jan 1 of current year
+                        var components = DateComponents()
+                        components.year = Calendar.current.component(.year, from: Date())
+                        components.month = 1
+                        components.day = 1
+                        let date = Calendar.current.date(from: components) ?? Date()
+                        onDateSelected(date)
+                        dismiss()
+                    } label: {
+                        HStack {
+                            Image(systemName: "calendar")
+                                .font(.title3)
+                            Text("This year")
+                                .font(.headline)
+                            Spacer()
+                            Text(String(Calendar.current.component(.year, from: Date())))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding()
+                        .background(Color.blue.opacity(0.1))
+                        .foregroundStyle(.blue)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        showYearPicker = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "calendar.badge.clock")
+                                .font(.title3)
+                            Text("Pick a year")
+                                .font(.headline)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding()
+                        .background(Color.purple.opacity(0.1))
+                        .foregroundStyle(.purple)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        showDatePicker = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "calendar.day.timeline.leading")
+                                .font(.title3)
+                            Text("Pick a date")
+                                .font(.headline)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding()
+                        .background(Color.green.opacity(0.1))
+                        .foregroundStyle(.green)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        onDateSelected(nil)
+                        dismiss()
+                    } label: {
+                        HStack {
+                            Image(systemName: "forward.fill")
+                                .font(.title3)
+                            Text("Skip")
+                                .font(.headline)
+                            Spacer()
+                        }
+                        .padding()
+                        .background(Color.secondary.opacity(0.1))
+                        .foregroundStyle(.secondary)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal)
+            }
+
+            Spacer()
+        }
+        .padding(.top, 8)
+    }
+}
+
+/// Represents a pending visit action that needs a date before completing.
+struct PendingVisitAction {
+    let regionType: VisitedPlace.RegionType
+    let regionCode: String
+    let regionName: String
+    var status: VisitedPlace.PlaceStatus = .visited
+}
+
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<VisitedPlace> { !$0.isDeleted })
@@ -624,6 +814,8 @@ struct WorldMapView: View {
     @State private var selectedPhotoAssetIDs: [String] = []
     @State private var showingCountryMemories = false
     @State private var memoriesCountryCode: String?
+    @State private var pendingVisitAction: PendingVisitAction?
+    @State private var showingVisitDatePicker = false
 
     private var visitedCountryCodes: Set<String> {
         Set(
@@ -837,7 +1029,16 @@ struct WorldMapView: View {
                         isVisited: isSelectedCountryVisited,
                         isBucketList: isSelectedCountryBucketList,
                         onMarkVisited: {
-                            setCountryStatus(country, status: .visited)
+                            if !isSelectedCountryVisited {
+                                // Store pending action; date picker shows after popup dismisses
+                                pendingVisitAction = PendingVisitAction(
+                                    regionType: .country,
+                                    regionCode: country.id,
+                                    regionName: country.name
+                                )
+                            } else {
+                                setCountryStatus(country, status: .visited)
+                            }
                         },
                         onMarkBucketList: {
                             setCountryStatus(country, status: .bucketList)
@@ -874,7 +1075,16 @@ struct WorldMapView: View {
                         territoryName: territoryName,
                         isVisited: isTerritoryVisited,
                         onToggle: {
-                            toggleTerritoryVisited(code: code, name: territoryName)
+                            if !isTerritoryVisited {
+                                // Store pending action; date picker shows after popup dismisses
+                                pendingVisitAction = PendingVisitAction(
+                                    regionType: .country,
+                                    regionCode: code,
+                                    regionName: territoryName
+                                )
+                            } else {
+                                toggleTerritoryVisited(code: code, name: territoryName)
+                            }
                         },
                         onDismiss: {
                             showingCountryPopup = false
@@ -915,7 +1125,52 @@ struct WorldMapView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showingVisitDatePicker) {
+                if let action = pendingVisitAction {
+                    VisitDatePickerSheet(placeName: action.regionName) { date in
+                        completePendingVisit(visitedDate: date)
+                    }
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
+                }
+            }
+            .onChange(of: showingCountryPopup) { _, isShowing in
+                // When the country popup dismisses and there's a pending visit action,
+                // show the date picker after a brief delay to avoid sheet conflicts
+                if !isShowing && pendingVisitAction != nil {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        showingVisitDatePicker = true
+                    }
+                }
+            }
         }
+    }
+
+    /// Complete a pending visit action with an optional date
+    private func completePendingVisit(visitedDate: Date?) {
+        guard let action = pendingVisitAction else { return }
+        // Look for ANY existing place (including deleted ones) to avoid duplicates
+        if let existingPlace = visitedPlaces.first(where: {
+            $0.regionType == action.regionType.rawValue
+                && $0.regionCode == action.regionCode
+        }) {
+            existingPlace.status = action.status.rawValue
+            existingPlace.isDeleted = false
+            existingPlace.lastModifiedAt = Date()
+            existingPlace.isSynced = false
+            existingPlace.visitedDate = visitedDate
+        } else {
+            let place = VisitedPlace(
+                regionType: action.regionType,
+                regionCode: action.regionCode,
+                regionName: action.regionName,
+                status: action.status,
+                visitedDate: visitedDate
+            )
+            modelContext.insert(place)
+        }
+        try? modelContext.save()
+        pendingVisitAction = nil
     }
 
     private func setCountryStatus(_ country: Country, status: VisitedPlace.PlaceStatus) {
@@ -1433,6 +1688,8 @@ struct StateMapSheet: View {
 
     @State private var selectedState: String?
     @State private var showingStatePopup = false
+    @State private var pendingStateVisitAction: PendingVisitAction?
+    @State private var showingStateDatePicker = false
 
     /// Screen height that works on both iOS and macOS (Mac Catalyst)
     private var screenHeight: CGFloat {
@@ -1551,7 +1808,17 @@ struct StateMapSheet: View {
                                 ForEach(allStates) { state in
                                     let isVisited = visitedStateCodes.contains(state.id)
                                     Button {
-                                        toggleStateDirectly(state)
+                                        if isVisited {
+                                            toggleStateDirectly(state)
+                                        } else {
+                                            // Show date picker before adding
+                                            pendingStateVisitAction = PendingVisitAction(
+                                                regionType: regionType,
+                                                regionCode: state.id,
+                                                regionName: state.name
+                                            )
+                                            showingStateDatePicker = true
+                                        }
                                     } label: {
                                         HStack {
                                             Image(systemName: isVisited ? "checkmark.circle.fill" : "circle")
@@ -1592,7 +1859,16 @@ struct StateMapSheet: View {
                         state: state,
                         isVisited: isSelectedStateVisited,
                         onToggle: {
-                            toggleStateVisited(state)
+                            if isSelectedStateVisited {
+                                toggleStateVisited(state)
+                            } else {
+                                // Store pending action; date picker shows after popup dismisses
+                                pendingStateVisitAction = PendingVisitAction(
+                                    regionType: regionType,
+                                    regionCode: state.id,
+                                    regionName: state.name
+                                )
+                            }
                         },
                         onDismiss: {
                             showingStatePopup = false
@@ -1606,11 +1882,20 @@ struct StateMapSheet: View {
                     // Extract short code and name from code
                     let shortCode = code.contains("-") ? String(code.split(separator: "-").last ?? "") : code
                     let fallbackState = StateProvince(shortCode, shortCode, country: countryCode)
+                    let isFallbackVisited = visitedStateCodes.contains(shortCode)
                     StateInfoPopup(
                         state: fallbackState,
-                        isVisited: visitedStateCodes.contains(shortCode),
+                        isVisited: isFallbackVisited,
                         onToggle: {
-                            toggleStateDirectly(fallbackState)
+                            if isFallbackVisited {
+                                toggleStateDirectly(fallbackState)
+                            } else {
+                                pendingStateVisitAction = PendingVisitAction(
+                                    regionType: regionType,
+                                    regionCode: fallbackState.id,
+                                    regionName: fallbackState.name
+                                )
+                            }
                         },
                         onDismiss: {
                             showingStatePopup = false
@@ -1621,7 +1906,37 @@ struct StateMapSheet: View {
                     .presentationDragIndicator(.visible)
                 }
             }
+            .sheet(isPresented: $showingStateDatePicker) {
+                if let action = pendingStateVisitAction {
+                    VisitDatePickerSheet(placeName: action.regionName) { date in
+                        completeStatePendingVisit(visitedDate: date)
+                    }
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
+                }
+            }
+            .onChange(of: showingStatePopup) { _, isShowing in
+                if !isShowing && pendingStateVisitAction != nil {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        showingStateDatePicker = true
+                    }
+                }
+            }
         }
+    }
+
+    /// Complete a pending state visit action with an optional date
+    private func completeStatePendingVisit(visitedDate: Date?) {
+        guard let action = pendingStateVisitAction else { return }
+        let place = VisitedPlace(
+            regionType: action.regionType,
+            regionCode: action.regionCode,
+            regionName: action.regionName,
+            visitedDate: visitedDate
+        )
+        modelContext.insert(place)
+        try? modelContext.save()
+        pendingStateVisitAction = nil
     }
 
     private func toggleStateDirectly(_ state: StateProvince) {
@@ -1737,6 +2052,8 @@ struct CountryListView: View {
     // Start with all continents collapsed
     @State private var collapsedContinents: Set<String> = Set(Continent.allCases.map { $0.id })
     @State private var isRefreshing = false
+    @State private var pendingListVisitAction: PendingVisitAction?
+    @State private var showingListDatePicker = false
 
     private var visitedCodes: Set<String> {
         Set(visitedPlaces.map { "\($0.regionType):\($0.regionCode)" })
@@ -1856,7 +2173,29 @@ struct CountryListView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showingListDatePicker) {
+                if let action = pendingListVisitAction {
+                    VisitDatePickerSheet(placeName: action.regionName) { date in
+                        completeListPendingVisit(visitedDate: date)
+                    }
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
+                }
+            }
         }
+    }
+
+    /// Complete a pending visit action from the list view with an optional date
+    private func completeListPendingVisit(visitedDate: Date?) {
+        guard let action = pendingListVisitAction else { return }
+        let place = VisitedPlace(
+            regionType: action.regionType,
+            regionCode: action.regionCode,
+            regionName: action.regionName,
+            visitedDate: visitedDate
+        )
+        modelContext.insert(place)
+        pendingListVisitAction = nil
     }
 
     private func refreshData() async {
@@ -1897,13 +2236,13 @@ struct CountryListView: View {
                 place.lastModifiedAt = Date()
             }
         } else {
-            // Add
-            let place = VisitedPlace(
+            // Show date picker before adding
+            pendingListVisitAction = PendingVisitAction(
                 regionType: .country,
                 regionCode: country.id,
                 regionName: country.name
             )
-            modelContext.insert(place)
+            showingListDatePicker = true
         }
     }
 
@@ -1929,13 +2268,13 @@ struct CountryListView: View {
                 place.lastModifiedAt = Date()
             }
         } else {
-            // Add
-            let place = VisitedPlace(
+            // Show date picker before adding
+            pendingListVisitAction = PendingVisitAction(
                 regionType: type,
                 regionCode: state.id,
                 regionName: state.name
             )
-            modelContext.insert(place)
+            showingListDatePicker = true
         }
     }
 }

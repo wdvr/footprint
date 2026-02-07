@@ -181,25 +181,18 @@ struct YearInReviewData {
         totalVisitedPlaces > 0
     }
 
-    /// The effective date for a place: visitedDate if available, otherwise markedAt.
-    /// Many places created by manual toggle or location detection have no visitedDate,
-    /// so we fall back to markedAt (the date the place was added to the app).
-    private static func effectiveDate(for place: VisitedPlace) -> Date {
-        place.visitedDate ?? place.markedAt
-    }
-
     /// Check if a place's visit overlaps with the given year.
-    /// Uses visitedDate if available, otherwise falls back to markedAt.
+    /// Only uses visitedDate - places without a visitedDate are excluded from Year in Review.
     private static func visitOverlapsYear(_ place: VisitedPlace, year: Int, calendar: Calendar) -> Bool {
         guard place.isVisited && !place.isDeleted else { return false }
+        guard let visitedDate = place.visitedDate else { return false }
 
-        let date = effectiveDate(for: place)
-        let visitYear = calendar.component(.year, from: date)
+        let visitYear = calendar.component(.year, from: visitedDate)
 
-        // If effective date is in this year, it overlaps
+        // If visitedDate is in this year, it overlaps
         if visitYear == year { return true }
 
-        // If effective date is before this year, check if departureDate extends into this year
+        // If visitedDate is before this year, check if departureDate extends into this year
         if visitYear < year {
             if let departure = place.departureDate {
                 let departureYear = calendar.component(.year, from: departure)
@@ -210,14 +203,13 @@ struct YearInReviewData {
         return false
     }
 
-    // Compute available years from all visited places
+    // Compute available years from all visited places that have a visitedDate set
     static func availableYears(from places: [VisitedPlace]) -> [Int] {
         let calendar = Calendar.current
         var years = Set<Int>()
         for place in places where place.isVisited && !place.isDeleted {
-            // Use visitedDate if available, otherwise markedAt
-            let date = effectiveDate(for: place)
-            years.insert(calendar.component(.year, from: date))
+            guard let visitedDate = place.visitedDate else { continue }
+            years.insert(calendar.component(.year, from: visitedDate))
             if let departureDate = place.departureDate {
                 years.insert(calendar.component(.year, from: departureDate))
             }
@@ -228,11 +220,11 @@ struct YearInReviewData {
     static func compute(for year: Int, allPlaces: [VisitedPlace]) -> YearInReviewData {
         let calendar = Calendar.current
 
-        // "New" places: effective date (visitedDate or markedAt) falls in this year
+        // "New" places: visitedDate falls in this year (places without visitedDate are excluded)
         let newPlacesThisYear = allPlaces.filter { place in
             guard place.isVisited && !place.isDeleted else { return false }
-            let date = effectiveDate(for: place)
-            return calendar.component(.year, from: date) == year
+            guard let visitedDate = place.visitedDate else { return false }
+            return calendar.component(.year, from: visitedDate) == year
         }
 
         // "Visited" places: visit period overlaps with this year
