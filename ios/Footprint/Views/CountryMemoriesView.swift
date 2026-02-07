@@ -113,17 +113,29 @@ struct CountryMemoriesView: View {
                         Button {
                             sortOrder = .newestFirst
                         } label: {
-                            Label("Newest First", systemImage: sortOrder == .newestFirst ? "checkmark" : "")
+                            if sortOrder == .newestFirst {
+                                Label("Newest First", systemImage: "checkmark")
+                            } else {
+                                Text("Newest First")
+                            }
                         }
                         Button {
                             sortOrder = .oldestFirst
                         } label: {
-                            Label("Oldest First", systemImage: sortOrder == .oldestFirst ? "checkmark" : "")
+                            if sortOrder == .oldestFirst {
+                                Label("Oldest First", systemImage: "checkmark")
+                            } else {
+                                Text("Oldest First")
+                            }
                         }
                         Button {
                             sortOrder = .mostPhotos
                         } label: {
-                            Label("Most Photos", systemImage: sortOrder == .mostPhotos ? "checkmark" : "")
+                            if sortOrder == .mostPhotos {
+                                Label("Most Photos", systemImage: "checkmark")
+                            } else {
+                                Text("Most Photos")
+                            }
                         }
                     }
                 } label: {
@@ -251,6 +263,8 @@ struct PhotoGridView: View {
                                 .onTapGesture {
                                     onPhotoTapped?(asset)
                                 }
+                                .accessibilityLabel("Photo\(asset.creationDate.map { ", \($0.formatted(date: .abbreviated, time: .omitted))" } ?? "")")
+                                .accessibilityHint("Double tap to view full size")
                         }
                     }
                     .padding(2)
@@ -340,6 +354,8 @@ private struct PlacePhotoSection: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("\(location.regionName ?? "Unknown Location"), \(location.photoCount) photo\(location.photoCount == 1 ? "" : "s")")
+            .accessibilityHint(isExpanded ? "Double tap to collapse" : "Double tap to expand photos")
 
             // Photo thumbnails (when expanded)
             if isExpanded {
@@ -360,6 +376,8 @@ private struct PlacePhotoSection: View {
                                 .onTapGesture {
                                     onPhotoTapped?(asset)
                                 }
+                                .accessibilityLabel("Photo\(asset.creationDate.map { ", \($0.formatted(date: .abbreviated, time: .omitted))" } ?? "")")
+                                .accessibilityHint("Double tap to view full size")
                         }
                     }
                     .padding(.vertical, 4)
@@ -423,6 +441,8 @@ private struct CountryMemoriesMapView: View {
                                 .foregroundStyle(.white)
                         }
                     }
+                    .accessibilityLabel("\(location.regionName ?? "Location"), \(location.photoCount) photo\(location.photoCount == 1 ? "" : "s")")
+                    .accessibilityHint("Double tap to view photos")
                 }
             }
         }

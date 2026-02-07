@@ -258,6 +258,7 @@ private struct CountryMemoryRow: View {
                 PhotoPreviewGrid(assetIDs: country.previewAssetIDs)
                     .frame(width: 60, height: 60)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(country.name)
@@ -317,15 +318,7 @@ struct PhotoPreviewGrid: View {
 
     var body: some View {
         Group {
-            if assets.isEmpty && !isLoaded {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.2))
-                    .overlay {
-                        Image(systemName: "photo")
-                            .foregroundStyle(.secondary)
-                            .font(.caption)
-                    }
-            } else if assets.isEmpty {
+            if assets.isEmpty {
                 Rectangle()
                     .fill(Color.gray.opacity(0.2))
                     .overlay {
