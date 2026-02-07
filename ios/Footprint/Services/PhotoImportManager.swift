@@ -1,5 +1,6 @@
 import BackgroundTasks
 import CoreLocation
+import os
 import Photos
 import SwiftData
 import SwiftUI
@@ -95,7 +96,6 @@ private struct PhotoCluster: Sendable {
     let representativeLocation: CLLocation
     var photoCount: Int
     var earliestDate: Date?
-    var photoAssetIDs: [String]  // Local identifiers of photos in this cluster
 }
 
 /// Result of geocoding a single cluster
@@ -115,15 +115,13 @@ private struct PersistedCluster: Codable {
     let longitude: Double
     var photoCount: Int
     var earliestDate: Date?
-    var photoAssetIDs: [String]
 
     func toPhotoCluster() -> PhotoCluster {
         PhotoCluster(
             gridKey: gridKey,
             representativeLocation: CLLocation(latitude: latitude, longitude: longitude),
             photoCount: photoCount,
-            earliestDate: earliestDate,
-            photoAssetIDs: photoAssetIDs
+            earliestDate: earliestDate
         )
     }
 
@@ -133,7 +131,6 @@ private struct PersistedCluster: Codable {
         self.longitude = cluster.representativeLocation.coordinate.longitude
         self.photoCount = cluster.photoCount
         self.earliestDate = cluster.earliestDate
-        self.photoAssetIDs = cluster.photoAssetIDs
     }
 }
 
@@ -634,7 +631,7 @@ final class PhotoImportManager: NSObject {
         // Phase 2: Geocode unique clusters (much fewer API calls)
         print("[PhotoImport] Phase 2: Starting geocoding of \(enumerationResult.clusters.count) clusters (concurrency: \(geocodingConcurrencyLimit))...")
         let geocodingStartTime = Date()
-        await geocodeClusters(Array(enumerationResult.clusters.values), existingPlaces: existingPlaces, statistics: statistics)
+        await geocodeClusters(Array(enumerationResult.clusters.values), gridKeyToAssetIDs: enumerationResult.gridKeyToAssetIDs, existingPlaces: existingPlaces, statistics: statistics)
         let geocodingDuration = Date().timeIntervalSince(geocodingStartTime)
         let totalDuration = Date().timeIntervalSince(scanStartTime)
         print("[PhotoImport] Phase 2 complete: \(String(format: "%.2f", geocodingDuration))s")
@@ -669,7 +666,7 @@ final class PhotoImportManager: NSObject {
         }
 
         // Process stream and update UI
-        var finalResult = EnumerationResult(clusters: [:], totalPhotos: 0, photosWithLocation: 0, photosWithoutLocation: 0, newPhotoIDs: [], skippedAlreadyProcessed: 0, totalPhotosEnumerated: 0)
+        var finalResult = EnumerationResult(clusters: [:], totalPhotos: 0, photosWithLocation: 0, photosWithoutLocation: 0, newPhotoIDs: [], skippedAlreadyProcessed: 0, totalPhotosEnumerated: 0, gridKeyToAssetIDs: [:])
         for await update in stream {
             if let result = update.result {
                 finalResult = result
@@ -690,6 +687,7 @@ final class PhotoImportManager: NSObject {
         let newPhotoIDs: [String]  // IDs of newly processed photos (for tracking)
         let skippedAlreadyProcessed: Int  // Count of photos skipped because already processed
         let totalPhotosEnumerated: Int  // Total photos we iterated through (including skipped)
+        let gridKeyToAssetIDs: [String: [String]]  // Separate map of grid key -> photo asset IDs (not persisted)
     }
 
     /// Nonisolated helper that runs photo enumeration on a background thread with progress updates
@@ -715,6 +713,7 @@ final class PhotoImportManager: NSObject {
 
             // Thread-safe containers for results
             var clusters: [String: PhotoCluster] = [:]
+            var gridKeyToAssetIDs: [String: [String]] = [:]  // Separate map, not in cluster struct
             var photosWithLocation = 0
             var newPhotoIDs: [String] = []
             var skippedCount = 0
@@ -730,6 +729,7 @@ final class PhotoImportManager: NSObject {
 
                     // Local results for this batch
                     var localClusters: [String: PhotoCluster] = [:]
+                    var localAssetIDs: [String: [String]] = [:]
                     var localPhotosWithLocation = 0
                     var localNewPhotoIDs: [String] = []
                     var localSkippedCount = 0
@@ -754,9 +754,11 @@ final class PhotoImportManager: NSObject {
                             let lonCell = Int(floor(location.coordinate.longitude / cellSize))
                             let key = "\(latCell),\(lonCell)"
 
+                            // Collect asset IDs in separate map (avoids struct copy overhead)
+                            localAssetIDs[key, default: []].append(asset.localIdentifier)
+
                             if var existing = localClusters[key] {
                                 existing.photoCount += 1
-                                existing.photoAssetIDs.append(asset.localIdentifier)
                                 if let date = asset.creationDate {
                                     if existing.earliestDate == nil || date < existing.earliestDate! {
                                         existing.earliestDate = date
@@ -768,8 +770,7 @@ final class PhotoImportManager: NSObject {
                                     gridKey: key,
                                     representativeLocation: location,
                                     photoCount: 1,
-                                    earliestDate: asset.creationDate,
-                                    photoAssetIDs: [asset.localIdentifier]
+                                    earliestDate: asset.creationDate
                                 )
                             }
                         }
@@ -780,7 +781,6 @@ final class PhotoImportManager: NSObject {
                         for (key, localCluster) in localClusters {
                             if var existing = clusters[key] {
                                 existing.photoCount += localCluster.photoCount
-                                existing.photoAssetIDs.append(contentsOf: localCluster.photoAssetIDs)
                                 if let localDate = localCluster.earliestDate {
                                     if existing.earliestDate == nil || localDate < existing.earliestDate! {
                                         existing.earliestDate = localDate
@@ -790,6 +790,10 @@ final class PhotoImportManager: NSObject {
                             } else {
                                 clusters[key] = localCluster
                             }
+                        }
+                        // Merge asset ID maps
+                        for (key, ids) in localAssetIDs {
+                            gridKeyToAssetIDs[key, default: []].append(contentsOf: ids)
                         }
                         photosWithLocation += localPhotosWithLocation
                         newPhotoIDs.append(contentsOf: localNewPhotoIDs)
@@ -817,7 +821,8 @@ final class PhotoImportManager: NSObject {
                     photosWithoutLocation: photosWithoutLocation,
                     newPhotoIDs: newPhotoIDs,
                     skippedAlreadyProcessed: skippedCount,
-                    totalPhotosEnumerated: totalPhotos
+                    totalPhotosEnumerated: totalPhotos,
+                    gridKeyToAssetIDs: gridKeyToAssetIDs
                 )
                 completion(result)
                 continuation.resume()
@@ -839,7 +844,8 @@ final class PhotoImportManager: NSObject {
         if let savedClusters = progress.pendingClusters, !savedClusters.isEmpty {
             print("[PhotoImport] Resuming with \(savedClusters.count) saved clusters (skipping photo enumeration)")
             let clusters = savedClusters.map { $0.toPhotoCluster() }
-            await geocodeClusters(clusters, existingPlaces: existingPlaces, existingProgress: progress)
+            // Asset IDs not available on resume - will be empty in PhotoLocation objects
+            await geocodeClusters(clusters, gridKeyToAssetIDs: [:], existingPlaces: existingPlaces, existingProgress: progress)
             return
         }
 
@@ -854,7 +860,7 @@ final class PhotoImportManager: NSObject {
         // Process in batches on background thread
         let cellSize = self.gridCellSize
         let processedGridKeys = progress.processedGridKeys
-        let clusters = await collectPhotoClustersForResume(
+        let (clusters, gridKeyToAssetIDs) = await collectPhotoClustersForResume(
             assets: assets,
             totalPhotos: totalPhotos,
             cellSize: cellSize,
@@ -864,6 +870,7 @@ final class PhotoImportManager: NSObject {
         // Continue geocoding remaining clusters
         await geocodeClusters(
             Array(clusters.values),
+            gridKeyToAssetIDs: gridKeyToAssetIDs,
             existingPlaces: existingPlaces,
             existingProgress: progress
         )
@@ -875,7 +882,7 @@ final class PhotoImportManager: NSObject {
         totalPhotos: Int,
         cellSize: Double,
         processedGridKeys: Set<String>
-    ) async -> [String: PhotoCluster] {
+    ) async -> ([String: PhotoCluster], [String: [String]]) {
         await Self.enumeratePhotosForResumeInBackground(
             assets: assets,
             totalPhotos: totalPhotos,
@@ -890,10 +897,11 @@ final class PhotoImportManager: NSObject {
         totalPhotos: Int,
         cellSize: Double,
         processedGridKeys: Set<String>
-    ) async -> [String: PhotoCluster] {
+    ) async -> ([String: PhotoCluster], [String: [String]]) {
         await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 var clusters: [String: PhotoCluster] = [:]
+                var gridKeyToAssetIDs: [String: [String]] = [:]
                 let batchSize = 500
 
                 for batchStart in stride(from: 0, to: totalPhotos, by: batchSize) {
@@ -911,9 +919,10 @@ final class PhotoImportManager: NSObject {
                             // Skip already processed clusters
                             if processedGridKeys.contains(key) { return }
 
+                            gridKeyToAssetIDs[key, default: []].append(asset.localIdentifier)
+
                             if var existing = clusters[key] {
                                 existing.photoCount += 1
-                                existing.photoAssetIDs.append(asset.localIdentifier)
                                 if let date = asset.creationDate {
                                     if existing.earliestDate == nil || date < existing.earliestDate! {
                                         existing.earliestDate = date
@@ -925,15 +934,14 @@ final class PhotoImportManager: NSObject {
                                     gridKey: key,
                                     representativeLocation: location,
                                     photoCount: 1,
-                                    earliestDate: asset.creationDate,
-                                    photoAssetIDs: [asset.localIdentifier]
+                                    earliestDate: asset.creationDate
                                 )
                             }
                         }
                     }
                 }
 
-                continuation.resume(returning: clusters)
+                continuation.resume(returning: (clusters, gridKeyToAssetIDs))
             }
         }
     }
@@ -941,6 +949,7 @@ final class PhotoImportManager: NSObject {
     /// Geocode clusters and discover locations
     private func geocodeClusters(
         _ clusters: [PhotoCluster],
+        gridKeyToAssetIDs: [String: [String]],
         existingPlaces: [VisitedPlace],
         existingProgress: PhotoScanProgress? = nil,
         statistics: ImportStatistics = ImportStatistics()
@@ -1014,6 +1023,9 @@ final class PhotoImportManager: NSObject {
         // Parallel geocoding helper
         let concurrencyLimit = geocodingConcurrencyLimit
         print("[PhotoImport] Using parallel geocoding with concurrency limit: \(concurrencyLimit)")
+
+        // Pre-load GeoJSON boundaries to avoid cold-load bottleneck during parallel geocoding
+        GeoLocationMatcher.shared.loadBoundariesIfNeeded()
 
         // Store task for cancellation support
         currentScanTask = Task {
@@ -1146,6 +1158,7 @@ final class PhotoImportManager: NSObject {
                         }
 
                         // Save photo location for map display
+                        let assetIDs = gridKeyToAssetIDs[cluster.gridKey] ?? []
                         photoLocations.append(PhotoLocation(
                             latitude: cluster.representativeLocation.coordinate.latitude,
                             longitude: cluster.representativeLocation.coordinate.longitude,
@@ -1153,18 +1166,19 @@ final class PhotoImportManager: NSObject {
                             earliestDate: cluster.earliestDate,
                             countryCode: countryCode,
                             regionName: result.countryName,
-                            photoAssetIDs: cluster.photoAssetIDs,
+                            photoAssetIDs: assetIDs,
                             gridKey: cluster.gridKey
                         ))
                     } else {
                         // Track as unmatched cluster
                         stats.clustersUnmatched += 1
+                        let assetIDs = gridKeyToAssetIDs[cluster.gridKey] ?? []
                         if stats.unmatchedCoordinates.count < 50 {
                             stats.unmatchedCoordinates.append(UnmatchedCoordinate(
                                 latitude: cluster.representativeLocation.coordinate.latitude,
                                 longitude: cluster.representativeLocation.coordinate.longitude,
                                 photoCount: cluster.photoCount,
-                                photoAssetIDs: Array(cluster.photoAssetIDs.prefix(10))  // Store up to 10 photo IDs per location
+                                photoAssetIDs: Array(assetIDs.prefix(10))
                             ))
                         }
                         // Still save location for map (without country info)
@@ -1175,7 +1189,7 @@ final class PhotoImportManager: NSObject {
                             earliestDate: cluster.earliestDate,
                             countryCode: nil,
                             regionName: nil,
-                            photoAssetIDs: cluster.photoAssetIDs,
+                            photoAssetIDs: assetIDs,
                             gridKey: cluster.gridKey
                         ))
                     }
@@ -1189,15 +1203,17 @@ final class PhotoImportManager: NSObject {
                     print("[PhotoImport] Geocoding progress: \(processedCount)/\(totalClusters) clusters (\(progressPercent)%) - \(allFoundLocations.count) locations found")
                 }
 
-                // Save progress periodically (every batch)
-                let remainingClusters = clusters.filter { !processedGridKeys.contains($0.gridKey) }
-                saveScanProgress(PhotoScanProgress(
-                    processedGridKeys: processedGridKeys,
-                    discoveredLocations: buildDiscoveredLocations(from: locationCounts),
-                    totalClusters: totalClusters,
-                    startedAt: existingProgress?.startedAt ?? Date(),
-                    pendingClusters: remainingClusters.map { PersistedCluster(from: $0) }
-                ))
+                // Save progress periodically (every 50 clusters to avoid serialization overhead)
+                if processedCount % 50 == 0 || clusterIndex >= clusters.count {
+                    let remainingClusters = clusters.filter { !processedGridKeys.contains($0.gridKey) }
+                    saveScanProgress(PhotoScanProgress(
+                        processedGridKeys: processedGridKeys,
+                        discoveredLocations: buildDiscoveredLocations(from: locationCounts),
+                        totalClusters: totalClusters,
+                        startedAt: existingProgress?.startedAt ?? Date(),
+                        pendingClusters: remainingClusters.map { PersistedCluster(from: $0) }
+                    ))
+                }
             }
 
             // Complete
@@ -1272,7 +1288,12 @@ final class PhotoImportManager: NSObject {
         let geocoder = CLGeocoder()
 
         do {
-            let placemarks = try await geocoder.reverseGeocodeLocation(cluster.representativeLocation)
+            // Use a geocode call with a timeout to prevent indefinite hanging
+            let placemarks = try await Self.reverseGeocodeWithTimeout(
+                geocoder: geocoder,
+                location: cluster.representativeLocation,
+                timeoutSeconds: 10
+            )
 
             if let placemark = placemarks.first, let code = placemark.isoCountryCode {
                 countryCode = code
@@ -1295,7 +1316,7 @@ final class PhotoImportManager: NSObject {
                 }
             }
         } catch {
-            // Geocoding failed - try fallback boundary matching
+            // Geocoding failed or timed out - try fallback boundary matching
             if let match = GeoLocationMatcher.matchCoordinateWithToleranceNonisolated(
                 cluster.representativeLocation.coordinate,
                 toleranceMeters: 500
@@ -1318,6 +1339,47 @@ final class PhotoImportManager: NSObject {
             stateCode: stateCode,
             matched: matched
         )
+    }
+
+    /// Reverse geocode with a timeout to prevent indefinite hanging from rate-limiting
+    private nonisolated static func reverseGeocodeWithTimeout(
+        geocoder: CLGeocoder,
+        location: CLLocation,
+        timeoutSeconds: UInt64
+    ) async throws -> [CLPlacemark] {
+        try await withCheckedThrowingContinuation { continuation in
+            nonisolated(unsafe) let continuation = continuation
+            let timedOut = OSAllocatedUnfairLock(initialState: false)
+
+            // Start timeout timer on a background queue
+            DispatchQueue.global().asyncAfter(deadline: .now() + .seconds(Int(timeoutSeconds))) {
+                let wasTimedOut = timedOut.withLock { alreadyDone -> Bool in
+                    if alreadyDone { return true }
+                    alreadyDone = true
+                    return false
+                }
+                if !wasTimedOut {
+                    geocoder.cancelGeocode()
+                    continuation.resume(throwing: CancellationError())
+                }
+            }
+
+            // Start geocoding
+            geocoder.reverseGeocodeLocation(location) { placemarks, error in
+                let wasTimedOut = timedOut.withLock { alreadyDone -> Bool in
+                    if alreadyDone { return true }
+                    alreadyDone = true
+                    return false
+                }
+                guard !wasTimedOut else { return }
+
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: placemarks ?? [])
+                }
+            }
+        }
     }
 
     private func buildDiscoveredLocations(

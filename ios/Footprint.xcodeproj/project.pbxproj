@@ -17,6 +17,7 @@
 		3BE5321A01818A7532122666 /* ImportAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A79AA6A7C7BAA15EF8A7337 /* ImportAPI.swift */; };
 		3E947C0513ED39585FAD5731 /* PhotoLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71CC328A7CE5F116507B20DF /* PhotoLocation.swift */; };
 		3EFF51BB5197358A4405D7D3 /* GeographicDataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B388C29EC8E33A7CFE6587 /* GeographicDataTests.swift */; };
+		F2E1D0C9B8A7F6E5D4C3B2A1 /* PhotoImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* PhotoImportTests.swift */; };
 		4239C1A84745E095920F0371 /* CountryBoundaries.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5518FCF7E707C87C9B44207A /* CountryBoundaries.swift */; };
 		473B2873036A2DFFA76C637A /* canadian_provinces.geojson in Resources */ = {isa = PBXBuildFile; fileRef = CE68669DCCF31941AE1D989E /* canadian_provinces.geojson */; };
 		4B7C72868FA7C04D9388E1AD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72F43929B46C3947CB730CCC /* ContentView.swift */; };
@@ -142,6 +143,7 @@
 		71CC328A7CE5F116507B20DF /* PhotoLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLocation.swift; sourceTree = "<group>"; };
 		72F43929B46C3947CB730CCC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		74B388C29EC8E33A7CFE6587 /* GeographicDataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeographicDataTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* PhotoImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoImportTests.swift; sourceTree = "<group>"; };
 		7B685393AE7645314C34CBC0 /* Footprint.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Footprint.entitlements; sourceTree = "<group>"; };
 		7BB04D74CC90EA416220D702 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7CC85F56B4C464D8ABFAA34A /* SnapshotHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotHelper.swift; sourceTree = "<group>"; };
@@ -374,6 +376,7 @@
 				1E4277758F60A4544446B42D /* FootprintTests.swift */,
 				74B388C29EC8E33A7CFE6587 /* GeographicDataTests.swift */,
 				3E2F5F601FD2C9BEA04178E5 /* GeoJSONParserTests.swift */,
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* PhotoImportTests.swift */,
 				232160EB290B6A778B8E1598 /* LocalizationTests.swift */,
 				300D531783D5E4F5D7547E61 /* LocationManagerTests.swift */,
 				B15F3550FA460339C3801977 /* MapViewTests.swift */,
@@ -585,6 +588,7 @@
 				587DC996DD345157E8ADF8D4 /* FootprintTests.swift in Sources */,
 				C584CE8BE7F2B76E49F8FDF6 /* GeoJSONParserTests.swift in Sources */,
 				3EFF51BB5197358A4405D7D3 /* GeographicDataTests.swift in Sources */,
+				F2E1D0C9B8A7F6E5D4C3B2A1 /* PhotoImportTests.swift in Sources */,
 				5CEF0A22F5A1F7DE0B603437 /* LocalizationTests.swift in Sources */,
 				BE9E4C9207CCD7D9CCD95336 /* LocationManagerTests.swift in Sources */,
 				8233A95DFCB1DAE0FA2CEDD8 /* MapViewTests.swift in Sources */,
