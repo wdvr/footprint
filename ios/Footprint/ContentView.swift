@@ -1945,6 +1945,7 @@ struct StatsView: View {
 
     @ScaledMetric(relativeTo: .largeTitle) private var globeSize: CGFloat = 60
     @ScaledMetric(relativeTo: .title) private var totalCountSize: CGFloat = 48
+    @State private var showingYearInReview = false
 
     // Visited counts (only status = visited)
     private var countriesVisitedCount: Int {
@@ -2103,10 +2104,55 @@ struct StatsView: View {
                     }
                     .padding(.horizontal)
 
+                    // Year in Review
+                    Divider()
+                        .padding(.horizontal)
+
+                    Button {
+                        showingYearInReview = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "sparkles")
+                                .font(.title2)
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.purple, .blue],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Year in Review")
+                                    .font(.headline)
+                                    .foregroundStyle(.primary)
+                                Text("See your annual travel summary")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(.quaternary)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal)
+
                     Spacer()
                 }
             }
             .navigationTitle("Statistics")
+            .sheet(isPresented: $showingYearInReview) {
+                YearInReviewView(visitedPlaces: visitedPlaces)
+            }
         }
     }
 }
