@@ -1495,6 +1495,33 @@ final class PhotoImportManager: NSObject {
         )
     }
 
+    /// Clear ALL persistent state. Call this on account deletion or "Clear All Data".
+    /// After calling this, photo import will behave as if the app was freshly installed.
+    func clearAllPersistentState() {
+        // Cancel any running scan
+        reset()
+
+        // Clear processed photo IDs (the main culprit - makes scanner think photos are "already processed")
+        clearProcessedPhotoIDs()
+
+        // Clear last scanned date (makes scanner think no scan has ever run)
+        lastScannedPhotoDate = nil
+
+        // Clear last photo sync date
+        UserDefaults.standard.removeObject(forKey: "lastPhotoSync")
+
+        // Clear photo locations from map
+        PhotoLocationStore.shared.clear()
+
+        // Clear backfill data
+        existingPlacePhotoDates = [:]
+
+        // Clear new photos counter
+        newPhotosAvailable = 0
+
+        Log.photoImport.info("Cleared all photo import persistent state")
+    }
+
     /// Convert state/province name to code
     private func stateNameToCode(_ name: String, country: String) -> String {
         let usStates: [String: String] = [

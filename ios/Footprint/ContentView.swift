@@ -592,16 +592,32 @@ struct SettingsView: View {
     }
 
     private func deleteAccount() {
-        // TODO: Implement account deletion through API
-        // For now, just sign out
+        // Clear all local data first
+        clearAllData()
+        // TODO: Implement account deletion through backend API
+        // Then sign out
         signOut()
     }
 
     private func clearAllData() {
+        // Soft-delete all visited places
         for place in visitedPlaces {
             place.isDeleted = true
             place.lastModifiedAt = Date()
         }
+
+        // Clear all photo import state (processed IDs, scan progress, photo locations)
+        PhotoImportManager.shared.clearAllPersistentState()
+
+        // Clear sync state so next login does a full sync
+        SyncManager.shared.forceResetSyncState()
+
+        // Clear widget data
+        if let defaults = UserDefaults(suiteName: "group.com.wouterdevriendt.footprint") {
+            defaults.set(0, forKey: "countriesVisited")
+            defaults.set(0, forKey: "statesVisited")
+        }
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     #if DEBUG

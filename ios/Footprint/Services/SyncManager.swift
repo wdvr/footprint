@@ -125,9 +125,15 @@ class SyncManager {
         isSyncing = false
     }
 
-    func forceFullSync() async {
+    /// Reset sync state without triggering a sync. Call on account deletion / clear all data.
+    func forceResetSyncState() {
         lastSyncAt = nil
         UserDefaults.standard.removeObject(forKey: "lastSyncAt")
+        error = nil
+    }
+
+    func forceFullSync() async {
+        forceResetSyncState()
         await sync()
     }
 }

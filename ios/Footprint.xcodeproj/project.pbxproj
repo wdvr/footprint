@@ -21,6 +21,7 @@
 		3EFF51BB5197358A4405D7D3 /* GeographicDataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B388C29EC8E33A7CFE6587 /* GeographicDataTests.swift */; };
 		F2E1D0C9B8A7F6E5D4C3B2A1 /* PhotoImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* PhotoImportTests.swift */; };
 		Y1R2T3S4U5V6W7X8Y9Z0A1B2 /* YearInReviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = Y0R1T2S3U4V5W6X7Y8Z9A0B1 /* YearInReviewTests.swift */; };
+		A2R3T4S5U6V7W8X9Y0Z1A2B3 /* AccountResetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1R2T3S4U5V6W7X8Y9Z0A1B2 /* AccountResetTests.swift */; };
 		4239C1A84745E095920F0371 /* CountryBoundaries.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5518FCF7E707C87C9B44207A /* CountryBoundaries.swift */; };
 		473B2873036A2DFFA76C637A /* canadian_provinces.geojson in Resources */ = {isa = PBXBuildFile; fileRef = CE68669DCCF31941AE1D989E /* canadian_provinces.geojson */; };
 		4B7C72868FA7C04D9388E1AD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72F43929B46C3947CB730CCC /* ContentView.swift */; };
@@ -156,6 +157,7 @@
 		74B388C29EC8E33A7CFE6587 /* GeographicDataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeographicDataTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6A7B8C9D0E1F2 /* PhotoImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoImportTests.swift; sourceTree = "<group>"; };
 		Y0R1T2S3U4V5W6X7Y8Z9A0B1 /* YearInReviewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearInReviewTests.swift; sourceTree = "<group>"; };
+		A1R2T3S4U5V6W7X8Y9Z0A1B2 /* AccountResetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountResetTests.swift; sourceTree = "<group>"; };
 		7B685393AE7645314C34CBC0 /* Footprint.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Footprint.entitlements; sourceTree = "<group>"; };
 		7BB04D74CC90EA416220D702 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7CC85F56B4C464D8ABFAA34A /* SnapshotHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotHelper.swift; sourceTree = "<group>"; };
@@ -389,6 +391,7 @@
 		DB8743D86571D9B8A313D93A /* FootprintTests */ = {
 			isa = PBXGroup;
 			children = (
+				A1R2T3S4U5V6W7X8Y9Z0A1B2 /* AccountResetTests.swift */,
 				8BB3A459FA117DC6B0399CF2 /* APIClientTests.swift */,
 				1E4277758F60A4544446B42D /* FootprintTests.swift */,
 				74B388C29EC8E33A7CFE6587 /* GeographicDataTests.swift */,
@@ -620,6 +623,7 @@
 				0737BB1F9D86379154F9D0A4 /* SyncManagerTests.swift in Sources */,
 				D2026A33178015955D82632C /* TokenRefreshTests.swift in Sources */,
 				Y1R2T3S4U5V6W7X8Y9Z0A1B2 /* YearInReviewTests.swift in Sources */,
+				A2R3T4S5U6V7W8X9Y0Z1A2B3 /* AccountResetTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
