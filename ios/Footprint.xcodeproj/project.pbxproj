@@ -23,6 +23,7 @@
 		4B7C72868FA7C04D9388E1AD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72F43929B46C3947CB730CCC /* ContentView.swift */; };
 		545B7B74C21E41FF626E9869 /* AR_states.geojson in Resources */ = {isa = PBXBuildFile; fileRef = 01AE3CDA04E51779ABA5502B /* AR_states.geojson */; };
 		54FCC0286410EC9476DC7830 /* SampleDataHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AFBB039F6769669F5691981 /* SampleDataHelper.swift */; };
+		B28E4F1A3C5D7E9F0A1B2C3D /* SplashScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A1B2C3E5F6071829A3B4C5 /* SplashScreenView.swift */; };
 		587DC996DD345157E8ADF8D4 /* FootprintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E4277758F60A4544446B42D /* FootprintTests.swift */; };
 		5B89E30B4FE0CD618EE454DB /* GB_states.geojson in Resources */ = {isa = PBXBuildFile; fileRef = 159EF48B3870D88E3A9FDE9E /* GB_states.geojson */; };
 		5C2C33CF53B35878331EC0CE /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 359321FC0DA5E20FF5AD68A5 /* ScreenshotTests.swift */; };
@@ -131,6 +132,7 @@
 		590D570A7A264C744ACA9CB5 /* FootprintUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FootprintUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		59C772860A4157C657062876 /* nl */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = nl; path = nl.lproj/Localizable.strings; sourceTree = "<group>"; };
 		5AFBB039F6769669F5691981 /* SampleDataHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleDataHelper.swift; sourceTree = "<group>"; };
+		D4A1B2C3E5F6071829A3B4C5 /* SplashScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashScreenView.swift; sourceTree = "<group>"; };
 		5BF04DEAA61E7C94B23511A5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		5F35A36798976C4BE0D62201 /* INTERNATIONALIZATION_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INTERNATIONALIZATION_GUIDE.md; sourceTree = "<group>"; };
 		63312AD9D208D65180E2EA7C /* hi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hi; path = hi.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -394,6 +396,7 @@
 				C6EFA2D6D4671C03DA3DDC84 /* AdvancedStatsView.swift */,
 				EAB1F275FFC3CD50B03BCF2F /* PhotoGalleryView.swift */,
 				D7E45F4BC92E66E12537EA76 /* PhotoImportView.swift */,
+				D4A1B2C3E5F6071829A3B4C5 /* SplashScreenView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -633,6 +636,7 @@
 				3E947C0513ED39585FAD5731 /* PhotoLocation.swift in Sources */,
 				915053CF31ACF098A3E2DF42 /* PushNotificationManager.swift in Sources */,
 				54FCC0286410EC9476DC7830 /* SampleDataHelper.swift in Sources */,
+				B28E4F1A3C5D7E9F0A1B2C3D /* SplashScreenView.swift in Sources */,
 				5CD96E03A42FA7D4620C6F48 /* StateMapView.swift in Sources */,
 				2923FD02B05B1C2F77E5D5A5 /* Statistics.swift in Sources */,
 				FAEE1917D2F3D12D3722FA77 /* SyncManager.swift in Sources */,

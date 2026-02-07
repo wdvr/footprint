@@ -80,10 +80,39 @@ struct FootprintApp: App {
     var body: some Scene {
         WindowGroup {
             if let container = sharedModelContainer {
-                RootView()
+                AppLaunchView()
                     .modelContainer(container)
             } else {
                 DatabaseErrorView(error: modelContainerError)
+            }
+        }
+    }
+}
+
+/// Wraps the splash screen and main app content, showing the splash on launch
+/// then transitioning smoothly to RootView.
+struct AppLaunchView: View {
+    @State private var splashFinished = false
+
+    // Skip splash in UI testing mode
+    private let isUITesting = CommandLine.arguments.contains("-UITestingMode")
+
+    var body: some View {
+        ZStack {
+            // Main content underneath
+            RootView()
+                .opacity(splashFinished ? 1 : 0)
+
+            // Splash screen overlay
+            if !splashFinished && !isUITesting {
+                SplashScreenView(isFinished: $splashFinished)
+                    .transition(.opacity)
+                    .zIndex(1)
+            }
+        }
+        .onAppear {
+            if isUITesting {
+                splashFinished = true
             }
         }
     }
