@@ -60,6 +60,8 @@
 		C4E04A132F22BB4932A0B08E /* countries.geojson in Resources */ = {isa = PBXBuildFile; fileRef = E8F1756B397B5937509FD5E9 /* countries.geojson */; };
 		C584CE8BE7F2B76E49F8FDF6 /* GeoJSONParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E2F5F601FD2C9BEA04178E5 /* GeoJSONParserTests.swift */; };
 		CB8EA3875361055C55630ADE /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = D6163DC6157D9D26244D20A4 /* Localizable.strings */; };
+		BB1A2C3D4E5F6A7B8C9D0E1F /* MemoriesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1B2C3D4E5F6A7B8C9D0E1F /* MemoriesView.swift */; };
+		BB2A2C3D4E5F6A7B8C9D0E1F /* CountryMemoriesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2B2C3D4E5F6A7B8C9D0E1F /* CountryMemoriesView.swift */; };
 		CC0FF9F7EABCFD0B1FDA43FA /* PhotoGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAB1F275FFC3CD50B03BCF2F /* PhotoGalleryView.swift */; };
 		D2026A33178015955D82632C /* TokenRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D65959B9D51819794EFBB8 /* TokenRefreshTests.swift */; };
 		DAC886209B93ABDE1995D546 /* AnalyticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96AC324FA8562CEBEF2517D9 /* AnalyticsService.swift */; };
@@ -177,6 +179,8 @@
 		E324A3D06BC5AC2506E4759B /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		E8F1756B397B5937509FD5E9 /* countries.geojson */ = {isa = PBXFileReference; path = countries.geojson; sourceTree = "<group>"; };
 		E932C1AD6A3DDC3A28CC7B8C /* Localizable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localizable.swift; sourceTree = "<group>"; };
+		AA1B2C3D4E5F6A7B8C9D0E1F /* MemoriesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoriesView.swift; sourceTree = "<group>"; };
+		AA2B2C3D4E5F6A7B8C9D0E1F /* CountryMemoriesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountryMemoriesView.swift; sourceTree = "<group>"; };
 		EAB1F275FFC3CD50B03BCF2F /* PhotoGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoGalleryView.swift; sourceTree = "<group>"; };
 		F2F3A12B9407F1DD0BBACFB7 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/Localizable.strings; sourceTree = "<group>"; };
 		F5D65959B9D51819794EFBB8 /* TokenRefreshTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenRefreshTests.swift; sourceTree = "<group>"; };
@@ -392,6 +396,8 @@
 			children = (
 				3FCF981354B215AB7A5DA685 /* AccessibleMapSummary.swift */,
 				C6EFA2D6D4671C03DA3DDC84 /* AdvancedStatsView.swift */,
+				AA2B2C3D4E5F6A7B8C9D0E1F /* CountryMemoriesView.swift */,
+				AA1B2C3D4E5F6A7B8C9D0E1F /* MemoriesView.swift */,
 				EAB1F275FFC3CD50B03BCF2F /* PhotoGalleryView.swift */,
 				D7E45F4BC92E66E12537EA76 /* PhotoImportView.swift */,
 			);
@@ -624,7 +630,9 @@
 				F4019DC5F70C971A1E9F5E49 /* ImportSourcesView.swift in Sources */,
 				773A433151F469273A0F55E4 /* ImportState.swift in Sources */,
 				5C7C9C7B86CEA115D9960682 /* ImportView.swift in Sources */,
+				BB2A2C3D4E5F6A7B8C9D0E1F /* CountryMemoriesView.swift in Sources */,
 				6199D393BC4DF3C98D21923A /* Localizable.swift in Sources */,
+				BB1A2C3D4E5F6A7B8C9D0E1F /* MemoriesView.swift in Sources */,
 				A1B3EE539616BC6CB2274094 /* LocationManager.swift in Sources */,
 				BF8CFECEF4AB1DB1180FE992 /* OnboardingView.swift in Sources */,
 				CC0FF9F7EABCFD0B1FDA43FA /* PhotoGalleryView.swift in Sources */,
