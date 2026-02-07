@@ -4,38 +4,90 @@ import SwiftUI
 
 struct YearInReviewData {
     let year: Int
+    // Places where visitedDate falls in this year (first visited)
     let newCountries: [VisitedPlace]
     let newUSStates: [VisitedPlace]
     let newCanadianProvinces: [VisitedPlace]
     let newOtherRegions: [VisitedPlace]
+    // Places where the visit overlaps with this year (visited OR departureDate in year)
+    let visitedCountries: [VisitedPlace]
+    let visitedUSStates: [VisitedPlace]
+    let visitedCanadianProvinces: [VisitedPlace]
+    let visitedOtherRegions: [VisitedPlace]
     let allVisitedPlaces: [VisitedPlace]
 
     var totalNewPlaces: Int {
         newCountries.count + newUSStates.count + newCanadianProvinces.count + newOtherRegions.count
     }
 
+    var totalVisitedPlaces: Int {
+        visitedCountries.count + visitedUSStates.count + visitedCanadianProvinces.count + visitedOtherRegions.count
+    }
+
     var newCountriesCount: Int { newCountries.count }
     var newUSStatesCount: Int { newUSStates.count }
     var newCanadianProvincesCount: Int { newCanadianProvinces.count }
+    var newOtherRegionsCount: Int { newOtherRegions.count }
 
-    // Continent stats for this year's countries
+    var visitedCountriesCount: Int { visitedCountries.count }
+    var visitedUSStatesCount: Int { visitedUSStates.count }
+    var visitedCanadianProvincesCount: Int { visitedCanadianProvinces.count }
+    var visitedOtherRegionsCount: Int { visitedOtherRegions.count }
+
+    // Continent stats for this year's countries (all visited, not just new)
+    // Also includes parent countries derived from visited states/provinces
     var continentBreakdown: [LocalContinentStats] {
-        let countryCodes = newCountries.map { $0.regionCode }
-        return LocalContinentStats.calculateStats(visitedCountries: countryCodes)
+        var countryCodes = Set(visitedCountries.map { $0.regionCode })
+        // Derive parent countries from visited states/provinces
+        for place in (visitedUSStates + visitedCanadianProvinces + visitedOtherRegions) {
+            if let parentCountry = YearInReviewData.regionTypeToCountry[place.regionType] {
+                countryCodes.insert(parentCountry)
+            }
+        }
+        return LocalContinentStats.calculateStats(visitedCountries: Array(countryCodes))
     }
 
     var topContinent: LocalContinentStats? {
         continentBreakdown.first(where: { $0.visited > 0 })
     }
 
-    // Time zone stats for this year
+    // Map from region type to parent country code for timezone/continent calculations
+    private static let regionTypeToCountry: [String: String] = [
+        VisitedPlace.RegionType.belgianProvince.rawValue: "BE",
+        VisitedPlace.RegionType.dutchProvince.rawValue: "NL",
+        VisitedPlace.RegionType.frenchRegion.rawValue: "FR",
+        VisitedPlace.RegionType.spanishCommunity.rawValue: "ES",
+        VisitedPlace.RegionType.italianRegion.rawValue: "IT",
+        VisitedPlace.RegionType.germanState.rawValue: "DE",
+        VisitedPlace.RegionType.ukCountry.rawValue: "GB",
+        VisitedPlace.RegionType.russianFederalSubject.rawValue: "RU",
+        VisitedPlace.RegionType.argentineProvince.rawValue: "AR",
+        VisitedPlace.RegionType.australianState.rawValue: "AU",
+        VisitedPlace.RegionType.mexicanState.rawValue: "MX",
+        VisitedPlace.RegionType.brazilianState.rawValue: "BR",
+    ]
+
+    // Time zone stats for this year (using all visited places, not just new)
     var timeZoneStats: TimeZoneLocalStats {
-        let countryCodes = newCountries.map { $0.regionCode }
-        let stateTuples = (newUSStates + newCanadianProvinces + newOtherRegions).map {
+        // Start with explicitly visited countries
+        var countryCodes = Set(visitedCountries.map { $0.regionCode })
+
+        // Derive parent country codes from visited states/provinces
+        // This ensures that e.g. visiting Belgian provinces counts Belgium's timezone
+        let allStates = visitedUSStates + visitedCanadianProvinces + visitedOtherRegions
+        for place in allStates {
+            if let parentCountry = YearInReviewData.regionTypeToCountry[place.regionType] {
+                countryCodes.insert(parentCountry)
+            }
+        }
+
+        // Build state tuples for multi-timezone country resolution
+        let stateTuples = allStates.map {
             ($0.regionType, $0.regionCode)
         }
+
         return TimeZoneLocalStats.calculate(
-            visitedCountries: countryCodes,
+            visitedCountries: Array(countryCodes),
             visitedStates: stateTuples
         )
     }
@@ -62,40 +114,87 @@ struct YearInReviewData {
     }
 
     var hasData: Bool {
-        totalNewPlaces > 0
+        totalVisitedPlaces > 0
+    }
+
+    /// Check if a place's visit overlaps with the given year
+    private static func visitOverlapsYear(_ place: VisitedPlace, year: Int, calendar: Calendar) -> Bool {
+        guard place.isVisited && !place.isDeleted else { return false }
+        guard let visitedDate = place.visitedDate else { return false }
+
+        let visitYear = calendar.component(.year, from: visitedDate)
+
+        // If visitedDate is in this year, it overlaps
+        if visitYear == year { return true }
+
+        // If visitedDate is before this year, check if departureDate extends into this year
+        if visitYear < year {
+            if let departure = place.departureDate {
+                let departureYear = calendar.component(.year, from: departure)
+                return departureYear >= year
+            }
+        }
+
+        return false
     }
 
     // Compute available years from all visited places
     static func availableYears(from places: [VisitedPlace]) -> [Int] {
         let calendar = Calendar.current
-        let years = Set(
-            places
-                .filter { $0.isVisited && !$0.isDeleted }
-                .compactMap { $0.visitedDate }
-                .map { calendar.component(.year, from: $0) }
-        )
+        var years = Set<Int>()
+        for place in places where place.isVisited && !place.isDeleted {
+            if let visitedDate = place.visitedDate {
+                years.insert(calendar.component(.year, from: visitedDate))
+            }
+            if let departureDate = place.departureDate {
+                years.insert(calendar.component(.year, from: departureDate))
+            }
+        }
         return years.sorted(by: >)
     }
 
     static func compute(for year: Int, allPlaces: [VisitedPlace]) -> YearInReviewData {
         let calendar = Calendar.current
 
-        let placesThisYear = allPlaces.filter { place in
+        // "New" places: visitedDate falls in this year (first visited)
+        let newPlacesThisYear = allPlaces.filter { place in
             guard place.isVisited && !place.isDeleted else { return false }
             guard let date = place.visitedDate else { return false }
             return calendar.component(.year, from: date) == year
         }
 
-        let countries = placesThisYear.filter {
+        // "Visited" places: visit period overlaps with this year
+        let visitedPlacesThisYear = allPlaces.filter { place in
+            visitOverlapsYear(place, year: year, calendar: calendar)
+        }
+
+        // Categorize new places
+        let newCountriesArr = newPlacesThisYear.filter {
             $0.regionType == VisitedPlace.RegionType.country.rawValue
         }
-        let usStates = placesThisYear.filter {
+        let newUSStatesArr = newPlacesThisYear.filter {
             $0.regionType == VisitedPlace.RegionType.usState.rawValue
         }
-        let canadianProvinces = placesThisYear.filter {
+        let newCanadianProvincesArr = newPlacesThisYear.filter {
             $0.regionType == VisitedPlace.RegionType.canadianProvince.rawValue
         }
-        let otherRegions = placesThisYear.filter { place in
+        let newOtherRegionsArr = newPlacesThisYear.filter { place in
+            place.regionType != VisitedPlace.RegionType.country.rawValue
+            && place.regionType != VisitedPlace.RegionType.usState.rawValue
+            && place.regionType != VisitedPlace.RegionType.canadianProvince.rawValue
+        }
+
+        // Categorize visited places
+        let visitedCountriesArr = visitedPlacesThisYear.filter {
+            $0.regionType == VisitedPlace.RegionType.country.rawValue
+        }
+        let visitedUSStatesArr = visitedPlacesThisYear.filter {
+            $0.regionType == VisitedPlace.RegionType.usState.rawValue
+        }
+        let visitedCanadianProvincesArr = visitedPlacesThisYear.filter {
+            $0.regionType == VisitedPlace.RegionType.canadianProvince.rawValue
+        }
+        let visitedOtherRegionsArr = visitedPlacesThisYear.filter { place in
             place.regionType != VisitedPlace.RegionType.country.rawValue
             && place.regionType != VisitedPlace.RegionType.usState.rawValue
             && place.regionType != VisitedPlace.RegionType.canadianProvince.rawValue
@@ -103,10 +202,14 @@ struct YearInReviewData {
 
         return YearInReviewData(
             year: year,
-            newCountries: countries,
-            newUSStates: usStates,
-            newCanadianProvinces: canadianProvinces,
-            newOtherRegions: otherRegions,
+            newCountries: newCountriesArr,
+            newUSStates: newUSStatesArr,
+            newCanadianProvinces: newCanadianProvincesArr,
+            newOtherRegions: newOtherRegionsArr,
+            visitedCountries: visitedCountriesArr,
+            visitedUSStates: visitedUSStatesArr,
+            visitedCanadianProvinces: visitedCanadianProvincesArr,
+            visitedOtherRegions: visitedOtherRegionsArr,
             allVisitedPlaces: allPlaces
         )
     }
@@ -335,6 +438,7 @@ struct CountsCard: View {
     @State private var animatedCountries: Int = 0
     @State private var animatedStates: Int = 0
     @State private var animatedProvinces: Int = 0
+    @State private var animatedOther: Int = 0
     @State private var animatedTotal: Int = 0
 
     var body: some View {
@@ -347,54 +451,71 @@ struct CountsCard: View {
                 .opacity(showContent ? 1 : 0)
 
             // Total counter
-            Text("\(animatedTotal)")
-                .font(.system(size: 96, weight: .heavy))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.green, .mint],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+            VStack(spacing: 4) {
+                Text("\(animatedTotal)")
+                    .font(.system(size: 96, weight: .heavy))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.green, .mint],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                )
-                .contentTransition(.numericText())
+                    .contentTransition(.numericText())
 
-            Text("new places")
-                .font(.title)
-                .fontWeight(.semibold)
-                .foregroundStyle(.white)
-                .opacity(showContent ? 1 : 0)
+                Text("places visited")
+                    .font(.title)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.white)
+                    .opacity(showContent ? 1 : 0)
+
+                if data.totalNewPlaces > 0 && data.totalNewPlaces < data.totalVisitedPlaces {
+                    Text("\(data.totalNewPlaces) new")
+                        .font(.title3)
+                        .foregroundStyle(.white.opacity(0.6))
+                        .opacity(showContent ? 1 : 0)
+                }
+            }
 
             // Breakdown
             VStack(spacing: 16) {
-                if data.newCountriesCount > 0 {
+                if data.visitedCountriesCount > 0 {
                     CountBreakdownRow(
                         icon: "flag.fill",
                         label: "Countries",
                         count: animatedCountries,
+                        newCount: data.newCountriesCount,
+                        totalCount: data.visitedCountriesCount,
                         color: .green
                     )
                 }
-                if data.newUSStatesCount > 0 {
+                if data.visitedUSStatesCount > 0 {
                     CountBreakdownRow(
                         icon: "star.fill",
                         label: "US States",
                         count: animatedStates,
+                        newCount: data.newUSStatesCount,
+                        totalCount: data.visitedUSStatesCount,
                         color: .blue
                     )
                 }
-                if data.newCanadianProvincesCount > 0 {
+                if data.visitedCanadianProvincesCount > 0 {
                     CountBreakdownRow(
                         icon: "leaf.fill",
                         label: "Canadian Provinces",
                         count: animatedProvinces,
+                        newCount: data.newCanadianProvincesCount,
+                        totalCount: data.visitedCanadianProvincesCount,
                         color: .red
                     )
                 }
-                if data.newOtherRegions.count > 0 {
+                if data.visitedOtherRegionsCount > 0 {
                     CountBreakdownRow(
                         icon: "map.fill",
                         label: "Other Regions",
-                        count: data.newOtherRegions.count,
+                        count: animatedOther,
+                        newCount: data.newOtherRegionsCount,
+                        totalCount: data.visitedOtherRegionsCount,
                         color: .orange
                     )
                 }
@@ -424,18 +545,20 @@ struct CountsCard: View {
                 withAnimation(.linear(duration: stepDuration)) {
                     if step == totalSteps {
                         // Ensure exact final values
-                        animatedTotal = data.totalNewPlaces
-                        animatedCountries = data.newCountriesCount
-                        animatedStates = data.newUSStatesCount
-                        animatedProvinces = data.newCanadianProvincesCount
+                        animatedTotal = data.totalVisitedPlaces
+                        animatedCountries = data.visitedCountriesCount
+                        animatedStates = data.visitedUSStatesCount
+                        animatedProvinces = data.visitedCanadianProvincesCount
+                        animatedOther = data.visitedOtherRegionsCount
                     } else {
                         let progress = Double(step) / Double(totalSteps)
                         // Use easeOut curve
                         let easedProgress = 1 - pow(1 - progress, 3)
-                        animatedTotal = Int(Double(data.totalNewPlaces) * easedProgress)
-                        animatedCountries = Int(Double(data.newCountriesCount) * easedProgress)
-                        animatedStates = Int(Double(data.newUSStatesCount) * easedProgress)
-                        animatedProvinces = Int(Double(data.newCanadianProvincesCount) * easedProgress)
+                        animatedTotal = Int(Double(data.totalVisitedPlaces) * easedProgress)
+                        animatedCountries = Int(Double(data.visitedCountriesCount) * easedProgress)
+                        animatedStates = Int(Double(data.visitedUSStatesCount) * easedProgress)
+                        animatedProvinces = Int(Double(data.visitedCanadianProvincesCount) * easedProgress)
+                        animatedOther = Int(Double(data.visitedOtherRegionsCount) * easedProgress)
                     }
                 }
             }
@@ -447,6 +570,8 @@ struct CountBreakdownRow: View {
     let icon: String
     let label: String
     let count: Int
+    var newCount: Int = 0
+    var totalCount: Int = 0
     let color: Color
 
     var body: some View {
@@ -457,11 +582,18 @@ struct CountBreakdownRow: View {
             Text(label)
                 .foregroundStyle(.white.opacity(0.8))
             Spacer()
-            Text("\(count)")
-                .font(.title3)
-                .fontWeight(.bold)
-                .foregroundStyle(.white)
-                .contentTransition(.numericText())
+            HStack(spacing: 4) {
+                Text("\(count)")
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.white)
+                    .contentTransition(.numericText())
+                if newCount > 0 && newCount < totalCount {
+                    Text("(\(newCount) new)")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.5))
+                }
+            }
         }
     }
 }
@@ -473,7 +605,7 @@ struct YearMapCard: View {
     @State private var showContent = false
 
     private var visitedCountryCodes: Set<String> {
-        Set(data.newCountries.map { $0.regionCode })
+        Set(data.visitedCountries.map { $0.regionCode })
     }
 
     var body: some View {
@@ -487,33 +619,43 @@ struct YearMapCard: View {
                 .opacity(showContent ? 1 : 0)
 
             // List the places visited
-            VStack(spacing: 8) {
-                if !data.newCountries.isEmpty {
-                    PlaceListSection(
-                        title: "Countries",
-                        places: data.newCountries.map { $0.regionName }.sorted(),
-                        icon: "flag.fill",
-                        color: .green
-                    )
+            ScrollView {
+                VStack(spacing: 8) {
+                    if !data.visitedCountries.isEmpty {
+                        PlaceListSection(
+                            title: "Countries",
+                            places: data.visitedCountries.map { $0.regionName }.sorted(),
+                            icon: "flag.fill",
+                            color: .green
+                        )
+                    }
+                    if !data.visitedUSStates.isEmpty {
+                        PlaceListSection(
+                            title: "US States",
+                            places: data.visitedUSStates.map { $0.regionName }.sorted(),
+                            icon: "star.fill",
+                            color: .blue
+                        )
+                    }
+                    if !data.visitedCanadianProvinces.isEmpty {
+                        PlaceListSection(
+                            title: "Canadian Provinces",
+                            places: data.visitedCanadianProvinces.map { $0.regionName }.sorted(),
+                            icon: "leaf.fill",
+                            color: .red
+                        )
+                    }
+                    if !data.visitedOtherRegions.isEmpty {
+                        PlaceListSection(
+                            title: "Other Regions",
+                            places: data.visitedOtherRegions.map { $0.regionName }.sorted(),
+                            icon: "map.fill",
+                            color: .orange
+                        )
+                    }
                 }
-                if !data.newUSStates.isEmpty {
-                    PlaceListSection(
-                        title: "US States",
-                        places: data.newUSStates.map { $0.regionName }.sorted(),
-                        icon: "star.fill",
-                        color: .blue
-                    )
-                }
-                if !data.newCanadianProvinces.isEmpty {
-                    PlaceListSection(
-                        title: "Canadian Provinces",
-                        places: data.newCanadianProvinces.map { $0.regionName }.sorted(),
-                        icon: "leaf.fill",
-                        color: .red
-                    )
-                }
+                .padding(.horizontal, 24)
             }
-            .padding(.horizontal, 24)
             .opacity(showContent ? 1 : 0)
             .offset(y: showContent ? 0 : 30)
 
@@ -849,20 +991,36 @@ struct FunFactsCard: View {
         }
 
         // Countries this year
-        if data.newCountriesCount > 0 {
-            let plural = data.newCountriesCount == 1 ? "country" : "countries"
-            result.append((
-                icon: "flag.fill",
-                text: "You added \(data.newCountriesCount) new \(plural) to your map this year."
-            ))
+        if data.visitedCountriesCount > 0 {
+            let plural = data.visitedCountriesCount == 1 ? "country" : "countries"
+            if data.newCountriesCount > 0 && data.newCountriesCount < data.visitedCountriesCount {
+                result.append((
+                    icon: "flag.fill",
+                    text: "You visited \(data.visitedCountriesCount) \(plural), with \(data.newCountriesCount) new."
+                ))
+            } else {
+                result.append((
+                    icon: "flag.fill",
+                    text: "You visited \(data.visitedCountriesCount) \(plural) this year."
+                ))
+            }
         }
 
         // States this year
-        if data.newUSStatesCount > 0 {
-            let plural = data.newUSStatesCount == 1 ? "state" : "states"
+        if data.visitedUSStatesCount > 0 {
+            let plural = data.visitedUSStatesCount == 1 ? "state" : "states"
             result.append((
                 icon: "star.fill",
-                text: "You visited \(data.newUSStatesCount) US \(plural)."
+                text: "You visited \(data.visitedUSStatesCount) US \(plural)."
+            ))
+        }
+
+        // Other regions this year
+        if data.visitedOtherRegionsCount > 0 {
+            let plural = data.visitedOtherRegionsCount == 1 ? "region" : "regions"
+            result.append((
+                icon: "map.fill",
+                text: "You explored \(data.visitedOtherRegionsCount) \(plural) around the world."
             ))
         }
 
@@ -884,10 +1042,10 @@ struct FunFactsCard: View {
         }
 
         // Total places
-        if data.totalNewPlaces >= 5 {
+        if data.totalVisitedPlaces >= 5 {
             result.append((
                 icon: "sparkles",
-                text: "What a year! \(data.totalNewPlaces) new places explored."
+                text: "What a year! \(data.totalVisitedPlaces) places explored."
             ))
         }
 
@@ -1051,23 +1209,29 @@ struct SummaryCard: View {
             // Stats grid
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
                 SummaryStatItem(
-                    value: "\(data.totalNewPlaces)",
-                    label: "New Places",
+                    value: "\(data.totalVisitedPlaces)",
+                    label: data.totalNewPlaces < data.totalVisitedPlaces
+                        ? "Places (\(data.totalNewPlaces) new)"
+                        : "Places Visited",
                     icon: "mappin.and.ellipse",
                     color: .green
                 )
 
                 SummaryStatItem(
-                    value: "\(data.newCountriesCount)",
-                    label: "Countries",
+                    value: "\(data.visitedCountriesCount)",
+                    label: data.newCountriesCount < data.visitedCountriesCount
+                        ? "Countries (\(data.newCountriesCount) new)"
+                        : "Countries",
                     icon: "flag.fill",
                     color: .cyan
                 )
 
-                if data.newUSStatesCount > 0 {
+                if data.visitedUSStatesCount > 0 {
                     SummaryStatItem(
-                        value: "\(data.newUSStatesCount)",
-                        label: "US States",
+                        value: "\(data.visitedUSStatesCount)",
+                        label: data.newUSStatesCount < data.visitedUSStatesCount
+                            ? "US States (\(data.newUSStatesCount) new)"
+                            : "US States",
                         icon: "star.fill",
                         color: .blue
                     )
@@ -1102,13 +1266,13 @@ struct SummaryCard: View {
             .padding(.horizontal, 8)
 
             // Country list
-            if !data.newCountries.isEmpty {
+            if !data.visitedCountries.isEmpty {
                 VStack(spacing: 4) {
                     Text("Countries Visited")
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.5))
 
-                    Text(data.newCountries.map { $0.regionName }.sorted().joined(separator: " \u{2022} "))
+                    Text(data.visitedCountries.map { $0.regionName }.sorted().joined(separator: " \u{2022} "))
                         .font(.caption2)
                         .foregroundStyle(.white.opacity(0.7))
                         .multilineTextAlignment(.center)
@@ -1144,8 +1308,18 @@ struct SummaryCard: View {
             }
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ShareStatBox(value: "\(data.totalNewPlaces)", label: "New Places", color: .green)
-                ShareStatBox(value: "\(data.newCountriesCount)", label: "Countries", color: .cyan)
+                ShareStatBox(
+                    value: "\(data.totalVisitedPlaces)",
+                    label: data.totalNewPlaces < data.totalVisitedPlaces
+                        ? "Places (\(data.totalNewPlaces) new)" : "Places Visited",
+                    color: .green
+                )
+                ShareStatBox(
+                    value: "\(data.visitedCountriesCount)",
+                    label: data.newCountriesCount < data.visitedCountriesCount
+                        ? "Countries (\(data.newCountriesCount) new)" : "Countries",
+                    color: .cyan
+                )
                 ShareStatBox(value: "\(data.timeZoneStats.zonesVisited)", label: "Time Zones", color: .purple)
 
                 let continents = data.continentBreakdown.filter { $0.visited > 0 }.count
@@ -1153,8 +1327,8 @@ struct SummaryCard: View {
             }
             .padding(.horizontal, 16)
 
-            if !data.newCountries.isEmpty {
-                Text(data.newCountries.map { $0.regionName }.sorted().joined(separator: " \u{2022} "))
+            if !data.visitedCountries.isEmpty {
+                Text(data.visitedCountries.map { $0.regionName }.sorted().joined(separator: " \u{2022} "))
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.7))
                     .multilineTextAlignment(.center)
