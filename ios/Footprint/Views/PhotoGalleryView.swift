@@ -48,7 +48,9 @@ struct PhotoGalleryView: View {
                 }
             }
             .navigationTitle("\(assets.count) Photo\(assets.count == 1 ? "" : "s")")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") {
@@ -168,7 +170,9 @@ struct PhotoDetailView: View {
                     }
                 }
             }
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {

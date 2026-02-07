@@ -14,7 +14,9 @@ struct ImportView: View {
         NavigationStack {
             content
                 .navigationTitle("Import Travel History")
+                #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
+                #endif
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") {

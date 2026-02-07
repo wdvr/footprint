@@ -1337,6 +1337,15 @@ struct StateMapSheet: View {
     @State private var selectedState: String?
     @State private var showingStatePopup = false
 
+    /// Screen height that works on both iOS and macOS (Mac Catalyst)
+    private var screenHeight: CGFloat {
+        #if targetEnvironment(macCatalyst)
+        return 800 // Reasonable default for Mac windows
+        #else
+        return UIScreen.main.bounds.height
+        #endif
+    }
+
     private var regionType: VisitedPlace.RegionType {
         GeographicData.regionType(for: countryCode) ?? .usState
     }
@@ -1411,7 +1420,7 @@ struct StateMapSheet: View {
                         }
                     )
                 }
-                .frame(maxHeight: showStateList ? UIScreen.main.bounds.height * 0.4 : .infinity)
+                .frame(maxHeight: showStateList ? screenHeight * 0.4 : .infinity)
 
                 // Expandable state list
                 VStack(spacing: 0) {
@@ -1462,12 +1471,14 @@ struct StateMapSheet: View {
                                 }
                             }
                         }
-                        .frame(maxHeight: UIScreen.main.bounds.height * 0.5)
+                        .frame(maxHeight: screenHeight * 0.5)
                     }
                 }
             }
             .navigationTitle(countryName)
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Done") {
