@@ -1945,6 +1945,7 @@ struct StatsView: View {
 
     @ScaledMetric(relativeTo: .largeTitle) private var globeSize: CGFloat = 60
     @ScaledMetric(relativeTo: .title) private var totalCountSize: CGFloat = 48
+    @State private var showShareSheet = false
 
     // Visited counts (only status = visited)
     private var countriesVisitedCount: Int {
@@ -2107,6 +2108,19 @@ struct StatsView: View {
                 }
             }
             .navigationTitle("Statistics")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showShareSheet = true
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .accessibilityLabel("Share your travel stats")
+                }
+            }
+            .sheet(isPresented: $showShareSheet) {
+                ShareSheetView(visitedPlaces: visitedPlaces)
+            }
         }
     }
 }
