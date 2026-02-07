@@ -418,6 +418,8 @@ private struct ScanningView: View {
                 }
             }
             .frame(width: 120, height: 120)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Scanning progress: \(Int(min(100, progress * 100))) percent, \(processed) of \(total) photos scanned")
 
             VStack(spacing: 8) {
                 Text("Scanning Photos...")
@@ -708,10 +710,12 @@ private struct LocationRow: View {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(isSelected ? .green : .secondary)
                     .font(.title2)
+                    .accessibilityHidden(true)
 
                 Image(systemName: iconName)
                     .foregroundStyle(iconColor)
                     .frame(width: 24)
+                    .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(location.regionName)
@@ -739,6 +743,9 @@ private struct LocationRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(location.regionName), \(location.photoCount) photos, \(isSelected ? "selected" : "not selected")")
+        .accessibilityHint("Double tap to \(isSelected ? "deselect" : "select")")
     }
 }
 

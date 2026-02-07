@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 // MARK: - Reduce Motion Helper
 
@@ -61,4 +64,43 @@ extension View {
     func onVoiceOverChange(_ action: @escaping (Bool) -> Void) -> some View {
         modifier(VoiceOverReader(action: action))
     }
+
+    /// Adds a high-contrast border when Differentiate Without Color is enabled
+    func highContrastBorder(_ color: Color = .primary, lineWidth: CGFloat = 1) -> some View {
+        modifier(HighContrastBorderModifier(color: color, lineWidth: lineWidth))
+    }
+
+    /// Adds an accessibility value showing visited status for a place
+    func accessibilityVisitedStatus(_ isVisited: Bool) -> some View {
+        self.accessibilityValue(isVisited ? "Visited" : "Not visited")
+    }
+}
+
+// MARK: - High Contrast Border
+
+private struct HighContrastBorderModifier: ViewModifier {
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    let color: Color
+    let lineWidth: CGFloat
+
+    func body(content: Content) -> some View {
+        if differentiateWithoutColor {
+            content
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(color, lineWidth: lineWidth)
+                )
+        } else {
+            content
+        }
+    }
+}
+
+// MARK: - Accessibility Announcement
+
+/// Posts an accessibility announcement for VoiceOver users
+func announceForAccessibility(_ message: String) {
+    #if canImport(UIKit)
+    UIAccessibility.post(notification: .announcement, argument: message)
+    #endif
 }

@@ -229,10 +229,13 @@ private struct ScanProgressView: View {
                     .font(.system(size: 30))
                     .foregroundStyle(.blue)
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(title) in progress")
 
             VStack(spacing: 8) {
                 Text(title)
                     .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
 
                 Text(subtitle)
                     .font(.subheadline)
@@ -277,6 +280,8 @@ private struct ImportScanningView: View {
                     .font(.system(size: 30))
                     .foregroundStyle(.blue)
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Scanning in progress")
 
             VStack(spacing: 8) {
                 Text(progress.displayText)
@@ -366,6 +371,7 @@ private struct ProgressRow: View {
             HStack {
                 Image(systemName: icon)
                     .foregroundStyle(.blue)
+                    .accessibilityHidden(true)
                 Text(label)
                     .font(.subheadline)
                 Spacer()
@@ -378,16 +384,21 @@ private struct ProgressRow: View {
             ProgressView(value: Double(current), total: Double(max(total, 1)))
                 .tint(.blue)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label): \(current) of \(total)")
+        .accessibilityValue("\(total > 0 ? (current * 100 / total) : 0) percent")
     }
 }
 
 private struct RotatingModifier: ViewModifier {
     @State private var rotation: Double = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
         content
             .rotationEffect(.degrees(rotation))
             .onAppear {
+                guard !reduceMotion else { return }
                 withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) {
                     rotation = 360
                 }
@@ -407,11 +418,13 @@ private struct ImportIntroView: View {
             Image(systemName: "envelope.badge.fill")
                 .font(.system(size: 60))
                 .foregroundStyle(.blue)
+                .accessibilityHidden(true)
 
             VStack(spacing: 12) {
                 Text("Import from Gmail & Calendar")
                     .font(.title2)
                     .fontWeight(.semibold)
+                    .accessibilityAddTraits(.isHeader)
 
                 Text("We'll scan your emails and calendar events to find countries you've visited based on flight bookings, hotel reservations, train tickets, and travel events.")
                     .font(.body)
@@ -472,11 +485,13 @@ private struct ImportSuccessView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 60))
                 .foregroundStyle(.green)
+                .accessibilityHidden(true)
 
             VStack(spacing: 8) {
                 Text("Import Complete!")
                     .font(.title2)
                     .fontWeight(.semibold)
+                    .accessibilityAddTraits(.isHeader)
 
                 Text("\(count) \(count == 1 ? "country" : "countries") added to your travel history")
                     .font(.body)
@@ -513,11 +528,13 @@ private struct ImportErrorView: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 60))
                 .foregroundStyle(.orange)
+                .accessibilityHidden(true)
 
             VStack(spacing: 8) {
                 Text("Something went wrong")
                     .font(.title2)
                     .fontWeight(.semibold)
+                    .accessibilityAddTraits(.isHeader)
 
                 Text(message)
                     .font(.body)

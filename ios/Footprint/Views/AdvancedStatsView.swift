@@ -21,8 +21,10 @@ struct ContinentProgressView: View {
             HStack {
                 Image(systemName: "globe.europe.africa")
                     .foregroundStyle(.blue)
+                    .accessibilityHidden(true)
                 Text("By Continent")
                     .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
             }
 
             ForEach(continentStats) { stat in
@@ -52,7 +54,10 @@ struct ContinentRow: View {
 
             ProgressView(value: stat.percentage, total: 100)
                 .tint(stat.visited > 0 ? .green : .gray)
+                .accessibilityHidden(true)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(stat.name), \(stat.visited) of \(stat.total) countries visited, \(Int(stat.percentage)) percent")
     }
 }
 
@@ -87,8 +92,10 @@ struct TimeZoneProgressView: View {
             HStack {
                 Image(systemName: "clock")
                     .foregroundStyle(.purple)
+                    .accessibilityHidden(true)
                 Text("Time Zones")
                     .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
                 Spacer()
                 Text("\(timeZoneStats.zonesVisited)/24")
                     .font(.subheadline)
@@ -97,6 +104,8 @@ struct TimeZoneProgressView: View {
 
             // Visual time zone bar
             TimeZoneBar(visitedZones: timeZoneStats.visitedZones)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(timeZoneStats.zonesVisited) of 24 time zones visited")
 
             HStack {
                 if let west = timeZoneStats.farthestWest {
@@ -172,8 +181,10 @@ struct BadgesProgressView: View {
             HStack {
                 Image(systemName: "trophy")
                     .foregroundStyle(.yellow)
+                    .accessibilityHidden(true)
                 Text("Achievements")
                     .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
                 Spacer()
                 Text("\(earnedBadges.count)/\(badgeProgress.count)")
                     .font(.subheadline)
@@ -199,10 +210,12 @@ struct BadgesProgressView: View {
                     Text("Next Achievement")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .accessibilityAddTraits(.isHeader)
 
                     HStack {
                         Image(systemName: nextBadge.icon)
                             .foregroundStyle(.gray)
+                            .accessibilityHidden(true)
                         Text(nextBadge.name)
                             .font(.subheadline)
                         Spacer()
@@ -210,9 +223,12 @@ struct BadgesProgressView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(nextBadge.name), \(nextBadge.progress) of \(nextBadge.progressTotal)")
 
                     ProgressView(value: nextBadge.progressPercentage, total: 100)
                         .tint(.yellow)
+                        .accessibilityHidden(true)
                 }
             }
         }
@@ -243,6 +259,8 @@ struct EarnedBadgeIcon: View {
                 .multilineTextAlignment(.center)
                 .frame(width: 60)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Achievement unlocked: \(badge.name)")
     }
 }
 
@@ -274,8 +292,10 @@ struct VisitTypeStatsView: View {
             HStack {
                 Image(systemName: "airplane.arrival")
                     .foregroundStyle(.teal)
+                    .accessibilityHidden(true)
                 Text("Visit Types")
                     .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
             }
 
             HStack(spacing: 24) {
@@ -288,9 +308,12 @@ struct VisitTypeStatsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(fullVisits) full visits")
 
                 Divider()
                     .frame(height: 40)
+                    .accessibilityHidden(true)
 
                 VStack {
                     Text("\(transitVisits)")
@@ -301,6 +324,8 @@ struct VisitTypeStatsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(transitVisits) transit visits")
             }
             .frame(maxWidth: .infinity)
         }

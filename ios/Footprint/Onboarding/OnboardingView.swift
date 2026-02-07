@@ -28,6 +28,7 @@ struct OnboardingView: View {
                     }
                     .foregroundStyle(.secondary)
                     .padding()
+                    .accessibilityHint("Skip onboarding and go directly to the app")
                 }
 
                 // Page content
@@ -56,6 +57,8 @@ struct OnboardingView: View {
                                 .frame(width: 8, height: 8)
                         }
                     }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Page \(currentPage + 1) of \(totalPages)")
 
                     // Navigation buttons
                     HStack {
@@ -71,6 +74,8 @@ struct OnboardingView: View {
                                 }
                             }
                             .foregroundStyle(.secondary)
+                            .accessibilityLabel("Back")
+                            .accessibilityHint("Go to previous page")
                         }
 
                         Spacer()
@@ -88,6 +93,7 @@ struct OnboardingView: View {
                                 Text(currentPage < totalPages - 1 ? "Next" : "Get Started")
                                 if currentPage < totalPages - 1 {
                                     Image(systemName: "chevron.right")
+                                        .accessibilityHidden(true)
                                 }
                             }
                             .fontWeight(.semibold)
@@ -97,6 +103,7 @@ struct OnboardingView: View {
                             .background(Color.blue)
                             .clipShape(Capsule())
                         }
+                        .accessibilityHint(currentPage < totalPages - 1 ? "Go to next page" : "Complete onboarding and start using the app")
                     }
                     .padding(.horizontal, 30)
                 }
@@ -134,11 +141,13 @@ private struct WelcomePage: View {
                         )
                     )
             }
+            .accessibilityHidden(true)
 
             VStack(spacing: 16) {
                 Text("Welcome to Footprint")
                     .font(.largeTitle)
                     .fontWeight(.bold)
+                    .accessibilityAddTraits(.isHeader)
 
                 Text("Track the places you've visited and create your personal travel map")
                     .font(.body)
@@ -181,11 +190,13 @@ private struct PhotoImportPage: View {
                     .font(.system(size: 80))
                     .foregroundStyle(.purple)
             }
+            .accessibilityHidden(true)
 
             VStack(spacing: 16) {
                 Text("Import from Photos")
                     .font(.largeTitle)
                     .fontWeight(.bold)
+                    .accessibilityAddTraits(.isHeader)
 
                 Text("Footprint can scan your photo library to discover places you've been based on photo locations")
                     .font(.body)
@@ -270,11 +281,13 @@ private struct LocationPage: View {
                     .font(.system(size: 80))
                     .foregroundStyle(.green)
             }
+            .accessibilityHidden(true)
 
             VStack(spacing: 16) {
                 Text("Track Your Location")
                     .font(.largeTitle)
                     .fontWeight(.bold)
+                    .accessibilityAddTraits(.isHeader)
 
                 Text("Enable location tracking to automatically mark countries as you travel")
                     .font(.body)
@@ -358,11 +371,13 @@ private struct ReadyPage: View {
                     .font(.system(size: 100))
                     .foregroundStyle(.green)
             }
+            .accessibilityHidden(true)
 
             VStack(spacing: 16) {
                 Text("You're All Set!")
                     .font(.largeTitle)
                     .fontWeight(.bold)
+                    .accessibilityAddTraits(.isHeader)
 
                 Text("Start exploring the map and marking the places you've visited")
                     .font(.body)
@@ -399,10 +414,12 @@ private struct FeatureRow: View {
                 .font(.title2)
                 .foregroundStyle(color)
                 .frame(width: 30)
+                .accessibilityHidden(true)
 
             Text(text)
                 .font(.subheadline)
         }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -416,11 +433,13 @@ private struct BenefitRow: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(width: 20)
+                .accessibilityHidden(true)
 
             Text(text)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -434,10 +453,12 @@ private struct TipRow: View {
                 .font(.title3)
                 .foregroundStyle(.blue)
                 .frame(width: 30)
+                .accessibilityHidden(true)
 
             Text(text)
                 .font(.subheadline)
         }
+        .accessibilityElement(children: .combine)
     }
 }
 
