@@ -331,10 +331,7 @@ struct CountryMapView: UIViewRepresentable {
                 let photoLocations = PhotoLocationStore.shared.load()
                 // Debug: Check if photoAssetIDs are populated
                 let locationsWithIDs = photoLocations.filter { !$0.photoAssetIDs.isEmpty }
-                print("[CountryMapView] Loading \(photoLocations.count) locations, \(locationsWithIDs.count) have asset IDs")
-                if let first = locationsWithIDs.first {
-                    print("[CountryMapView] Sample: \(first.photoCount) photos, \(first.photoAssetIDs.count) IDs")
-                }
+                Log.map.debug("Loading \(photoLocations.count) photo locations, \(locationsWithIDs.count) have asset IDs")
                 let annotations = photoLocations.map { PhotoPinAnnotation(photoLocation: $0) }
                 mapView.addAnnotations(annotations)
                 photoPinsShown = true
@@ -425,7 +422,10 @@ struct CountryMapView: UIViewRepresentable {
                 let countryBoundaries = GeoJSONParser.parseCountries()
                 let usStates = GeoJSONParser.parseUSStates()
                 let caProvinces = GeoJSONParser.parseCanadianProvinces()
-                print("CountryMapView: Parsed \(countryBoundaries.count) countries, \(usStates.count) US states, \(caProvinces.count) CA provinces")
+                let countryCount = countryBoundaries.count
+                let stateCount = usStates.count
+                let provinceCount = caProvinces.count
+                Log.map.debug("Parsed \(countryCount) countries, \(stateCount) US states, \(provinceCount) CA provinces")
 
                 DispatchQueue.main.async {
                     guard let self = self else { return }
@@ -462,7 +462,7 @@ struct CountryMapView: UIViewRepresentable {
                         mapView.addOverlay(overlay, level: .aboveRoads)
                     }
 
-                    print("CountryMapView: Added \(mapView.overlays.count) total overlays to map")
+                    Log.map.debug("Added \(mapView.overlays.count) total overlays to map")
                 }
             }
         }
@@ -642,10 +642,10 @@ struct CountryMapView: UIViewRepresentable {
         selectedCountry: .constant(nil),
         centerOnUserLocation: .constant(false),
         onCountryTapped: { code in
-            print("Tapped country: \(code)")
+            Log.map.debug("Tapped country: \(code)")
         },
         onPhotoPinTapped: { assetIDs in
-            print("Tapped photo pin with \(assetIDs.count) photos")
+            Log.map.debug("Tapped photo pin with \(assetIDs.count) photos")
         }
     )
 }

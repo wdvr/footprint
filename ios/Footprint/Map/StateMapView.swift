@@ -220,7 +220,7 @@ struct StateMapView: UIViewRepresentable {
                 // Use generic state parsing for all countries
                 let boundaries = GeoJSONParser.parseStates(forCountry: countryCode)
 
-                print("StateMapView: Parsed \(boundaries.count) boundaries for \(countryCode)")
+                Log.map.debug("StateMapView: Parsed \(boundaries.count) boundaries for \(countryCode)")
 
                 DispatchQueue.main.async {
                     for boundary in boundaries {
@@ -231,7 +231,7 @@ struct StateMapView: UIViewRepresentable {
                         overlay.subtitle = boundary.name
                         mapView.addOverlay(overlay, level: .aboveRoads)
                     }
-                    print("StateMapView: Added \(mapView.overlays.count) overlays to map")
+                    Log.map.debug("StateMapView: Added \(mapView.overlays.count) overlays to map")
                 }
             }
         }
@@ -286,7 +286,7 @@ struct StateMapView: UIViewRepresentable {
         visitedStateCodes: ["CA", "NY", "TX", "FL"],
         selectedState: .constant(nil),
         onStateTapped: { code in
-            print("Tapped state: \(code)")
+            Log.map.debug("Tapped state: \(code)")
         }
     )
 }
@@ -297,7 +297,7 @@ struct StateMapView: UIViewRepresentable {
         visitedStateCodes: ["ON", "BC", "QC"],
         selectedState: .constant(nil),
         onStateTapped: { code in
-            print("Tapped province: \(code)")
+            Log.map.debug("Tapped province: \(code)")
         }
     )
 }

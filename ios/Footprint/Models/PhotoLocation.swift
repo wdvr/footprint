@@ -70,7 +70,8 @@ class PhotoLocationStore {
     func save(_ locations: [PhotoLocation]) {
         if let encoded = try? JSONEncoder().encode(locations) {
             UserDefaults.standard.set(encoded, forKey: userDefaultsKey)
-            print("[PhotoLocationStore] Saved \(locations.count) locations (\(totalPhotoCount) total photos)")
+            let totalCount = totalPhotoCount
+            Log.photoStore.debug("Saved \(locations.count) locations (\(totalCount) total photos)")
         }
     }
 
@@ -102,7 +103,7 @@ class PhotoLocationStore {
 
         let merged = Array(existingByGridKey.values)
         save(merged)
-        print("[PhotoLocationStore] Merged \(newLocations.count) new locations, total: \(merged.count) locations")
+        Log.photoStore.debug("Merged \(newLocations.count) new locations, total: \(merged.count) locations")
     }
 
     /// Load photo locations from UserDefaults
@@ -155,7 +156,7 @@ class PhotoLocationStore {
         var locations = load()
         result.locationsProcessed = locations.count
 
-        print("[PhotoLocationStore] Starting rematch of \(locations.count) locations with 100m coastal tolerance...")
+        Log.photoStore.info("Starting rematch of \(locations.count) locations with 100m coastal tolerance...")
 
         for i in 0..<locations.count {
             var location = locations[i]
@@ -203,7 +204,7 @@ class PhotoLocationStore {
             newStateMatches: result.statesFound
         )
 
-        print("[PhotoLocationStore] Rematch complete: \(result.newMatches) new matches, \(result.statesFound) states found")
+        Log.photoStore.info("Rematch complete: \(result.newMatches) new matches, \(result.statesFound) states found")
         return result
     }
 

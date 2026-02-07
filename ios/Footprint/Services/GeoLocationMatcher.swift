@@ -44,7 +44,9 @@ private final class BoundaryStorage: @unchecked Sendable {
         isLoaded = true
 
         let totalStates = stateBoundariesByCountry.values.reduce(0) { $0 + $1.count }
-        print("[GeoLocationMatcher] Loaded \(countryBoundaries.count) countries, \(totalStates) states/provinces across \(stateBoundariesByCountry.count) countries")
+        let countryCount = countryBoundaries.count
+        let stateCountryCount = stateBoundariesByCountry.count
+        Log.geoMatcher.info("Loaded \(countryCount) countries, \(totalStates) states/provinces across \(stateCountryCount) countries")
     }
 }
 

@@ -91,7 +91,7 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
     func enableBackgroundTracking() {
         #if os(iOS)
         guard authorizationStatus == .authorizedAlways else {
-            print("[Location] Need 'Always' permission for background tracking")
+            Log.location.info("Need 'Always' permission for background tracking")
             requestPermission()
             return
         }
@@ -99,7 +99,7 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
         locationManager.startMonitoringSignificantLocationChanges()
         isBackgroundTrackingEnabled = true
         UserDefaults.standard.set(true, forKey: "backgroundLocationTracking")
-        print("[Location] Background tracking enabled")
+        Log.location.info("Background tracking enabled")
         #endif
     }
 
@@ -109,7 +109,7 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
         locationManager.stopMonitoringSignificantLocationChanges()
         isBackgroundTrackingEnabled = false
         UserDefaults.standard.set(false, forKey: "backgroundLocationTracking")
-        print("[Location] Background tracking disabled")
+        Log.location.info("Background tracking disabled")
         #endif
     }
 
@@ -127,7 +127,7 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
         #if os(iOS)
         if isBackgroundTrackingEnabled && authorizationStatus == .authorizedAlways {
             locationManager.startMonitoringSignificantLocationChanges()
-            print("[Location] Resumed background tracking")
+            Log.location.info("Resumed background tracking")
         }
         #endif
     }
@@ -268,6 +268,6 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Location error: \(error.localizedDescription)")
+        Log.location.error("Location error: \(error.localizedDescription)")
     }
 }

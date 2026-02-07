@@ -224,15 +224,15 @@ final class PhotoImportManager: NSObject {
                 do {
                     let ids = try JSONDecoder().decode(Set<String>.self, from: data)
                     _processedPhotoIDsCache = ids
-                    print("[PhotoImport] Loaded \(ids.count) processed photo IDs from storage (\(data.count) bytes)")
+                    Log.photoImport.debug("Loaded \(ids.count) processed photo IDs from storage (\(data.count) bytes)")
                     return ids
                 } catch {
-                    print("[PhotoImport] ERROR: Failed to decode processed photo IDs: \(error)")
+                    Log.photoImport.error(" Failed to decode processed photo IDs: \(error)")
                     // Data is corrupted, clear it
                     UserDefaults.standard.removeObject(forKey: processedPhotoIDsKey)
                 }
             } else {
-                print("[PhotoImport] No processed photo IDs found in storage (first run or cleared)")
+                Log.photoImport.debug("No processed photo IDs found in storage (first run or cleared)")
             }
             _processedPhotoIDsCache = Set()
             return Set()
@@ -250,9 +250,9 @@ final class PhotoImportManager: NSObject {
             let data = try JSONEncoder().encode(cache)
             UserDefaults.standard.set(data, forKey: processedPhotoIDsKey)
             processedPhotoIDsDirty = false
-            print("[PhotoImport] Saved \(cache.count) processed photo IDs to storage (\(data.count) bytes)")
+            Log.photoImport.debug("Saved \(cache.count) processed photo IDs to storage (\(data.count) bytes)")
         } catch {
-            print("[PhotoImport] ERROR: Failed to encode processed photo IDs: \(error)")
+            Log.photoImport.error(" Failed to encode processed photo IDs: \(error)")
         }
     }
 
@@ -275,7 +275,7 @@ final class PhotoImportManager: NSObject {
         _processedPhotoIDsCache = Set()
         processedPhotoIDsDirty = true
         saveProcessedPhotoIDs()
-        print("[PhotoImport] Cleared processed photo IDs")
+        Log.photoImport.info("Cleared processed photo IDs")
     }
 
     /// Get count of processed photos
@@ -290,7 +290,7 @@ final class PhotoImportManager: NSObject {
 
         PHPhotoLibrary.shared().register(self)
         isObservingPhotoLibrary = true
-        print("[PhotoImport] Started observing photo library for changes")
+        Log.photoImport.debug("Started observing photo library for changes")
 
         // Check for new photos immediately
         Task {
@@ -327,7 +327,7 @@ final class PhotoImportManager: NSObject {
         }
 
         newPhotosAvailable = count
-        print("[PhotoImport] Found \(count) new photos with location since last scan")
+        Log.photoImport.debug("Found \(count) new photos with location since last scan")
     }
 
     /// Minimize the import view while continuing scan
@@ -381,7 +381,7 @@ final class PhotoImportManager: NSObject {
         do {
             try BGTaskScheduler.shared.submit(request)
         } catch {
-            print("Failed to schedule background task: \(error)")
+            Log.photoImport.error("Failed to schedule background task: \(error)")
         }
     }
 
@@ -537,7 +537,7 @@ final class PhotoImportManager: NSObject {
         state = .collecting(photosProcessed: 0)
 
         let scanStartTime = Date()
-        print("[PhotoImport] ========== SCAN STARTED ==========")
+        Log.photoImport.info("========== SCAN STARTED ==========")
 
         // Fetch ALL photos - we use localIdentifier tracking instead of date filtering
         // This ensures photos with old EXIF dates (e.g., imported from camera) are still detected
@@ -547,39 +547,34 @@ final class PhotoImportManager: NSObject {
         let fetchStartTime = Date()
         let assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
         let fetchDuration = Date().timeIntervalSince(fetchStartTime)
-        print("[PhotoImport] Photo library fetch took \(String(format: "%.2f", fetchDuration))s")
+        Log.photoImport.debug("Photo library fetch took \(String(format: "%.2f", fetchDuration))s")
 
         // Get the set of already processed photo IDs for fast lookup
         let alreadyProcessedIDs = scanAllPhotos ? Set<String>() : processedPhotoIDs
-        print("[PhotoImport] ========================================")
-        print("[PhotoImport] SCAN MODE: \(scanAllPhotos ? "FULL SCAN" : "INCREMENTAL SCAN")")
-        print("[PhotoImport] Total photos in library: \(assets.count)")
-        print("[PhotoImport] Previously tracked photo count: \(processedPhotoCount)")
-        print("[PhotoImport] IDs loaded for skip check: \(alreadyProcessedIDs.count)")
+        let trackedCount = processedPhotoCount
+        Log.photoImport.info("SCAN MODE: \(scanAllPhotos ? "FULL SCAN" : "INCREMENTAL SCAN"), Total photos: \(assets.count), Previously tracked: \(trackedCount), IDs for skip: \(alreadyProcessedIDs.count)")
         if scanAllPhotos {
-            print("[PhotoImport] Full scan requested - will process all photos regardless of previous scans")
+            Log.photoImport.debug("Full scan requested - will process all photos regardless of previous scans")
         } else {
             if alreadyProcessedIDs.isEmpty {
-                print("[PhotoImport] ⚠️ WARNING: No previously processed photos found!")
-                print("[PhotoImport] This is expected for first-time scans.")
-                print("[PhotoImport] If this is NOT your first scan, processedPhotoIDs may not be persisting correctly.")
+                Log.photoImport.info("No previously processed photos found (first run or cleared)")
                 // Debug: Check if the UserDefaults key exists
-                if let data = UserDefaults.standard.data(forKey: processedPhotoIDsKey) {
-                    print("[PhotoImport] DEBUG: UserDefaults has data for key (\(data.count) bytes) but loaded 0 IDs")
+                let photoIDsKey = processedPhotoIDsKey
+                if let data = UserDefaults.standard.data(forKey: photoIDsKey) {
+                    Log.photoImport.debug("UserDefaults has data for key (\(data.count) bytes) but loaded 0 IDs")
                 } else {
-                    print("[PhotoImport] DEBUG: UserDefaults has no data for key '\(processedPhotoIDsKey)'")
+                    Log.photoImport.debug("UserDefaults has no data for key '\(photoIDsKey)'")
                 }
             } else {
-                print("[PhotoImport] ✓ Will skip \(alreadyProcessedIDs.count) previously processed photos")
+                Log.photoImport.debug("Will skip \(alreadyProcessedIDs.count) previously processed photos")
             }
         }
-        print("[PhotoImport] ========================================")
         var totalPhotos = assets.count
 
         // Apply dev limit if set
         if Self.devPhotoLimit > 0 {
             totalPhotos = min(totalPhotos, Self.devPhotoLimit)
-            print("[PhotoImport] DEV MODE: Limiting to \(totalPhotos) photos")
+            Log.photoImport.info("DEV MODE: Limiting to \(totalPhotos) photos")
         }
 
         totalPhotosToProcess = totalPhotos
@@ -590,7 +585,7 @@ final class PhotoImportManager: NSObject {
         }
 
         // Phase 1: Enumerate photos on background thread to avoid blocking UI
-        print("[PhotoImport] Phase 1: Starting photo enumeration...")
+        Log.photoImport.info("Phase 1: Starting photo enumeration...")
         let enumerationStartTime = Date()
         let cellSize = self.gridCellSize
         let enumerationResult = await collectPhotoClusters(
@@ -600,23 +595,24 @@ final class PhotoImportManager: NSObject {
             alreadyProcessedIDs: alreadyProcessedIDs
         )
         let enumerationDuration = Date().timeIntervalSince(enumerationStartTime)
-        print("[PhotoImport] Phase 1 complete: \(String(format: "%.2f", enumerationDuration))s - \(enumerationResult.clusters.count) clusters from \(enumerationResult.photosWithLocation) photos with location (skipped \(enumerationResult.skippedAlreadyProcessed) already processed)")
+        Log.photoImport.info("Phase 1 complete: \(String(format: "%.2f", enumerationDuration))s - \(enumerationResult.clusters.count) clusters from \(enumerationResult.photosWithLocation) photos with location (skipped \(enumerationResult.skippedAlreadyProcessed) already processed)")
 
         // Log incremental scan effectiveness
         if !scanAllPhotos && enumerationResult.skippedAlreadyProcessed > 0 {
             let percentSkipped = Double(enumerationResult.skippedAlreadyProcessed) / Double(enumerationResult.totalPhotosEnumerated) * 100
-            print("[PhotoImport] INCREMENTAL SCAN: Skipped \(enumerationResult.skippedAlreadyProcessed) of \(enumerationResult.totalPhotosEnumerated) photos (\(String(format: "%.1f", percentSkipped))%) - only \(enumerationResult.newPhotoIDs.count) new photos to process")
+            Log.photoImport.info("INCREMENTAL SCAN: Skipped \(enumerationResult.skippedAlreadyProcessed) of \(enumerationResult.totalPhotosEnumerated) photos (\(String(format: "%.1f", percentSkipped))%) - only \(enumerationResult.newPhotoIDs.count) new photos to process")
         } else if !scanAllPhotos && alreadyProcessedIDs.isEmpty {
-            print("[PhotoImport] INCREMENTAL SCAN: No previously processed photos found - this appears to be the first scan")
+            Log.photoImport.info("INCREMENTAL SCAN: No previously processed photos found - this appears to be the first scan")
         }
 
         // Mark newly processed photos as done
         if !enumerationResult.newPhotoIDs.isEmpty {
             markPhotosAsProcessed(enumerationResult.newPhotoIDs)
             saveProcessedPhotoIDs()
-            print("[PhotoImport] Marked \(enumerationResult.newPhotoIDs.count) new photos as processed (total tracked: \(processedPhotoCount))")
+            let totalTracked = processedPhotoCount
+            Log.photoImport.debug("Marked \(enumerationResult.newPhotoIDs.count) new photos as processed (total tracked: \(totalTracked))")
         } else {
-            print("[PhotoImport] No new photos to mark as processed")
+            Log.photoImport.debug("No new photos to mark as processed")
         }
 
         // Initialize statistics from enumeration
@@ -629,13 +625,14 @@ final class PhotoImportManager: NSObject {
         statistics.clustersCreated = enumerationResult.clusters.count
 
         // Phase 2: Geocode unique clusters (much fewer API calls)
-        print("[PhotoImport] Phase 2: Starting geocoding of \(enumerationResult.clusters.count) clusters (concurrency: \(geocodingConcurrencyLimit))...")
+        let concurrencyLimit = geocodingConcurrencyLimit
+        Log.photoImport.info("Phase 2: Starting geocoding of \(enumerationResult.clusters.count) clusters (concurrency: \(concurrencyLimit))...")
         let geocodingStartTime = Date()
         await geocodeClusters(Array(enumerationResult.clusters.values), gridKeyToAssetIDs: enumerationResult.gridKeyToAssetIDs, existingPlaces: existingPlaces, statistics: statistics)
         let geocodingDuration = Date().timeIntervalSince(geocodingStartTime)
         let totalDuration = Date().timeIntervalSince(scanStartTime)
-        print("[PhotoImport] Phase 2 complete: \(String(format: "%.2f", geocodingDuration))s")
-        print("[PhotoImport] ========== SCAN COMPLETE: \(String(format: "%.2f", totalDuration))s total ==========")
+        Log.photoImport.info("Phase 2 complete: \(String(format: "%.2f", geocodingDuration))s")
+        Log.photoImport.info("========== SCAN COMPLETE: \(String(format: "%.2f", totalDuration))s total ==========")
     }
 
     /// Collect photo clusters on a background thread with progress updates
@@ -709,7 +706,7 @@ final class PhotoImportManager: NSObject {
             let batchSize = 1000
             let batchCount = (totalPhotos + batchSize - 1) / batchSize
 
-            print("[PhotoImport] Parallel enumeration: \(totalPhotos) photos in \(batchCount) batches of \(batchSize)")
+            Log.photoImport.debug("Parallel enumeration: \(totalPhotos) photos in \(batchCount) batches of \(batchSize)")
 
             // Thread-safe containers for results
             var clusters: [String: PhotoCluster] = [:]
@@ -812,7 +809,7 @@ final class PhotoImportManager: NSObject {
             // Wait for all batches to complete
             group.notify(queue: resultQueue) {
                 let photosWithoutLocation = newPhotoIDs.count - photosWithLocation
-                print("[PhotoImport] Parallel enumeration complete: \(totalPhotos) total photos, \(skippedCount) skipped (already processed), \(newPhotoIDs.count) new, \(photosWithLocation) with location, \(clusters.count) clusters")
+                Log.photoImport.info("Parallel enumeration complete: \(totalPhotos) total photos, \(skippedCount) skipped, \(newPhotoIDs.count) new, \(photosWithLocation) with location, \(clusters.count) clusters")
 
                 let result = EnumerationResult(
                     clusters: clusters,
@@ -842,7 +839,7 @@ final class PhotoImportManager: NSObject {
 
         // If we have saved clusters, use them directly (skip Phase 1)
         if let savedClusters = progress.pendingClusters, !savedClusters.isEmpty {
-            print("[PhotoImport] Resuming with \(savedClusters.count) saved clusters (skipping photo enumeration)")
+            Log.photoImport.info("Resuming with \(savedClusters.count) saved clusters (skipping photo enumeration)")
             let clusters = savedClusters.map { $0.toPhotoCluster() }
             // Asset IDs not available on resume - will be empty in PhotoLocation objects
             await geocodeClusters(clusters, gridKeyToAssetIDs: [:], existingPlaces: existingPlaces, existingProgress: progress)
@@ -850,7 +847,7 @@ final class PhotoImportManager: NSObject {
         }
 
         // Fallback: Re-fetch photos and rebuild clusters (for older progress format)
-        print("[PhotoImport] No saved clusters, re-enumerating photos...")
+        Log.photoImport.info("No saved clusters, re-enumerating photos...")
         let fetchOptions = PHFetchOptions()
         let assets = PHAsset.fetchAssets(with: .image, options: fetchOptions)
         let totalPhotos = assets.count
@@ -957,10 +954,10 @@ final class PhotoImportManager: NSObject {
         var stats = statistics
         let totalClusters = clusters.count + (existingProgress?.processedGridKeys.count ?? 0)
 
-        print("[PhotoImport] Starting geocoding: \(clusters.count) clusters to process")
+        Log.photoImport.info("Starting geocoding: \(clusters.count) clusters to process")
 
         if clusters.isEmpty {
-            print("[PhotoImport] No clusters to geocode")
+            Log.photoImport.debug("No clusters to geocode")
             let locations = existingProgress?.discoveredLocations ?? []
             state = .completed(locations: locations, totalFound: 0, alreadyVisited: 0, statistics: stats)
             clearScanProgress()
@@ -991,7 +988,7 @@ final class PhotoImportManager: NSObject {
 
         // Get existing place codes for filtering
         let existingCodes = Set(existingPlaces.filter { !$0.isDeleted }.map { "\($0.regionType):\($0.regionCode)" })
-        print("[PhotoImport] Existing places to filter: \(existingCodes.count) - \(existingCodes)")
+        Log.photoImport.debug("Existing places to filter: \(existingCodes.count)")
 
         // Track discovered locations (new ones only)
         var locationCounts: [String: (type: VisitedPlace.RegionType, code: String, name: String, count: Int, earliestDate: Date?)] = [:]
@@ -1022,7 +1019,7 @@ final class PhotoImportManager: NSObject {
 
         // Parallel geocoding helper
         let concurrencyLimit = geocodingConcurrencyLimit
-        print("[PhotoImport] Using parallel geocoding with concurrency limit: \(concurrencyLimit)")
+        Log.photoImport.debug("Using parallel geocoding with concurrency limit: \(concurrencyLimit)")
 
         // Pre-load GeoJSON boundaries to avoid cold-load bottleneck during parallel geocoding
         GeoLocationMatcher.shared.loadBoundariesIfNeeded()
@@ -1086,7 +1083,7 @@ final class PhotoImportManager: NSObject {
                         stats.countriesFound[countryCode, default: 0] += cluster.photoCount
 
                         if processedCount <= 5 {
-                            print("[PhotoImport] Geocoded cluster \(processedCount): \(countryCode) - \(result.countryName ?? "?")")
+                            Log.photoImport.debug("Geocoded cluster \(processedCount): \(countryCode) - \(result.countryName ?? "?")")
                         }
 
                         // Check if country exists in our data
@@ -1200,7 +1197,7 @@ final class PhotoImportManager: NSObject {
                 // Log progress every 50 clusters or at completion
                 let progressPercent = Int((Double(processedCount) / Double(totalClusters)) * 100)
                 if processedCount % 50 == 0 || processedCount == totalClusters {
-                    print("[PhotoImport] Geocoding progress: \(processedCount)/\(totalClusters) clusters (\(progressPercent)%) - \(allFoundLocations.count) locations found")
+                    Log.photoImport.debug("Geocoding progress: \(processedCount)/\(totalClusters) clusters (\(progressPercent)%) - \(allFoundLocations.count) locations found")
                 }
 
                 // Save progress periodically (every 50 clusters to avoid serialization overhead)
@@ -1219,34 +1216,24 @@ final class PhotoImportManager: NSObject {
             // Complete
             let discoveredLocations = buildDiscoveredLocations(from: locationCounts)
             let totalFound = allFoundLocations.count
-            print("[PhotoImport] Geocoding complete: \(totalFound) total locations found, \(alreadyVisitedCount) already visited, \(discoveredLocations.count) new")
+            Log.photoImport.info("Geocoding complete: \(totalFound) total locations found, \(alreadyVisitedCount) already visited, \(discoveredLocations.count) new")
             for loc in discoveredLocations.prefix(10) {
-                print("[PhotoImport]   - \(loc.regionName) (\(loc.regionCode)): \(loc.photoCount) photos")
+                Log.photoImport.debug("  - \(loc.regionName) (\(loc.regionCode)): \(loc.photoCount) photos")
             }
 
             // Mark scan complete (this enables delta scanning for future scans)
             markScanComplete()
 
             // Print statistics summary
-            print("[PhotoImport] === STATISTICS ===")
-            print("[PhotoImport] Total photos scanned: \(stats.totalPhotosScanned)")
-            print("[PhotoImport] Photos with location: \(stats.photosWithLocation)")
-            print("[PhotoImport] Photos without location: \(stats.photosWithoutLocation)")
-            print("[PhotoImport] Clusters created: \(stats.clustersCreated)")
-            print("[PhotoImport] Clusters matched to country: \(stats.clustersMatched)")
-            print("[PhotoImport] Clusters unmatched (no country): \(stats.clustersUnmatched)")
-            print("[PhotoImport] Photos in unmatched clusters: \(stats.photosInUnmatchedClusters)")
+            Log.photoImport.info("=== STATISTICS === Scanned: \(stats.totalPhotosScanned), With location: \(stats.photosWithLocation), Without: \(stats.photosWithoutLocation), Clusters: \(stats.clustersCreated) (matched: \(stats.clustersMatched), unmatched: \(stats.clustersUnmatched))")
             if !stats.unmatchedCoordinates.isEmpty {
-                print("[PhotoImport] Sample unmatched coordinates:")
-                for coord in stats.unmatchedCoordinates.prefix(10) {
-                    print("[PhotoImport]   (\(coord.latitude), \(coord.longitude)) - \(coord.photoCount) photos")
-                }
+                Log.photoImport.debug("Unmatched clusters: \(stats.unmatchedCoordinates.count) samples, \(stats.photosInUnmatchedClusters) photos")
             }
-            print("[PhotoImport] Countries found: \(stats.countriesFound.sorted(by: { $0.value > $1.value }).prefix(10).map { "\($0.key): \($0.value)" }.joined(separator: ", "))")
+            Log.photoImport.info("Countries found: \(stats.countriesFound.sorted(by: { $0.value > $1.value }).prefix(10).map { "\($0.key): \($0.value)" }.joined(separator: ", "))")
 
             // Merge photo locations with existing ones for map display
             PhotoLocationStore.shared.merge(photoLocations)
-            print("[PhotoImport] Merged \(photoLocations.count) photo locations for map display (total: \(PhotoLocationStore.shared.locationCount) locations, \(PhotoLocationStore.shared.totalPhotoCount) photos)")
+            Log.photoImport.info("Merged \(photoLocations.count) photo locations for map display (total: \(PhotoLocationStore.shared.locationCount) locations, \(PhotoLocationStore.shared.totalPhotoCount) photos)")
 
             state = .completed(locations: discoveredLocations, totalFound: totalFound, alreadyVisited: alreadyVisitedCount, statistics: stats)
             clearScanProgress()
@@ -1521,9 +1508,9 @@ final class PhotoImportManager: NSObject {
 
         do {
             try BGTaskScheduler.shared.submit(request)
-            print("[PhotoImport] Scheduled periodic background task")
+            Log.photoImport.debug("Scheduled periodic background task")
         } catch {
-            print("[PhotoImport] Failed to schedule periodic task: \(error)")
+            Log.photoImport.error("Failed to schedule periodic task: \(error)")
         }
         #endif
     }

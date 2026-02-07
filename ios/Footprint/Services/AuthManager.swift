@@ -29,28 +29,29 @@ class AuthManager: NSObject {
     }
 
     private func loadStoredAuth() async {
-        print("[AuthManager] Loading stored authentication...")
+        Log.auth.debug("Loading stored authentication...")
         await APIClient.shared.loadStoredTokens()
         
         if await APIClient.shared.isAuthenticated {
-            print("[AuthManager] Found stored tokens, attempting to validate...")
+            Log.auth.debug("Found stored tokens, attempting to validate...")
             do {
                 user = try await APIClient.shared.getCurrentUser()
                 isAuthenticated = true
-                print("[AuthManager] Authentication validated successfully - User: \(user?.displayName ?? "Unknown")")
+                let displayName = user?.displayName ?? "Unknown"
+                Log.auth.info("Authentication validated successfully - User: \(displayName)")
             } catch APIError.unauthorized {
-                print("[AuthManager] Stored tokens are invalid - User needs to re-authenticate")
+                Log.auth.info("Stored tokens are invalid - User needs to re-authenticate")
                 await APIClient.shared.clearTokens()
                 isAuthenticated = false
                 user = nil
                 // Don't set error here - this is normal flow for expired tokens
             } catch {
-                print("[AuthManager] Error validating stored auth: \(error)")
+                Log.auth.error("Error validating stored auth: \(error)")
                 // For other errors, keep tokens but show error
                 self.error = "Unable to validate authentication: \(error.localizedDescription)"
             }
         } else {
-            print("[AuthManager] No stored tokens found")
+            Log.auth.debug("No stored tokens found")
         }
     }
 
@@ -85,13 +86,14 @@ class AuthManager: NSObject {
                 let response = try await APIClient.shared.authenticateWithGoogle(idToken: idToken)
                 user = response.user
                 isAuthenticated = true
-                print("[AuthManager] Google sign in successful - User: \(user?.displayName ?? "Unknown")")
+                let displayName = user?.displayName ?? "Unknown"
+                Log.auth.info("Google sign in successful - User: \(displayName)")
             } catch {
                 if case GoogleSignInError.cancelled = error {
                     // User cancelled - don't show error
-                    print("[AuthManager] Google sign in cancelled by user")
+                    Log.auth.debug("Google sign in cancelled by user")
                 } else {
-                    print("[AuthManager] Google sign in failed: \(error)")
+                    Log.auth.error("Google sign in failed: \(error)")
                     self.error = "Google sign in failed: \(error.localizedDescription)"
                 }
             }
@@ -233,7 +235,7 @@ class AuthManager: NSObject {
     }
 
     func signOut() async {
-        print("[AuthManager] Signing out user")
+        Log.auth.info("Signing out user")
         await APIClient.shared.clearTokens()
         isAuthenticated = false
         isOfflineMode = false
@@ -244,37 +246,37 @@ class AuthManager: NSObject {
 
     /// Manual refresh method - primarily for testing
     func refreshAuth() async throws {
-        print("[AuthManager] Manual token refresh requested")
+        Log.auth.debug("Manual token refresh requested")
         _ = try await APIClient.shared.refreshAccessToken()
         user = try await APIClient.shared.getCurrentUser()
-        print("[AuthManager] Manual refresh completed successfully")
+        Log.auth.debug("Manual refresh completed successfully")
     }
     
     /// Check if authentication is working without triggering refresh
     func validateAuthentication() async -> Bool {
         guard await APIClient.shared.isAuthenticated else {
-            print("[AuthManager] No tokens available for validation")
+            Log.auth.debug("No tokens available for validation")
             return false
         }
         
         do {
             user = try await APIClient.shared.getCurrentUser()
-            print("[AuthManager] Authentication validation successful")
+            Log.auth.debug("Authentication validation successful")
             return true
         } catch {
-            print("[AuthManager] Authentication validation failed: \(error)")
+            Log.auth.error("Authentication validation failed: \(error)")
             return false
         }
     }
     
     /// Handle authentication errors from other parts of the app
     func handleAuthenticationError() {
-        print("[AuthManager] Authentication error reported - checking if re-auth needed")
+        Log.auth.info("Authentication error reported - checking if re-auth needed")
         
         Task {
             let isValid = await validateAuthentication()
             if !isValid {
-                print("[AuthManager] Authentication is invalid - user needs to sign in again")
+                Log.auth.error("Authentication is invalid - user needs to sign in again")
                 await signOut()
                 self.error = "Your session has expired. Please sign in again."
             }
@@ -335,9 +337,10 @@ extension AuthManager: ASAuthorizationControllerDelegate {
                 )
                 self.user = response.user
                 self.isAuthenticated = true
-                print("[AuthManager] Apple sign in successful - User: \(user?.displayName ?? "Unknown")")
+                let displayName = user?.displayName ?? "Unknown"
+                Log.auth.info("Apple sign in successful - User: \(displayName)")
             } catch {
-                print("[AuthManager] Apple authentication failed: \(error)")
+                Log.auth.error("Apple authentication failed: \(error)")
                 self.error = "Authentication failed: \(error.localizedDescription)"
             }
 
@@ -354,11 +357,11 @@ extension AuthManager: ASAuthorizationControllerDelegate {
                authError.code == .canceled
             {
                 // User canceled - don't show error
-                print("[AuthManager] Apple sign in cancelled by user")
+                Log.auth.debug("Apple sign in cancelled by user")
                 self.isLoading = false
                 return
             }
-            print("[AuthManager] Apple authorization error: \(error)")
+            Log.auth.error("Apple authorization error: \(error)")
             self.error = error.localizedDescription
             self.isLoading = false
         }

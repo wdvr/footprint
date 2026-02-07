@@ -66,13 +66,9 @@ struct FootprintApp: App {
         } catch {
             self.sharedModelContainer = nil
             self.modelContainerError = error
-            print("❌ Failed to create ModelContainer:")
-            print("   Error: \(error)")
-            print("   Localized: \(error.localizedDescription)")
+            Log.app.fault("Failed to create ModelContainer: \(error)")
             if let nsError = error as NSError? {
-                print("   Domain: \(nsError.domain)")
-                print("   Code: \(nsError.code)")
-                print("   UserInfo: \(nsError.userInfo)")
+                Log.app.error("Domain: \(nsError.domain), Code: \(nsError.code)")
             }
         }
     }
@@ -162,7 +158,7 @@ struct DatabaseErrorView: View {
             try? fileManager.removeItem(at: storeShmURL)
             try? fileManager.removeItem(at: storeWalURL)
 
-            print("Database files deleted, restarting app...")
+            Log.app.info("Database files deleted, restarting app...")
         }
 
         // Restart the app
@@ -264,15 +260,15 @@ struct RootView: View {
         let store = PhotoLocationStore.shared
 
         guard store.needsRematch(currentVersion: currentVersion) else {
-            print("[RootView] Photo locations already rematched for version \(currentVersion)")
+            Log.app.debug("Photo locations already rematched for version \(currentVersion)")
             return
         }
 
-        print("[RootView] New app version detected, rematching \(store.locationCount) photo locations...")
+        Log.app.info("New app version detected, rematching \(store.locationCount) photo locations...")
         let result = await store.rematchAllCoordinates()
 
         if result.newMatches > 0 || result.statesFound > 0 {
-            print("[RootView] Rematch found \(result.newMatches) new country matches, \(result.statesFound) new states")
+            Log.app.info("Rematch found \(result.newMatches) new country matches, \(result.statesFound) new states")
             // Could show a notification or banner here if desired
         }
     }

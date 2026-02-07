@@ -42,7 +42,7 @@ class PushNotificationManager: NSObject {
             await checkPermissionStatus()
             return granted
         } catch {
-            print("[Push] Permission request failed: \(error)")
+            Log.push.error("Permission request failed: \(error)")
             return false
         }
     }
@@ -62,7 +62,7 @@ class PushNotificationManager: NSObject {
         self.deviceToken = token
         self.isRegistered = true
 
-        print("[Push] Device token: \(token)")
+        Log.push.debug("Device token registered")
 
         // Register with backend
         Task {
@@ -72,22 +72,22 @@ class PushNotificationManager: NSObject {
 
     /// Handle APNs registration failure
     func didFailToRegisterForRemoteNotifications(error: Error) {
-        print("[Push] Registration failed: \(error)")
+        Log.push.error("Registration failed: \(error)")
         isRegistered = false
     }
 
     /// Register device token with backend
     private func registerTokenWithBackend(_ token: String) async {
         guard await APIClient.shared.isAuthenticated else {
-            print("[Push] Not authenticated, skipping backend registration")
+            Log.push.debug("Not authenticated, skipping backend registration")
             return
         }
 
         do {
             let response = try await APIClient.shared.registerDeviceToken(token)
-            print("[Push] Backend registration: \(response.message)")
+            Log.push.info("Backend registration: \(response.message)")
         } catch {
-            print("[Push] Backend registration failed: \(error)")
+            Log.push.error("Backend registration failed: \(error)")
         }
     }
 
@@ -262,7 +262,7 @@ extension PushNotificationManager: UNUserNotificationCenterDelegate {
         let userInfo = response.notification.request.content.userInfo
         let actionIdentifier = response.actionIdentifier
 
-        print("[Push] Action: \(actionIdentifier), UserInfo: \(userInfo)")
+        Log.push.debug("Action: \(actionIdentifier)")
 
         // Handle based on action
         switch actionIdentifier {

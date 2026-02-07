@@ -50,23 +50,23 @@ class GoogleAuthManager: NSObject {
         // Use AuthenticationServices for OAuth flow
         let authCode = try await performOAuthFlow()
 
-        print("[GoogleAuth] Got auth code, checking if authenticated...")
+        Log.googleAuth.debug("Got auth code, checking if authenticated...")
         let isAuth = await APIClient.shared.isAuthenticated
-        print("[GoogleAuth] APIClient.isAuthenticated = \(isAuth)")
+        Log.googleAuth.debug("APIClient.isAuthenticated = \(isAuth)")
 
         // Exchange auth code with backend
-        print("[GoogleAuth] Calling /import/google/connect...")
+        Log.googleAuth.debug("Calling /import/google/connect...")
         do {
             let response: GoogleConnectResponse = try await APIClient.shared.request(
                 path: "/import/google/connect",
                 method: .post,
                 body: GoogleConnectRequest(authorizationCode: authCode)
             )
-            print("[GoogleAuth] Connect succeeded: \(response.email)")
+            Log.googleAuth.info("Connect succeeded: \(response.email)")
             isConnected = true
             connectedEmail = response.email
         } catch {
-            print("[GoogleAuth] Connect FAILED: \(error)")
+            Log.googleAuth.error("Connect FAILED: \(error)")
             throw error
         }
     }
@@ -112,15 +112,15 @@ class GoogleAuthManager: NSObject {
             throw GoogleAuthError.connectionFailed("Invalid auth URL")
         }
 
-        print("[GoogleAuth] Starting OAuth flow with URL: \(authURL)")
-        print("[GoogleAuth] Callback scheme: \(GoogleOAuthConfig.callbackScheme)")
+        Log.googleAuth.debug("Starting OAuth flow")
+        Log.googleAuth.debug("Callback scheme: \(GoogleOAuthConfig.callbackScheme)")
 
         return try await withCheckedThrowingContinuation { continuation in
             let session = ASWebAuthenticationSession(
                 url: authURL,
                 callbackURLScheme: GoogleOAuthConfig.callbackScheme
             ) { [weak self] callbackURL, error in
-                print("[GoogleAuth] Callback received - URL: \(String(describing: callbackURL)), Error: \(String(describing: error))")
+                Log.googleAuth.debug("Callback received - URL: \(String(describing: callbackURL)), Error: \(String(describing: error))")
 
                 // Clear the retained session
                 Task { @MainActor in
@@ -129,7 +129,7 @@ class GoogleAuthManager: NSObject {
 
                 if let error = error {
                     let nsError = error as NSError
-                    print("[GoogleAuth] Error code: \(nsError.code), domain: \(nsError.domain)")
+                    Log.googleAuth.error("Error code: \(nsError.code), domain: \(nsError.domain)")
                     if nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
                         continuation.resume(throwing: GoogleAuthError.cancelled)
                     } else {
@@ -142,12 +142,12 @@ class GoogleAuthManager: NSObject {
                       let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
                       let code = components.queryItems?.first(where: { $0.name == "code" })?.value
                 else {
-                    print("[GoogleAuth] No auth code in callback URL")
+                    Log.googleAuth.error("No auth code in callback URL")
                     continuation.resume(throwing: GoogleAuthError.noAuthCode)
                     return
                 }
 
-                print("[GoogleAuth] Successfully got auth code")
+                Log.googleAuth.debug("Successfully got auth code")
                 continuation.resume(returning: code)
             }
 
@@ -158,7 +158,7 @@ class GoogleAuthManager: NSObject {
             self.currentAuthSession = session
 
             let started = session.start()
-            print("[GoogleAuth] Session started: \(started)")
+            Log.googleAuth.debug("Session started: \(started)")
 
             if !started {
                 self.currentAuthSession = nil

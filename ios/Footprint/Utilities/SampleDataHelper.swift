@@ -17,7 +17,7 @@ struct SampleDataHelper {
                 return // Sample data already exists
             }
         } catch {
-            print("Error checking for existing data: \(error)")
+            Log.data.error("Error checking for existing data: \(error)")
             return
         }
 
@@ -288,9 +288,9 @@ struct SampleDataHelper {
         // Save the sample data
         do {
             try context.save()
-            print("✅ Sample data added successfully for screenshots")
+            Log.data.debug("Sample data added successfully for screenshots")
         } catch {
-            print("❌ Error saving sample data: \(error)")
+            Log.data.error("Error saving sample data: \(error)")
         }
     }
 

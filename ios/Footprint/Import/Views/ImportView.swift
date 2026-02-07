@@ -104,7 +104,7 @@ struct ImportView: View {
             emailCount = gmailResponse.scannedEmails
         } catch {
             // Continue even if Gmail fails
-            print("[Import] Gmail scan failed: \(error)")
+            Log.importFlow.error("Gmail scan failed: \(error)")
         }
 
         // Step 2: Scan Calendar
@@ -119,7 +119,7 @@ struct ImportView: View {
             eventCount = calendarResponse.scannedEvents
         } catch {
             // Continue even if Calendar fails
-            print("[Import] Calendar scan failed: \(error)")
+            Log.importFlow.error("Calendar scan failed: \(error)")
         }
 
         // Step 3: Merge results
