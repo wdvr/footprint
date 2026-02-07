@@ -499,7 +499,7 @@ struct AddFriendView: View {
             dismiss()
         } catch {
             // Handle error - could show an alert
-            print("Failed to send friend request: \(error)")
+            Log.friends.error("Failed to send friend request: \(error)")
         }
 
         isSendingRequest = false

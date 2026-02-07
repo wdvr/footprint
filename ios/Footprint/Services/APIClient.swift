@@ -63,7 +63,7 @@ actor APIClient {
         // Store in Keychain for persistence
         KeychainHelper.save(key: "accessToken", value: access)
         KeychainHelper.save(key: "refreshToken", value: refresh)
-        print("[APIClient] Tokens stored - Access: \(access.prefix(10))..., Refresh: \(refresh.prefix(10))...")
+        Log.api.debug("Tokens stored")
     }
 
     func loadStoredTokens() {
@@ -71,9 +71,9 @@ actor APIClient {
         self.refreshToken = KeychainHelper.load(key: "refreshToken")
         
         if let access = accessToken, let refresh = refreshToken {
-            print("[APIClient] Loaded stored tokens - Access: \(access.prefix(10))..., Refresh: \(refresh.prefix(10))...")
+            Log.api.debug("Loaded stored tokens")
         } else {
-            print("[APIClient] No stored tokens found")
+            Log.api.debug("No stored tokens found")
         }
     }
 
@@ -82,7 +82,7 @@ actor APIClient {
         self.refreshToken = nil
         KeychainHelper.delete(key: "accessToken")
         KeychainHelper.delete(key: "refreshToken")
-        print("[APIClient] Tokens cleared")
+        Log.api.debug("Tokens cleared")
     }
 
     var isAuthenticated: Bool {
@@ -130,22 +130,23 @@ actor APIClient {
         } catch APIError.unauthorized {
             // Only attempt refresh if this is not already a retry and we have a refresh token
             guard !isRetry, authenticated, refreshToken != nil else {
-                print("[APIClient] 401 - Cannot retry: isRetry=\(isRetry), authenticated=\(authenticated), hasRefreshToken=\(refreshToken != nil)")
+                let hasToken = refreshToken != nil
+                Log.api.debug("401 - Cannot retry: isRetry=\(isRetry), authenticated=\(authenticated), hasRefreshToken=\(hasToken)")
                 throw APIError.unauthorized
             }
             
-            print("[APIClient] 401 received, attempting token refresh...")
+            Log.api.info("401 received, attempting token refresh...")
             
             // If we're already refreshing, wait for completion
             if isRefreshing {
-                print("[APIClient] Already refreshing, waiting...")
+                Log.api.debug("Already refreshing, waiting...")
                 return try await waitForRefreshAndRetry(path, method: method, body: body, authenticated: authenticated, timeout: timeout)
             }
             
             // Attempt to refresh the token
             do {
                 try await performTokenRefresh()
-                print("[APIClient] Token refresh successful, retrying original request")
+                Log.api.info("Token refresh successful, retrying original request")
                 
                 // Retry the original request with new token
                 return try await _requestWithRetry(
@@ -157,7 +158,7 @@ actor APIClient {
                     isRetry: true
                 )
             } catch {
-                print("[APIClient] Token refresh failed: \(error)")
+                Log.api.error("Token refresh failed: \(error)")
                 // Clear tokens if refresh fails
                 clearTokens()
                 throw APIError.unauthorized
@@ -198,11 +199,11 @@ actor APIClient {
         }
         
         guard let refreshToken = refreshToken else {
-            print("[APIClient] No refresh token available")
+            Log.api.error("No refresh token available")
             throw APIError.unauthorized
         }
         
-        print("[APIClient] Performing token refresh...")
+        Log.api.debug("Performing token refresh...")
         
         struct RefreshRequest: Encodable {
             let refreshToken: String
@@ -213,7 +214,7 @@ actor APIClient {
         
         // Update stored tokens
         setTokens(access: response.tokens.accessToken, refresh: response.tokens.refreshToken)
-        print("[APIClient] Token refresh completed successfully")
+        Log.api.info("Token refresh completed successfully")
     }
 
     private func _request<T: Decodable>(
@@ -235,9 +236,9 @@ actor APIClient {
         if authenticated {
             if let token = accessToken {
                 request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                print("[API] \(method) \(path) - Auth token present (len=\(token.count))")
+                Log.api.debug("\(method) \(path) - Auth token present")
             } else {
-                print("[API] \(method) \(path) - Auth token MISSING!")
+                Log.api.error("\(method) \(path) - Auth token MISSING!")
             }
         }
 
@@ -253,7 +254,7 @@ actor APIClient {
             throw APIError.networkError(NSError(domain: "Invalid response", code: 0))
         }
 
-        print("[API] \(method) \(path) - Response: \(httpResponse.statusCode)")
+        Log.api.debug("\(method) \(path) - Response: \(httpResponse.statusCode)")
         switch httpResponse.statusCode {
         case 200...299:
             let decoder = JSONDecoder()
@@ -261,11 +262,11 @@ actor APIClient {
             decoder.dateDecodingStrategy = .iso8601
             return try decoder.decode(T.self, from: data)
         case 401:
-            print("[API] \(method) \(path) - 401 Unauthorized!")
+            Log.api.error("\(method) \(path) - 401 Unauthorized!")
             throw APIError.unauthorized
         default:
             let message = String(data: data, encoding: .utf8) ?? "Unknown error"
-            print("[API] \(method) \(path) - Error: \(httpResponse.statusCode) - \(message)")
+            Log.api.error("\(method) \(path) - Error: \(httpResponse.statusCode)")
             throw APIError.serverError(httpResponse.statusCode, message)
         }
     }
@@ -453,7 +454,7 @@ enum KeychainHelper {
 
     static func save(key: String, value: String) {
         guard let data = value.data(using: .utf8) else {
-            print("[Keychain] Failed to convert value to data for key: \(key)")
+            Log.keychain.error("Failed to convert value to data for key: \(key)")
             return
         }
 
@@ -476,9 +477,9 @@ enum KeychainHelper {
 
         let status = SecItemAdd(addQuery as CFDictionary, nil)
         if status != errSecSuccess {
-            print("[Keychain] Failed to save key '\(key)': \(status)")
+            Log.keychain.error("Failed to save key '\(key)': \(status)")
         } else {
-            print("[Keychain] Successfully saved key: \(key)")
+            Log.keychain.debug("Successfully saved key: \(key)")
         }
     }
 
@@ -495,12 +496,12 @@ enum KeychainHelper {
         let status = SecItemCopyMatching(query as CFDictionary, &result)
 
         if status == errSecSuccess, let data = result as? Data {
-            print("[Keychain] Successfully loaded key: \(key)")
+            Log.keychain.debug("Successfully loaded key: \(key)")
             return String(data: data, encoding: .utf8)
         } else if status == errSecItemNotFound {
-            print("[Keychain] Key not found: \(key)")
+            Log.keychain.debug("Key not found: \(key)")
         } else {
-            print("[Keychain] Failed to load key '\(key)': \(status)")
+            Log.keychain.error("Failed to load key '\(key)': \(status)")
         }
         return nil
     }
@@ -513,9 +514,9 @@ enum KeychainHelper {
         ]
         let status = SecItemDelete(query as CFDictionary)
         if status == errSecSuccess || status == errSecItemNotFound {
-            print("[Keychain] Deleted key: \(key)")
+            Log.keychain.debug("Deleted key: \(key)")
         } else {
-            print("[Keychain] Failed to delete key '\(key)': \(status)")
+            Log.keychain.error("Failed to delete key '\(key)': \(status)")
         }
     }
 }

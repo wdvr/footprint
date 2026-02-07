@@ -66,15 +66,10 @@ struct PhotoGalleryView: View {
     }
 
     private func loadAssets() async {
-        print("[PhotoGalleryView] Loading \(photoAssetIDs.count) asset IDs")
-
-        // Debug: Show first few IDs
-        if !photoAssetIDs.isEmpty {
-            print("[PhotoGalleryView] First IDs: \(photoAssetIDs.prefix(3))")
-        }
+        Log.photoGallery.debug("Loading \(photoAssetIDs.count) asset IDs")
 
         let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: photoAssetIDs, options: nil)
-        print("[PhotoGalleryView] Fetch returned \(fetchResult.count) assets")
+        Log.photoGallery.debug("Fetch returned \(fetchResult.count) assets")
 
         var loadedAssets: [PHAsset] = []
         fetchResult.enumerateObjects { asset, _, _ in

@@ -30,17 +30,17 @@ struct GeoJSONParser {
         )
 
         guard let url else {
-            print("GeoJSON file not found in bundle")
+            Log.geo.error("GeoJSON file not found in bundle")
             return []
         }
 
         do {
             let data = try Data(contentsOf: url)
             let boundaries = try parseGeoJSON(data)
-            print("Loaded \(boundaries.count) country boundaries")
+            Log.geo.debug("Loaded \(boundaries.count) country boundaries")
             return boundaries
         } catch {
-            print("Error parsing GeoJSON: \(error)")
+            Log.geo.error("Error parsing GeoJSON: \(error)")
             return []
         }
     }
@@ -167,17 +167,17 @@ struct GeoJSONParser {
         )
 
         guard let url else {
-            print("US states GeoJSON file not found in bundle")
+            Log.geo.error("US states GeoJSON file not found in bundle")
             return []
         }
 
         do {
             let data = try Data(contentsOf: url)
             let boundaries = try parseStateGeoJSON(data)
-            print("Loaded \(boundaries.count) US state boundaries")
+            Log.geo.debug("Loaded \(boundaries.count) US state boundaries")
             return boundaries
         } catch {
-            print("Error parsing US states GeoJSON: \(error)")
+            Log.geo.error("Error parsing US states GeoJSON: \(error)")
             return []
         }
     }
@@ -194,17 +194,17 @@ struct GeoJSONParser {
         )
 
         guard let url else {
-            print("Canadian provinces GeoJSON file not found in bundle")
+            Log.geo.error("Canadian provinces GeoJSON file not found in bundle")
             return []
         }
 
         do {
             let data = try Data(contentsOf: url)
             let boundaries = try parseStateGeoJSON(data)
-            print("Loaded \(boundaries.count) Canadian province boundaries")
+            Log.geo.debug("Loaded \(boundaries.count) Canadian province boundaries")
             return boundaries
         } catch {
-            print("Error parsing Canadian provinces GeoJSON: \(error)")
+            Log.geo.error("Error parsing Canadian provinces GeoJSON: \(error)")
             return []
         }
     }
@@ -232,17 +232,17 @@ struct GeoJSONParser {
         )
 
         guard let url else {
-            print("\(countryCode) states GeoJSON file not found in bundle: \(fileName).geojson")
+            Log.geo.error("\(countryCode) states GeoJSON file not found in bundle: \(fileName).geojson")
             return []
         }
 
         do {
             let data = try Data(contentsOf: url)
             let boundaries = try parseStateGeoJSON(data)
-            print("Loaded \(boundaries.count) \(countryCode) state/province boundaries")
+            Log.geo.debug("Loaded \(boundaries.count) \(countryCode) state/province boundaries")
             return boundaries
         } catch {
-            print("Error parsing \(countryCode) states GeoJSON: \(error)")
+            Log.geo.error("Error parsing \(countryCode) states GeoJSON: \(error)")
             return []
         }
     }
