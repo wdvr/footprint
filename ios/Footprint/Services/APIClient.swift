@@ -70,7 +70,7 @@ actor APIClient {
         self.accessToken = KeychainHelper.load(key: "accessToken")
         self.refreshToken = KeychainHelper.load(key: "refreshToken")
         
-        if let access = accessToken, let refresh = refreshToken {
+        if accessToken != nil, refreshToken != nil {
             Log.api.debug("Loaded stored tokens")
         } else {
             Log.api.debug("No stored tokens found")
