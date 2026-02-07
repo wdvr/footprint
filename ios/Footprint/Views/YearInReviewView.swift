@@ -1022,7 +1022,7 @@ struct SummaryCard: View {
         }
         .sheet(isPresented: $showShareSheet) {
             if let image = renderedImage {
-                ShareSheetView(items: [image])
+                ActivityShareSheet(items: [image])
             }
         }
     }
@@ -1180,7 +1180,7 @@ struct SummaryCard: View {
 
 // MARK: - Share Sheet (UIActivityViewController wrapper)
 
-struct ShareSheetView: UIViewControllerRepresentable {
+struct ActivityShareSheet: UIViewControllerRepresentable {
     let items: [Any]
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
