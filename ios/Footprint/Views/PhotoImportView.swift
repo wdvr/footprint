@@ -71,7 +71,9 @@ struct PhotoImportView: View {
                 }
             }
             .navigationTitle("Import from Photos")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     if importManager.isScanning {
@@ -1025,7 +1027,9 @@ private struct UnmatchedCoordinatesMapView: View {
             }
             .mapStyle(.standard)
             .navigationTitle("Unmatched Locations (\(coordinates.count))")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
@@ -1096,7 +1100,9 @@ private struct UnmatchedPhotoDetailView: View {
                 }
             }
             .navigationTitle("Unmatched Location")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }

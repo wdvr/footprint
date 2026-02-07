@@ -1,4 +1,6 @@
+#if canImport(BackgroundTasks)
 import BackgroundTasks
+#endif
 import CoreLocation
 import os
 import Photos
@@ -181,7 +183,9 @@ final class PhotoImportManager: NSObject {
 
     // Note: CLGeocoder instances can only process one request at a time.
     // We create a new instance per geocoding request to enable true parallelism.
+    #if !targetEnvironment(macCatalyst)
     private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+    #endif
     private var currentScanTask: Task<Void, Never>?
     private var isObservingPhotoLibrary = false
 
@@ -342,6 +346,7 @@ final class PhotoImportManager: NSObject {
 
     /// Register background task handler - call from app delegate
     static func registerBackgroundTask() {
+        #if !targetEnvironment(macCatalyst)
         BGTaskScheduler.shared.register(
             forTaskWithIdentifier: backgroundTaskIdentifier,
             using: nil
@@ -354,8 +359,10 @@ final class PhotoImportManager: NSObject {
                 await PhotoImportManager.handleBackgroundTask(processingTask)
             }
         }
+        #endif
     }
 
+    #if !targetEnvironment(macCatalyst)
     /// Handle background processing task
     private static func handleBackgroundTask(_ task: BGProcessingTask) async {
         let manager = PhotoImportManager()
@@ -371,9 +378,11 @@ final class PhotoImportManager: NSObject {
 
         task.setTaskCompleted(success: !Task.isCancelled)
     }
+    #endif
 
     /// Schedule background processing task
     private func scheduleBackgroundTask() {
+        #if !targetEnvironment(macCatalyst)
         let request = BGProcessingTaskRequest(identifier: Self.backgroundTaskIdentifier)
         request.requiresNetworkConnectivity = true // Geocoding needs network
         request.requiresExternalPower = false
@@ -383,6 +392,7 @@ final class PhotoImportManager: NSObject {
         } catch {
             Log.photoImport.error("Failed to schedule background task: \(error)")
         }
+        #endif
     }
 
     /// Check if currently scanning
@@ -440,18 +450,22 @@ final class PhotoImportManager: NSObject {
     }
 
     private func beginBackgroundTask() {
+        #if !targetEnvironment(macCatalyst)
         guard backgroundTaskID == .invalid else { return }
 
         backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "PhotoImport") { [weak self] in
             // Time expired - save progress and end task
             self?.endBackgroundTask()
         }
+        #endif
     }
 
     private func endBackgroundTask() {
+        #if !targetEnvironment(macCatalyst)
         guard backgroundTaskID != .invalid else { return }
         UIApplication.shared.endBackgroundTask(backgroundTaskID)
         backgroundTaskID = .invalid
+        #endif
     }
 
     private func showBackgroundNotification() {
