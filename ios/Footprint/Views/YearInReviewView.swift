@@ -217,6 +217,29 @@ struct YearInReviewData {
         return years.sorted(by: >)
     }
 
+    /// Check if a region type belongs to a country tracked at country level (not state level)
+    private static func isCountryLevelTracked(regionType: String) -> Bool {
+        // Map region types to their parent country codes
+        let regionToCountry: [String: String] = [
+            VisitedPlace.RegionType.usState.rawValue: "US",
+            VisitedPlace.RegionType.canadianProvince.rawValue: "CA",
+            VisitedPlace.RegionType.australianState.rawValue: "AU",
+            VisitedPlace.RegionType.mexicanState.rawValue: "MX",
+            VisitedPlace.RegionType.brazilianState.rawValue: "BR",
+            VisitedPlace.RegionType.germanState.rawValue: "DE",
+            VisitedPlace.RegionType.frenchRegion.rawValue: "FR",
+            VisitedPlace.RegionType.spanishCommunity.rawValue: "ES",
+            VisitedPlace.RegionType.italianRegion.rawValue: "IT",
+            VisitedPlace.RegionType.dutchProvince.rawValue: "NL",
+            VisitedPlace.RegionType.belgianProvince.rawValue: "BE",
+            VisitedPlace.RegionType.ukCountry.rawValue: "GB",
+            VisitedPlace.RegionType.russianFederalSubject.rawValue: "RU",
+            VisitedPlace.RegionType.argentineProvince.rawValue: "AR",
+        ]
+        guard let countryCode = regionToCountry[regionType] else { return false }
+        return !AppSettings.shared.shouldTrackStates(for: countryCode)
+    }
+
     static func compute(for year: Int, allPlaces: [VisitedPlace]) -> YearInReviewData {
         let calendar = Calendar.current
 
@@ -232,36 +255,42 @@ struct YearInReviewData {
             visitOverlapsYear(place, year: year, calendar: calendar)
         }
 
-        // Categorize new places
+        // Categorize new places - exclude state-level data for countries tracked at country level
         let newCountriesArr = newPlacesThisYear.filter {
             $0.regionType == VisitedPlace.RegionType.country.rawValue
         }
         let newUSStatesArr = newPlacesThisYear.filter {
             $0.regionType == VisitedPlace.RegionType.usState.rawValue
+            && !isCountryLevelTracked(regionType: $0.regionType)
         }
         let newCanadianProvincesArr = newPlacesThisYear.filter {
             $0.regionType == VisitedPlace.RegionType.canadianProvince.rawValue
+            && !isCountryLevelTracked(regionType: $0.regionType)
         }
         let newOtherRegionsArr = newPlacesThisYear.filter { place in
             place.regionType != VisitedPlace.RegionType.country.rawValue
             && place.regionType != VisitedPlace.RegionType.usState.rawValue
             && place.regionType != VisitedPlace.RegionType.canadianProvince.rawValue
+            && !isCountryLevelTracked(regionType: place.regionType)
         }
 
-        // Categorize visited places
+        // Categorize visited places - same filtering
         let visitedCountriesArr = visitedPlacesThisYear.filter {
             $0.regionType == VisitedPlace.RegionType.country.rawValue
         }
         let visitedUSStatesArr = visitedPlacesThisYear.filter {
             $0.regionType == VisitedPlace.RegionType.usState.rawValue
+            && !isCountryLevelTracked(regionType: $0.regionType)
         }
         let visitedCanadianProvincesArr = visitedPlacesThisYear.filter {
             $0.regionType == VisitedPlace.RegionType.canadianProvince.rawValue
+            && !isCountryLevelTracked(regionType: $0.regionType)
         }
         let visitedOtherRegionsArr = visitedPlacesThisYear.filter { place in
             place.regionType != VisitedPlace.RegionType.country.rawValue
             && place.regionType != VisitedPlace.RegionType.usState.rawValue
             && place.regionType != VisitedPlace.RegionType.canadianProvince.rawValue
+            && !isCountryLevelTracked(regionType: place.regionType)
         }
 
         return YearInReviewData(
@@ -410,6 +439,26 @@ struct YearInReviewView: View {
                 .foregroundStyle(.white.opacity(0.7))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
+
+            VStack(spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "location.fill")
+                    Text("Enable location sharing")
+                }
+                HStack(spacing: 6) {
+                    Image(systemName: "photo.fill")
+                    Text("Grant photo library access")
+                }
+            }
+            .font(.subheadline)
+            .foregroundStyle(.white.opacity(0.5))
+            .padding(.top, 8)
+
+            Text("Location and photo data are processed locally on your device for the most detailed year in review.")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.35))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
         }
     }
 }
@@ -474,11 +523,24 @@ struct TitleCard: View {
 
             Spacer()
 
-            Text("Swipe to explore")
-                .font(.caption)
-                .foregroundStyle(.white.opacity(0.5))
+            VStack(spacing: 8) {
+                Text("Swipe to explore")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.5))
+                    .opacity(showSubtitle ? 1 : 0)
+
+                HStack(spacing: 6) {
+                    Image(systemName: "info.circle")
+                        .font(.caption2)
+                    Text("Share your location and photo library access for the most detailed review")
+                        .font(.caption2)
+                        .multilineTextAlignment(.center)
+                }
+                .foregroundStyle(.white.opacity(0.35))
                 .opacity(showSubtitle ? 1 : 0)
-                .padding(.bottom, 60)
+                .padding(.horizontal, 32)
+            }
+            .padding(.bottom, 40)
         }
         .onAppear {
             withAnimation(.easeOut(duration: 0.8).delay(0.2)) {

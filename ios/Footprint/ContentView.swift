@@ -401,22 +401,6 @@ struct SettingsView: View {
                         }
                     }
 
-                    // Tracking Granularity
-                    Picker(selection: Binding(
-                        get: { AppSettings.shared.trackingGranularity },
-                        set: { AppSettings.shared.trackingGranularity = $0 }
-                    )) {
-                        ForEach(AppSettings.TrackingGranularity.allCases, id: \.self) { granularity in
-                            Text(granularity.displayName).tag(granularity)
-                        }
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Tracking Detail")
-                            Text(AppSettings.shared.trackingGranularity.description)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
                 } header: {
                     Text("Location")
                 } footer: {
@@ -425,6 +409,44 @@ struct SettingsView: View {
                     } else {
                         Text("Uses significant location changes for battery efficiency.")
                     }
+                }
+
+                // State/Province Tracking Section
+                Section {
+                    Picker(selection: Binding(
+                        get: { AppSettings.shared.countryTrackingMode },
+                        set: { AppSettings.shared.countryTrackingMode = $0 }
+                    )) {
+                        ForEach(AppSettings.CountryTrackingMode.allCases, id: \.self) { mode in
+                            Text(mode.displayName).tag(mode)
+                        }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("State/Province Tracking")
+                            Text(AppSettings.shared.countryTrackingMode.description)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    if AppSettings.shared.countryTrackingMode == .custom {
+                        NavigationLink {
+                            StateTrackingCountryPicker()
+                        } label: {
+                            HStack {
+                                Text("Countries")
+                                Spacer()
+                                let count = AppSettings.shared.stateTrackingCountries.count
+                                let total = AppSettings.supportedStateCountries.count
+                                Text("\(count)/\(total)")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Tracking Detail")
+                } footer: {
+                    Text("Controls which countries show individual state/province tracking. Countries not tracked at state level will show as fully visited when marked.")
                 }
 
                 // App Info Section
@@ -705,6 +727,58 @@ struct SettingsView: View {
     #endif
 }
 
+// MARK: - State Tracking Country Picker
+
+struct StateTrackingCountryPicker: View {
+    @State private var selectedCountries: Set<String> = AppSettings.shared.stateTrackingCountries
+
+    var body: some View {
+        List {
+            Section {
+                Button("Select All") {
+                    selectedCountries = Set(AppSettings.supportedStateCountries.map { $0.code })
+                    AppSettings.shared.stateTrackingCountries = selectedCountries
+                }
+                Button("Deselect All") {
+                    selectedCountries = []
+                    AppSettings.shared.stateTrackingCountries = selectedCountries
+                }
+            }
+
+            Section {
+                ForEach(AppSettings.supportedStateCountries, id: \.code) { country in
+                    let isSelected = selectedCountries.contains(country.code)
+                    Button {
+                        if isSelected {
+                            selectedCountries.remove(country.code)
+                        } else {
+                            selectedCountries.insert(country.code)
+                        }
+                        AppSettings.shared.stateTrackingCountries = selectedCountries
+                    } label: {
+                        HStack {
+                            Text(YearInReviewData.flagEmoji(for: country.code))
+                            Text(country.name)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            if isSelected {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.blue)
+                            }
+                        }
+                    }
+                }
+            } header: {
+                Text("Track states/provinces for")
+            } footer: {
+                Text("Selected countries will show individual state/province tracking. Unselected countries will be tracked at the country level only.")
+            }
+        }
+        .navigationTitle("State Tracking")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
 // MARK: - Sync Status Row
 
 struct SyncStatusRow: View {
@@ -859,6 +933,7 @@ struct WorldMapView: View {
 
     private var visitedStateCodes: Set<String> {
         var codes: Set<String> = []
+        let settings = AppSettings.shared
         for place in visitedPlaces where !place.isDeleted && place.isVisited {
             if place.regionType == VisitedPlace.RegionType.usState.rawValue {
                 codes.insert("US-\(place.regionCode)")
@@ -866,16 +941,33 @@ struct WorldMapView: View {
                 codes.insert("CA-\(place.regionCode)")
             }
         }
+        // For countries tracked at country level, fill all states when country is visited
+        for countryCode in visitedCountryCodes {
+            if !settings.shouldTrackStates(for: countryCode) {
+                for state in GeographicData.states(for: countryCode) {
+                    codes.insert("\(countryCode)-\(state.id)")
+                }
+            }
+        }
         return codes
     }
 
     private var bucketListStateCodes: Set<String> {
         var codes: Set<String> = []
+        let settings = AppSettings.shared
         for place in visitedPlaces where !place.isDeleted && place.isBucketList {
             if place.regionType == VisitedPlace.RegionType.usState.rawValue {
                 codes.insert("US-\(place.regionCode)")
             } else if place.regionType == VisitedPlace.RegionType.canadianProvince.rawValue {
                 codes.insert("CA-\(place.regionCode)")
+            }
+        }
+        // For countries tracked at country level, fill all states when country is bucket list
+        for countryCode in bucketListCountryCodes {
+            if !settings.shouldTrackStates(for: countryCode) {
+                for state in GeographicData.states(for: countryCode) {
+                    codes.insert("\(countryCode)-\(state.id)")
+                }
             }
         }
         return codes
@@ -906,12 +998,17 @@ struct WorldMapView: View {
     }
 
     private func visitedStateCodes(for countryCode: String) -> Set<String> {
-        let regionType: String = countryCode == "US"
-            ? VisitedPlace.RegionType.usState.rawValue
-            : VisitedPlace.RegionType.canadianProvince.rawValue
+        // When country-level tracking, return all states if country is visited
+        if !AppSettings.shared.shouldTrackStates(for: countryCode) {
+            if visitedCountryCodes.contains(countryCode) {
+                return Set(GeographicData.states(for: countryCode).map { $0.id })
+            }
+            return []
+        }
+        guard let regionType = GeographicData.regionType(for: countryCode) else { return [] }
         return Set(
             visitedPlaces
-                .filter { $0.regionType == regionType }
+                .filter { $0.regionType == regionType.rawValue && !$0.isDeleted && $0.isVisited }
                 .map { $0.regionCode }
         )
     }
@@ -1475,8 +1572,8 @@ struct CountryInfoPopup: View {
                 }
             }
 
-            // View States/Provinces button for US and Canada
-            if country.hasStates, let onViewStates = onViewStates {
+            // View States/Provinces button (only when tracking at state level)
+            if country.hasStates && AppSettings.shared.shouldTrackStates(for: country.id), let onViewStates = onViewStates {
                 Button(action: {
                     onDismiss()
                     onViewStates()
@@ -1721,6 +1818,18 @@ struct StateMapSheet: View {
     }
 
     private var visitedStateCodes: Set<String> {
+        // When country-level tracking, show all states as visited if country is visited
+        if !AppSettings.shared.shouldTrackStates(for: countryCode) {
+            let isCountryVisited = visitedPlaces.contains {
+                $0.regionType == VisitedPlace.RegionType.country.rawValue
+                    && $0.regionCode == countryCode
+                    && !$0.isDeleted && $0.isVisited
+            }
+            if isCountryVisited {
+                return Set(GeographicData.states(for: countryCode).map { $0.id })
+            }
+            return []
+        }
         return Set(
             visitedPlaces
                 .filter { $0.regionType == regionType.rawValue && !$0.isDeleted }
@@ -2225,13 +2334,17 @@ struct CountryListView: View {
     }
 
     private func visitedStatesFor(country code: String) -> Set<String> {
-        let type =
-            code == "US"
-            ? VisitedPlace.RegionType.usState.rawValue
-            : VisitedPlace.RegionType.canadianProvince.rawValue
+        // When country-level tracking, return all states if country is visited
+        if !AppSettings.shared.shouldTrackStates(for: code) {
+            if isVisited(country: code) {
+                return Set(GeographicData.states(for: code).map { $0.id })
+            }
+            return []
+        }
+        guard let regionType = GeographicData.regionType(for: code) else { return [] }
         return Set(
             visitedPlaces
-                .filter { $0.regionType == type }
+                .filter { $0.regionType == regionType.rawValue && !$0.isDeleted && $0.isVisited }
                 .map { $0.regionCode }
         )
     }
@@ -2271,8 +2384,7 @@ struct CountryListView: View {
     }
 
     private func toggleState(_ state: StateProvince, country: Country) {
-        let type: VisitedPlace.RegionType =
-            country.id == "US" ? .usState : .canadianProvince
+        guard let type = GeographicData.regionType(for: country.id) else { return }
         let code = "\(type.rawValue):\(state.id)"
 
         if visitedCodes.contains(code) {
@@ -2308,6 +2420,10 @@ struct CountryRow: View {
         GeographicData.states(for: country.id)
     }
 
+    private var tracksStates: Bool {
+        country.hasStates && AppSettings.shared.shouldTrackStates(for: country.id)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Country row - entire row is tappable
@@ -2329,7 +2445,7 @@ struct CountryRow: View {
 
                         Spacer()
 
-                        if country.hasStates {
+                        if tracksStates {
                             // States indicator (tapping this area still toggles country)
                             Text("\(visitedStates.count)/\(states.count)")
                                 .font(.caption)
@@ -2344,7 +2460,7 @@ struct CountryRow: View {
                 .accessibilityHint("Double tap to toggle visited status")
 
                 // Expand/collapse button for states (separate tap target)
-                if country.hasStates {
+                if tracksStates {
                     Button(action: onToggleExpand) {
                         Image(
                             systemName: isExpanded
@@ -2362,8 +2478,8 @@ struct CountryRow: View {
             }
             .padding(.vertical, 8)
 
-            // States (if expanded)
-            if country.hasStates && isExpanded {
+            // States (if expanded) - only when tracking at state level
+            if tracksStates && isExpanded {
                 VStack(spacing: 0) {
                     ForEach(states) { state in
                         StateRow(
@@ -2491,20 +2607,24 @@ struct StatsView: View {
                             icon: "flag.fill",
                             color: .green
                         )
-                        StatCard(
-                            title: "US States Visited",
-                            count: usStatesVisitedCount,
-                            total: GeographicData.usStates.count,
-                            icon: "star.fill",
-                            color: .blue
-                        )
-                        StatCard(
-                            title: "Canadian Provinces Visited",
-                            count: canadianProvincesVisitedCount,
-                            total: GeographicData.canadianProvinces.count,
-                            icon: "leaf.fill",
-                            color: .red
-                        )
+                        if AppSettings.shared.shouldTrackStates(for: "US") {
+                            StatCard(
+                                title: "US States Visited",
+                                count: usStatesVisitedCount,
+                                total: GeographicData.usStates.count,
+                                icon: "star.fill",
+                                color: .blue
+                            )
+                        }
+                        if AppSettings.shared.shouldTrackStates(for: "CA") {
+                            StatCard(
+                                title: "Canadian Provinces Visited",
+                                count: canadianProvincesVisitedCount,
+                                total: GeographicData.canadianProvinces.count,
+                                icon: "leaf.fill",
+                                color: .red
+                            )
+                        }
                     }
                     .padding(.horizontal)
 
@@ -2538,16 +2658,20 @@ struct StatsView: View {
                                     count: countriesBucketListCount,
                                     icon: "flag"
                                 )
-                                BucketListStat(
-                                    title: "States",
-                                    count: usStatesBucketListCount,
-                                    icon: "star"
-                                )
-                                BucketListStat(
-                                    title: "Provinces",
-                                    count: canadianProvincesBucketListCount,
-                                    icon: "leaf"
-                                )
+                                if AppSettings.shared.shouldTrackStates(for: "US") {
+                                    BucketListStat(
+                                        title: "States",
+                                        count: usStatesBucketListCount,
+                                        icon: "star"
+                                    )
+                                }
+                                if AppSettings.shared.shouldTrackStates(for: "CA") {
+                                    BucketListStat(
+                                        title: "Provinces",
+                                        count: canadianProvincesBucketListCount,
+                                        icon: "leaf"
+                                    )
+                                }
                             }
 
                             Text("\(totalBucketList) places on your bucket list")
