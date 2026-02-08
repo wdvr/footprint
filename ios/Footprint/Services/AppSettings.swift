@@ -19,48 +19,103 @@ final class AppSettings {
 
     private enum Keys {
         static let trackingGranularity = "trackingGranularity"
+        static let countryTrackingMode = "countryTrackingMode"
+        static let stateTrackingCountries = "stateTrackingCountries"
     }
 
-    // MARK: - Tracking Granularity
+    // MARK: - Country Tracking Mode
 
-    /// The level of detail for location tracking
-    enum TrackingGranularity: String, CaseIterable {
-        case country = "country"
-        case state = "state"  // Includes states/provinces for supported countries
+    /// Controls which countries use state/province-level tracking
+    enum CountryTrackingMode: String, CaseIterable {
+        case all = "all"         // Track states for all supported countries
+        case none = "none"       // Country-only for all (visited country = all states filled)
+        case custom = "custom"   // Pick specific countries for state-level tracking
 
         var displayName: String {
             switch self {
-            case .country: return "Country Only"
-            case .state: return "State/Province"
+            case .all: return "All Countries"
+            case .none: return "None"
+            case .custom: return "Custom"
             }
         }
 
         var description: String {
             switch self {
-            case .country: return "Only track countries you visit"
-            case .state: return "Track states and provinces for supported countries (US, CA, RU, etc.)"
+            case .all: return "Track individual states/provinces for all supported countries"
+            case .none: return "Track at country level only. Visiting a country fills all its regions on the map."
+            case .custom: return "Choose which countries to track at state/province level"
             }
         }
     }
 
-    /// Current tracking granularity setting
-    var trackingGranularity: TrackingGranularity {
+    /// List of countries that support state-level tracking
+    static let supportedStateCountries: [(code: String, name: String)] = [
+        ("US", "United States"),
+        ("CA", "Canada"),
+        ("AU", "Australia"),
+        ("MX", "Mexico"),
+        ("BR", "Brazil"),
+        ("DE", "Germany"),
+        ("FR", "France"),
+        ("ES", "Spain"),
+        ("IT", "Italy"),
+        ("NL", "Netherlands"),
+        ("BE", "Belgium"),
+        ("GB", "United Kingdom"),
+        ("RU", "Russia"),
+        ("AR", "Argentina"),
+    ]
+
+    /// Current country tracking mode
+    var countryTrackingMode: CountryTrackingMode {
         get {
-            if let raw = defaults.string(forKey: Keys.trackingGranularity),
-               let value = TrackingGranularity(rawValue: raw) {
+            if let raw = defaults.string(forKey: Keys.countryTrackingMode),
+               let value = CountryTrackingMode(rawValue: raw) {
                 return value
             }
-            return .state  // Default to state-level tracking
+            // Migrate from old setting
+            if let oldRaw = defaults.string(forKey: Keys.trackingGranularity) {
+                if oldRaw == "country" { return .none }
+                if oldRaw == "state" { return .all }
+            }
+            return .all  // Default to state-level tracking for all
         }
         set {
-            defaults.set(newValue.rawValue, forKey: Keys.trackingGranularity)
-            AnalyticsService.shared.trackGranularityChanged(granularity: .init(rawValue: newValue.rawValue) ?? .state)
+            defaults.set(newValue.rawValue, forKey: Keys.countryTrackingMode)
+            AnalyticsService.shared.trackGranularityChanged(
+                granularity: newValue == .none ? .country : .state
+            )
         }
     }
 
-    /// Whether to track states/provinces (based on granularity setting)
-    var shouldTrackStates: Bool {
-        trackingGranularity == .state
+    /// Countries selected for state-level tracking in custom mode
+    var stateTrackingCountries: Set<String> {
+        get {
+            if let array = defaults.stringArray(forKey: Keys.stateTrackingCountries) {
+                return Set(array)
+            }
+            // Default: all supported countries
+            return Set(Self.supportedStateCountries.map { $0.code })
+        }
+        set {
+            defaults.set(Array(newValue).sorted(), forKey: Keys.stateTrackingCountries)
+        }
+    }
+
+    /// Whether to track states/provinces for a specific country
+    func shouldTrackStates(for countryCode: String) -> Bool {
+        // Only relevant for countries that support state tracking
+        guard Self.supportedStateCountries.contains(where: { $0.code == countryCode }) else {
+            return false
+        }
+        switch countryTrackingMode {
+        case .all:
+            return true
+        case .none:
+            return false
+        case .custom:
+            return stateTrackingCountries.contains(countryCode)
+        }
     }
 
     private init() {}
