@@ -170,7 +170,7 @@ jobs:
                                          headers=headers, method="DELETE")
             urllib.request.urlopen(req, context=ctx)
 
-        # Revoke ALL existing dev certs (they're orphaned — no private key in keychain)
+        # Revoke ALL existing dev certs and excess dist certs
         data = api_get("certificates?limit=200")
         certs = data.get("data", [])
         dev_certs = [c for c in certs if c["attributes"]["certificateType"] == "DEVELOPMENT"]
@@ -185,7 +185,9 @@ jobs:
             except Exception as e:
                 print(f"  Warning: {e}")
 
-        for cert in dist_certs[2:]:
+        # Revoke ALL dist certs too — their private keys are in the locked
+        # login keychain, so codesign can't use them for export.
+        for cert in dist_certs:
             name = cert["attributes"].get("name", "unknown")
             print(f"Revoking dist cert: {name} ({cert['id']})")
             try:
@@ -193,51 +195,51 @@ jobs:
             except Exception as e:
                 print(f"  Warning: {e}")
 
-        # Generate a private key and CSR
-        key_file = f"{runner_temp}/dev.key"
-        csr_file = f"{runner_temp}/dev.csr"
-        subprocess.run(["openssl", "req", "-new", "-newkey", "rsa:2048", "-nodes",
-                        "-keyout", key_file, "-out", csr_file,
-                        "-subj", "/CN=Apple Development"], check=True,
-                       capture_output=True)
+        def create_cert(cert_type, label):
+            """Generate key+CSR, submit to ASC, return .p12 path."""
+            key_file = f"{runner_temp}/{label}.key"
+            csr_file = f"{runner_temp}/{label}.csr"
+            subprocess.run(["openssl", "req", "-new", "-newkey", "rsa:2048", "-nodes",
+                            "-keyout", key_file, "-out", csr_file,
+                            "-subj", f"/CN={label}"], check=True, capture_output=True)
 
-        with open(csr_file, "r") as f:
-            csr_content = f.read()
-        csr_b64 = base64.b64encode(csr_content.encode()).decode()
+            with open(csr_file, "r") as f:
+                csr_content = f.read()
 
-        # Create dev cert via ASC API
-        cert_data = api_post("certificates", {
-            "data": {
-                "type": "certificates",
-                "attributes": {
-                    "certificateType": "DEVELOPMENT",
-                    "csrContent": csr_content
+            cert_data = api_post("certificates", {
+                "data": {
+                    "type": "certificates",
+                    "attributes": {
+                        "certificateType": cert_type,
+                        "csrContent": csr_content
+                    }
                 }
-            }
-        })
-        cert_content = cert_data["data"]["attributes"]["certificateContent"]
-        cert_id = cert_data["data"]["id"]
-        print(f"Created dev cert: {cert_id}")
+            })
+            cert_content = cert_data["data"]["attributes"]["certificateContent"]
+            cert_id = cert_data["data"]["id"]
+            print(f"Created {cert_type} cert: {cert_id}")
 
-        # Write cert as DER, convert to PEM
-        cert_der = base64.b64decode(cert_content)
-        der_file = f"{runner_temp}/dev.cer"
-        pem_file = f"{runner_temp}/dev.pem"
-        p12_file = f"{runner_temp}/dev.p12"
+            cert_der = base64.b64decode(cert_content)
+            der_file = f"{runner_temp}/{label}.cer"
+            pem_file = f"{runner_temp}/{label}.pem"
+            p12_file = f"{runner_temp}/{label}.p12"
 
-        with open(der_file, "wb") as f:
-            f.write(cert_der)
+            with open(der_file, "wb") as f:
+                f.write(cert_der)
 
-        subprocess.run(["openssl", "x509", "-inform", "DER", "-in", der_file,
-                        "-out", pem_file], check=True, capture_output=True)
+            subprocess.run(["openssl", "x509", "-inform", "DER", "-in", der_file,
+                            "-out", pem_file], check=True, capture_output=True)
 
-        # Create .p12 with the private key + cert
-        subprocess.run(["openssl", "pkcs12", "-export", "-legacy",
-                        "-inkey", key_file, "-in", pem_file,
-                        "-out", p12_file, "-passout", "pass:build"],
-                       check=True, capture_output=True)
+            subprocess.run(["openssl", "pkcs12", "-export", "-legacy",
+                            "-inkey", key_file, "-in", pem_file,
+                            "-out", p12_file, "-passout", "pass:build"],
+                           check=True, capture_output=True)
+            return p12_file
 
-        print("Created .p12 signing certificate")
+        # Create both dev and distribution certs
+        dev_p12 = create_cert("DEVELOPMENT", "dev")
+        dist_p12 = create_cert("DISTRIBUTION", "dist")
+        print("Created dev + dist .p12 signing certificates")
         CERT_SCRIPT
 
         # Create a temporary keychain and import the .p12
@@ -248,7 +250,12 @@ jobs:
         security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
         security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
+        # Import both dev and dist certs
         security import $RUNNER_TEMP/dev.p12 \
+          -P "build" \
+          -A -t cert -f pkcs12 \
+          -k "$KEYCHAIN_PATH"
+        security import $RUNNER_TEMP/dist.p12 \
           -P "build" \
           -A -t cert -f pkcs12 \
           -k "$KEYCHAIN_PATH"
@@ -259,14 +266,16 @@ jobs:
         # Prepend temp keychain so it's found first; also purge stale certs from login
         security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
 
-        # Remove stale "Created via API" certs from login keychain
-        while security find-certificate -c "Apple Development: Created via API" ~/Library/Keychains/login.keychain-db > /dev/null 2>&1; do
-          security delete-certificate -c "Apple Development: Created via API" ~/Library/Keychains/login.keychain-db 2>/dev/null || break
+        # Remove stale certs from login keychain
+        for CN in "Apple Development: Created via API" "Apple Distribution: Created via API"; do
+          while security find-certificate -c "$CN" ~/Library/Keychains/login.keychain-db > /dev/null 2>&1; do
+            security delete-certificate -c "$CN" ~/Library/Keychains/login.keychain-db 2>/dev/null || break
+          done
         done
 
         echo "SIGNING_KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
         echo "Signing certificate imported into temporary keychain"
-        rm -f $RUNNER_TEMP/dev.key $RUNNER_TEMP/dev.csr $RUNNER_TEMP/dev.cer $RUNNER_TEMP/dev.pem $RUNNER_TEMP/dev.p12
+        rm -f $RUNNER_TEMP/{dev,dist}.{key,csr,cer,pem,p12}
 
     - name: Archive app
       if: github.event_name != 'pull_request'
