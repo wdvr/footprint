@@ -166,7 +166,10 @@ jobs:
         dev_certs.sort(key=lambda c: c["attributes"].get("expirationDate", ""), reverse=True)
         dist_certs.sort(key=lambda c: c["attributes"].get("expirationDate", ""), reverse=True)
 
-        for cert in dev_certs[1:]:
+        # Revoke ALL dev certs so Xcode can create a fresh one with
+        # -allowProvisioningUpdates. If we keep one, but its private key
+        # isn't in the keychain, Xcode refuses to create a new cert.
+        for cert in dev_certs:
             cert_id = cert["id"]
             name = cert["attributes"].get("name", "unknown")
             print(f"Revoking dev cert: {name} ({cert_id})")
@@ -184,9 +187,8 @@ jobs:
             except Exception as e:
                 print(f"  Warning: {e}")
 
-        remaining_dev = min(len(dev_certs), 1)
         remaining_dist = min(len(dist_certs), 2)
-        print(f"After cleanup: {remaining_dev} dev, {remaining_dist} dist certs")
+        print(f"After cleanup: 0 dev (Xcode will create fresh), {remaining_dist} dist certs")
         CLEANUP_SCRIPT
 
     - name: Purge revoked certs from keychain
