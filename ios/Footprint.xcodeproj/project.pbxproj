@@ -10,6 +10,7 @@
 		0737BB1F9D86379154F9D0A4 /* SyncManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C78AD6C2BFDF458E421F0A /* SyncManagerTests.swift */; };
 		B1C4E7A3F592D8016A3E9B4D /* YearInReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A2F6E8B1C39705E82D4A1F /* YearInReviewView.swift */; };
 		1422EE7E2E4EE9BC742FD37F /* CountryMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F77B77706A1622EA6FF7F3AB /* CountryMapView.swift */; };
+		A1B2C3D4E5F60718192A3B4C /* TimelinePlaybackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5E6F7A8B9C0D1E2F3A4B5C6 /* TimelinePlaybackView.swift */; };
 		1C4F3F89AA8C54F38236C5B6 /* ES_states.geojson in Resources */ = {isa = PBXBuildFile; fileRef = 663EE1FA3A86A62EF60C0174 /* ES_states.geojson */; };
 		EB74514646F81AE36F7329C7 /* JP_states.geojson in Resources */ = {isa = PBXBuildFile; fileRef = 9611FB726F775C0E96105734 /* JP_states.geojson */; };
 		75D8984721EBD7126BCDCE5E /* KR_states.geojson in Resources */ = {isa = PBXBuildFile; fileRef = 5C95A176F4CF8E9BC08E836A /* KR_states.geojson */; };
@@ -211,6 +212,7 @@
 		F2F3A12B9407F1DD0BBACFB7 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/Localizable.strings; sourceTree = "<group>"; };
 		F5D65959B9D51819794EFBB8 /* TokenRefreshTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenRefreshTests.swift; sourceTree = "<group>"; };
 		F77B77706A1622EA6FF7F3AB /* CountryMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountryMapView.swift; sourceTree = "<group>"; };
+		D5E6F7A8B9C0D1E2F3A4B5C6 /* TimelinePlaybackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelinePlaybackView.swift; sourceTree = "<group>"; };
 		FA7A0526F8242351189CA5C4 /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/Localizable.strings; sourceTree = "<group>"; };
 		FB79DD0340AC874AC75A998D /* GeographicData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeographicData.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -256,6 +258,7 @@
 				F77B77706A1622EA6FF7F3AB /* CountryMapView.swift */,
 				70A9464E97E44DCD324EB7F8 /* GeoJSONParser.swift */,
 				C4BE30309CDB7497F42092BD /* StateMapView.swift */,
+				D5E6F7A8B9C0D1E2F3A4B5C6 /* TimelinePlaybackView.swift */,
 			);
 			path = Map;
 			sourceTree = "<group>";
@@ -662,6 +665,7 @@
 				4B7C72868FA7C04D9388E1AD /* ContentView.swift in Sources */,
 				4239C1A84745E095920F0371 /* CountryBoundaries.swift in Sources */,
 				1422EE7E2E4EE9BC742FD37F /* CountryMapView.swift in Sources */,
+				A1B2C3D4E5F60718192A3B4C /* TimelinePlaybackView.swift in Sources */,
 				2A48BD23E186DF4575ACB843 /* FeedbackView.swift in Sources */,
 				7E9BA923F26087F9A02CC08E /* FootprintApp.swift in Sources */,
 				65840D2D311111A13A0E17C1 /* FriendsView.swift in Sources */,

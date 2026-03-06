@@ -919,6 +919,7 @@ struct WorldMapView: View {
     @State private var pendingVisitAction: PendingVisitAction?
     @State private var showingVisitDatePicker = false
     @State private var onThisDayService = OnThisDayService.shared
+    @State private var showingTimelinePlayback = false
 
     private var visitedCountryCodes: Set<String> {
         Set(
@@ -1154,6 +1155,14 @@ struct WorldMapView: View {
                     HStack(spacing: 16) {
                         // Photo pins toggle - always visible when on map view
                         if !showListView {
+                            // Timeline playback button
+                            Button {
+                                showingTimelinePlayback = true
+                            } label: {
+                                Image(systemName: "play.circle")
+                            }
+                            .accessibilityLabel("Play travel timeline")
+
                             Button {
                                 conditionalWithAnimation(.easeInOut, reduceMotion: reduceMotion) {
                                     showPhotoPins.toggle()
@@ -1269,6 +1278,9 @@ struct WorldMapView: View {
                         }
                     )
                 }
+            }
+            .fullScreenCover(isPresented: $showingTimelinePlayback) {
+                TimelinePlaybackView(visitedPlaces: visitedPlaces)
             }
             .sheet(isPresented: $showingPhotoGallery) {
                 PhotoGalleryView(photoAssetIDs: selectedPhotoAssetIDs)
