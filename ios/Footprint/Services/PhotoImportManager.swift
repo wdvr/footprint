@@ -1573,6 +1573,9 @@ final class PhotoImportManager: NSObject {
         case "GB": return .ukCountry
         case "RU": return .russianFederalSubject
         case "AR": return .argentineProvince
+        case "JP": return .japanesePrefecture
+        case "KR": return .southKoreanProvince
+        case "NO": return .norwegianCounty
         default: return .country  // Fallback, shouldn't happen
         }
     }

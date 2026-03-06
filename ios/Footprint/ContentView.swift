@@ -401,6 +401,18 @@ struct SettingsView: View {
                         }
                     }
 
+                    Toggle(isOn: Binding(
+                        get: { OnThisDayService.shared.notificationsEnabled },
+                        set: { OnThisDayService.shared.notificationsEnabled = $0 }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("On This Day Memories")
+                            Text("Get notified about travel anniversaries")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
                 } header: {
                     Text("Location")
                 } footer: {
@@ -906,6 +918,7 @@ struct WorldMapView: View {
     @State private var memoriesCountryCode: String?
     @State private var pendingVisitAction: PendingVisitAction?
     @State private var showingVisitDatePicker = false
+    @State private var onThisDayService = OnThisDayService.shared
 
     private var visitedCountryCodes: Set<String> {
         Set(
@@ -997,6 +1010,19 @@ struct WorldMapView: View {
         }
     }
 
+    /// Coverage percentages (0.0-1.0) for countries with subdivision tracking
+    private var countryCoveragePercentages: [String: Double] {
+        var result: [String: Double] = [:]
+        let settings = AppSettings.shared
+        let placesArray = Array(visitedPlaces)
+        for country in GeographicData.countries where country.hasStates && settings.shouldTrackStates(for: country.id) {
+            if let coverage = CountryCoverage.coverage(for: country.id, visitedPlaces: placesArray) {
+                result[country.id] = coverage.percentage / 100.0
+            }
+        }
+        return result
+    }
+
     private func visitedStateCodes(for countryCode: String) -> Set<String> {
         // When country-level tracking, return all states if country is visited
         if !AppSettings.shared.shouldTrackStates(for: countryCode) {
@@ -1026,6 +1052,7 @@ struct WorldMapView: View {
                         bucketListCountryCodes: bucketListCountryCodes,
                         visitedStateCodes: visitedStateCodes,
                         bucketListStateCodes: bucketListStateCodes,
+                        countryCoveragePercentages: countryCoveragePercentages,
                         selectedCountry: $selectedCountry,
                         centerOnUserLocation: $centerOnUserLocation,
                         onCountryTapped: { countryCode in
@@ -1042,6 +1069,25 @@ struct WorldMapView: View {
                     .onChange(of: selectedCountry) { _, newValue in
                         if newValue != nil {
                             showingCountryPopup = true
+                        }
+                    }
+
+                    // On This Day memory card overlay
+                    if !onThisDayService.todayMemories.isEmpty && !onThisDayService.isDismissedForToday {
+                        VStack {
+                            OnThisDayCardView(
+                                memories: onThisDayService.todayMemories,
+                                onDismiss: {
+                                    withAnimation {
+                                        onThisDayService.dismissForToday()
+                                    }
+                                }
+                            )
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+
+                            Spacer()
                         }
                     }
 
@@ -1134,6 +1180,7 @@ struct WorldMapView: View {
             }
             .onAppear {
                 setupLocationCallbacks()
+                onThisDayService.checkForMemories(visitedPlaces: visitedPlaces)
             }
             .sheet(isPresented: $showingCountryPopup) {
                 if let country = selectedCountryInfo {
@@ -1170,9 +1217,12 @@ struct WorldMapView: View {
                         onViewMemories: {
                             memoriesCountryCode = country.id
                             showingCountryMemories = true
-                        }
+                        },
+                        coverage: AppSettings.shared.shouldTrackStates(for: country.id)
+                            ? CountryCoverage.coverage(for: country.id, visitedPlaces: Array(visitedPlaces))
+                            : nil
                     )
-                    .presentationDetents([.height(country.hasStates ? 400 : 330)])
+                    .presentationDetents([.height(country.hasStates && AppSettings.shared.shouldTrackStates(for: country.id) ? 460 : country.hasStates ? 400 : 330)])
                     .presentationDragIndicator(.visible)
                 } else if let code = selectedCountry {
                     // Territory or region not in our country list (e.g., French Guiana, Greenland)
@@ -1456,6 +1506,7 @@ struct CountryInfoPopup: View {
     let onDismiss: () -> Void
     var onViewStates: (() -> Void)?
     var onViewMemories: (() -> Void)?
+    var coverage: CountryCoverage?
 
     private var hasStatus: Bool {
         isVisited || isBucketList
@@ -1495,6 +1546,35 @@ struct CountryInfoPopup: View {
             .onAppear {
                 let locations = PhotoLocationStore.shared.locations(forCountry: country.id)
                 countryPhotoCount = locations.reduce(0) { $0 + $1.photoCount }
+            }
+
+            // Coverage indicator for countries with subdivision tracking
+            if let coverage = coverage, coverage.totalCount > 0 {
+                HStack(spacing: 12) {
+                    // Progress ring
+                    ZStack {
+                        Circle()
+                            .stroke(Color.secondary.opacity(0.2), lineWidth: 4)
+                        Circle()
+                            .trim(from: 0, to: CGFloat(coverage.percentage / 100))
+                            .stroke(Color.green, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                    }
+                    .frame(width: 40, height: 40)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(coverage.visitedCount) of \(coverage.totalCount) \(coverage.subdivisionLabel) visited")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        Text(String(format: "%.0f%% explored", coverage.percentage))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 4)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(coverage.visitedCount) of \(coverage.totalCount) \(coverage.subdivisionLabel) visited, \(String(format: "%.0f", coverage.percentage)) percent explored")
             }
 
             // Status Buttons
@@ -2446,11 +2526,24 @@ struct CountryRow: View {
                         Spacer()
 
                         if tracksStates {
-                            // States indicator (tapping this area still toggles country)
-                            Text("\(visitedStates.count)/\(states.count)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .accessibilityHidden(true)
+                            // States coverage indicator
+                            HStack(spacing: 4) {
+                                // Mini progress bar
+                                GeometryReader { geo in
+                                    ZStack(alignment: .leading) {
+                                        Capsule()
+                                            .fill(Color.secondary.opacity(0.2))
+                                        Capsule()
+                                            .fill(Color.green)
+                                            .frame(width: states.isEmpty ? 0 : geo.size.width * CGFloat(visitedStates.count) / CGFloat(states.count))
+                                    }
+                                }
+                                .frame(width: 40, height: 4)
+                                Text("\(visitedStates.count)/\(states.count)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .accessibilityHidden(true)
                         }
                     }
                     .contentShape(Rectangle())
@@ -2534,6 +2627,7 @@ struct StatsView: View {
     @ScaledMetric(relativeTo: .title) private var totalCountSize: CGFloat = 48
     @State private var showShareSheet = false
     @State private var showingYearInReview = false
+    @State private var showPosterGenerator = false
 
     // Visited counts (only status = visited)
     private var countriesVisitedCount: Int {
@@ -2748,8 +2842,18 @@ struct StatsView: View {
             .navigationTitle("Statistics")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showShareSheet = true
+                    Menu {
+                        Button {
+                            showShareSheet = true
+                        } label: {
+                            Label("Share Card", systemImage: "square.and.arrow.up")
+                        }
+
+                        Button {
+                            showPosterGenerator = true
+                        } label: {
+                            Label("Export Poster", systemImage: "printer.fill")
+                        }
                     } label: {
                         Image(systemName: "square.and.arrow.up")
                     }
@@ -2758,6 +2862,9 @@ struct StatsView: View {
             }
             .sheet(isPresented: $showShareSheet) {
                 ShareSheetView(visitedPlaces: visitedPlaces)
+            }
+            .sheet(isPresented: $showPosterGenerator) {
+                PosterGeneratorView(visitedPlaces: visitedPlaces)
             }
             .sheet(isPresented: $showingYearInReview) {
                 YearInReviewView(visitedPlaces: visitedPlaces)

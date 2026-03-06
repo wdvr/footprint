@@ -64,6 +64,9 @@ final class AppSettings {
         ("GB", "United Kingdom"),
         ("RU", "Russia"),
         ("AR", "Argentina"),
+        ("JP", "Japan"),
+        ("KR", "South Korea"),
+        ("NO", "Norway"),
     ]
 
     /// Current country tracking mode

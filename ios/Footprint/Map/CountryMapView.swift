@@ -215,6 +215,7 @@ struct CountryMapView: UIViewRepresentable {
     let bucketListCountryCodes: Set<String>
     let visitedStateCodes: Set<String>  // Format: "US-CA", "CA-ON", etc.
     let bucketListStateCodes: Set<String>  // Format: "US-CA", "CA-ON", etc.
+    var countryCoveragePercentages: [String: Double] = [:]  // Country code -> coverage 0.0-1.0
     @Binding var selectedCountry: String?
     @Binding var centerOnUserLocation: Bool
     var onCountryTapped: ((String) -> Void)?
@@ -256,6 +257,7 @@ struct CountryMapView: UIViewRepresentable {
         context.coordinator.bucketListCountryCodes = bucketListCountryCodes
         context.coordinator.visitedStateCodes = visitedStateCodes
         context.coordinator.bucketListStateCodes = bucketListStateCodes
+        context.coordinator.countryCoveragePercentages = countryCoveragePercentages
         context.coordinator.onCountryTapped = onCountryTapped
         context.coordinator.onPhotoPinTapped = onPhotoPinTapped
         mapView.showsUserLocation = showUserLocation
@@ -298,6 +300,7 @@ struct CountryMapView: UIViewRepresentable {
         var bucketListCountryCodes: Set<String>
         var visitedStateCodes: Set<String>
         var bucketListStateCodes: Set<String>
+        var countryCoveragePercentages: [String: Double] = [:]
         var selectedCountryCode: String?
         var onCountryTapped: ((String) -> Void)?
         var onPhotoPinTapped: (([String]) -> Void)?
@@ -538,8 +541,15 @@ struct CountryMapView: UIViewRepresentable {
                         renderer.strokeColor = UIColor.systemBlue
                         renderer.lineWidth = 3.0
                     } else if isVisited {
-                        // Visited countries: green with higher opacity
-                        renderer.fillColor = UIColor.systemGreen.withAlphaComponent(0.4)
+                        // Visited countries: green with coverage-based intensity
+                        let coverageFraction = countryCoveragePercentages[normalizedCode]
+                        // Scale fill from 0.2 (low coverage) to 0.6 (full coverage), default 0.4
+                        let fillAlpha: CGFloat = if let cf = coverageFraction {
+                            0.2 + CGFloat(cf) * 0.4
+                        } else {
+                            0.4
+                        }
+                        renderer.fillColor = UIColor.systemGreen.withAlphaComponent(fillAlpha)
                         renderer.strokeColor = UIColor.systemGreen.withAlphaComponent(0.8)
                         renderer.lineWidth = 1.5
                     } else if isBucketList {
