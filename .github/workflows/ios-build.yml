@@ -189,6 +189,23 @@ jobs:
         print(f"After cleanup: {remaining_dev} dev, {remaining_dist} dist certs")
         CLEANUP_SCRIPT
 
+    - name: Purge revoked certs from keychain
+      if: github.event_name != 'pull_request'
+      run: |
+        # Remove all "Apple Development: Created via API" certs from keychains.
+        # After the ASC cleanup step revokes excess certs, they remain in the
+        # runner's persistent keychain. Xcode finds them, tries to use them,
+        # and fails with "Signing certificate is invalid". Purge them so only
+        # the one valid cert (re-created by -allowProvisioningUpdates) is used.
+        echo "Searching for stale dev certs in keychain..."
+        for KEYCHAIN in $(security list-keychains -d user | tr -d '"' | tr -d ' '); do
+          while security find-certificate -c "Apple Development: Created via API" "$KEYCHAIN" > /dev/null 2>&1; do
+            echo "Deleting 'Apple Development: Created via API' cert from $KEYCHAIN"
+            security delete-certificate -c "Apple Development: Created via API" "$KEYCHAIN" 2>/dev/null || break
+          done
+        done
+        echo "Keychain cert cleanup done"
+
     - name: Archive app
       if: github.event_name != 'pull_request'
       run: |
