@@ -1,5 +1,68 @@
 import Foundation
 
+// MARK: - Country Coverage
+
+struct CountryCoverage {
+    let countryCode: String
+    let countryName: String
+    let visitedCount: Int
+    let totalCount: Int
+
+    var percentage: Double {
+        guard totalCount > 0 else { return 0 }
+        return (Double(visitedCount) / Double(totalCount)) * 100
+    }
+
+    /// Localized subdivision label (e.g., "states", "provinces", "regions")
+    var subdivisionLabel: String {
+        switch countryCode {
+        case "US": return "states"
+        case "CA": return "provinces"
+        case "AU": return "states"
+        case "MX": return "states"
+        case "BR": return "states"
+        case "DE": return "states"
+        case "FR": return "regions"
+        case "ES": return "communities"
+        case "IT": return "regions"
+        case "NL": return "provinces"
+        case "BE": return "provinces"
+        case "GB": return "countries"
+        case "RU": return "subjects"
+        case "AR": return "provinces"
+        case "JP": return "prefectures"
+        case "KR": return "provinces"
+        case "NO": return "counties"
+        default: return "regions"
+        }
+    }
+
+    /// Calculate coverage for a country with subdivision tracking
+    static func coverage(
+        for countryCode: String,
+        visitedPlaces: [VisitedPlace]
+    ) -> CountryCoverage? {
+        let allStates = GeographicData.states(for: countryCode)
+        guard !allStates.isEmpty else { return nil }
+        guard let regionType = GeographicData.regionType(for: countryCode) else { return nil }
+
+        let countryName = GeographicData.countries.first { $0.id == countryCode }?.name ?? countryCode
+
+        let visitedCount = visitedPlaces.filter {
+            $0.regionType == regionType.rawValue
+                && !$0.isDeleted
+                && $0.isVisited
+        }.count
+
+        return CountryCoverage(
+            countryCode: countryCode,
+            countryName: countryName,
+            visitedCount: visitedCount,
+            totalCount: allStates.count
+        )
+    }
+}
+
 // MARK: - Continent Statistics
 
 struct ContinentStats: Identifiable, Codable {

@@ -20,6 +20,9 @@ final class VisitedPlace {
         case ukCountry = "uk_country"
         case russianFederalSubject = "russian_federal_subject"
         case argentineProvince = "argentine_province"
+        case japanesePrefecture = "japanese_prefecture"
+        case southKoreanProvince = "south_korean_province"
+        case norwegianCounty = "norwegian_county"
 
         var displayName: String {
             switch self {
@@ -38,6 +41,9 @@ final class VisitedPlace {
             case .ukCountry: return "UK Country"
             case .russianFederalSubject: return "Russian Federal Subject"
             case .argentineProvince: return "Argentine Province"
+            case .japanesePrefecture: return "Japanese Prefecture"
+            case .southKoreanProvince: return "South Korean Province"
+            case .norwegianCounty: return "Norwegian County"
             }
         }
     }

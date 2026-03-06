@@ -124,7 +124,7 @@ enum GeographicData {
         Country("IR", "Iran", continent: "Asia"),
         Country("IQ", "Iraq", continent: "Asia"),
         Country("IL", "Israel", continent: "Asia"),
-        Country("JP", "Japan", continent: "Asia"),
+        Country("JP", "Japan", continent: "Asia", hasStates: true),
         Country("JO", "Jordan", continent: "Asia"),
         Country("KZ", "Kazakhstan", continent: "Asia"),
         Country("KW", "Kuwait", continent: "Asia"),
@@ -144,7 +144,7 @@ enum GeographicData {
         Country("QA", "Qatar", continent: "Asia"),
         Country("SA", "Saudi Arabia", continent: "Asia"),
         Country("SG", "Singapore", continent: "Asia"),
-        Country("KR", "South Korea", continent: "Asia"),
+        Country("KR", "South Korea", continent: "Asia", hasStates: true),
         Country("LK", "Sri Lanka", continent: "Asia"),
         Country("SY", "Syria", continent: "Asia"),
         Country("TW", "Taiwan", continent: "Asia"),
@@ -187,7 +187,7 @@ enum GeographicData {
         Country("ME", "Montenegro", continent: "Europe"),
         Country("NL", "Netherlands", continent: "Europe", hasStates: true),
         Country("MK", "North Macedonia", continent: "Europe"),
-        Country("NO", "Norway", continent: "Europe"),
+        Country("NO", "Norway", continent: "Europe", hasStates: true),
         Country("PL", "Poland", continent: "Europe"),
         Country("PT", "Portugal", continent: "Europe"),
         Country("RO", "Romania", continent: "Europe"),
@@ -1065,6 +1065,97 @@ enum GeographicData {
         StateProvince("T", "Tucuman", country: "AR"),
     ]
 
+    // Japanese Prefectures (47 total)
+    static let japanesePrefectures: [StateProvince] = [
+        StateProvince("01", "Hokkaido", country: "JP"),
+        StateProvince("02", "Aomori", country: "JP"),
+        StateProvince("03", "Iwate", country: "JP"),
+        StateProvince("04", "Miyagi", country: "JP"),
+        StateProvince("05", "Akita", country: "JP"),
+        StateProvince("06", "Yamagata", country: "JP"),
+        StateProvince("07", "Fukushima", country: "JP"),
+        StateProvince("08", "Ibaraki", country: "JP"),
+        StateProvince("09", "Tochigi", country: "JP"),
+        StateProvince("10", "Gunma", country: "JP"),
+        StateProvince("11", "Saitama", country: "JP"),
+        StateProvince("12", "Chiba", country: "JP"),
+        StateProvince("13", "Tokyo", country: "JP"),
+        StateProvince("14", "Kanagawa", country: "JP"),
+        StateProvince("15", "Niigata", country: "JP"),
+        StateProvince("16", "Toyama", country: "JP"),
+        StateProvince("17", "Ishikawa", country: "JP"),
+        StateProvince("18", "Fukui", country: "JP"),
+        StateProvince("19", "Yamanashi", country: "JP"),
+        StateProvince("20", "Nagano", country: "JP"),
+        StateProvince("21", "Gifu", country: "JP"),
+        StateProvince("22", "Shizuoka", country: "JP"),
+        StateProvince("23", "Aichi", country: "JP"),
+        StateProvince("24", "Mie", country: "JP"),
+        StateProvince("25", "Shiga", country: "JP"),
+        StateProvince("26", "Kyoto", country: "JP"),
+        StateProvince("27", "Osaka", country: "JP"),
+        StateProvince("28", "Hyogo", country: "JP"),
+        StateProvince("29", "Nara", country: "JP"),
+        StateProvince("30", "Wakayama", country: "JP"),
+        StateProvince("31", "Tottori", country: "JP"),
+        StateProvince("32", "Shimane", country: "JP"),
+        StateProvince("33", "Okayama", country: "JP"),
+        StateProvince("34", "Hiroshima", country: "JP"),
+        StateProvince("35", "Yamaguchi", country: "JP"),
+        StateProvince("36", "Tokushima", country: "JP"),
+        StateProvince("37", "Kagawa", country: "JP"),
+        StateProvince("38", "Ehime", country: "JP"),
+        StateProvince("39", "Kochi", country: "JP"),
+        StateProvince("40", "Fukuoka", country: "JP"),
+        StateProvince("41", "Saga", country: "JP"),
+        StateProvince("42", "Nagasaki", country: "JP"),
+        StateProvince("43", "Kumamoto", country: "JP"),
+        StateProvince("44", "Oita", country: "JP"),
+        StateProvince("45", "Miyazaki", country: "JP"),
+        StateProvince("46", "Kagoshima", country: "JP"),
+        StateProvince("47", "Okinawa", country: "JP"),
+    ]
+
+    // South Korean Provinces and Metropolitan Cities (17 total)
+    static let southKoreanProvinces: [StateProvince] = [
+        StateProvince("11", "Seoul", country: "KR"),
+        StateProvince("26", "Busan", country: "KR"),
+        StateProvince("27", "Daegu", country: "KR"),
+        StateProvince("28", "Incheon", country: "KR"),
+        StateProvince("29", "Gwangju", country: "KR"),
+        StateProvince("30", "Daejeon", country: "KR"),
+        StateProvince("31", "Ulsan", country: "KR"),
+        StateProvince("41", "Gyeonggi", country: "KR"),
+        StateProvince("42", "Gangwon", country: "KR"),
+        StateProvince("43", "North Chungcheong", country: "KR"),
+        StateProvince("44", "South Chungcheong", country: "KR"),
+        StateProvince("45", "North Jeolla", country: "KR"),
+        StateProvince("46", "South Jeolla", country: "KR"),
+        StateProvince("47", "North Gyeongsang", country: "KR"),
+        StateProvince("48", "South Gyeongsang", country: "KR"),
+        StateProvince("49", "Jeju", country: "KR"),
+        StateProvince("50", "Sejong", country: "KR"),
+    ]
+
+    // Norwegian Counties - Fylker (15 total, 2024 system)
+    static let norwegianCounties: [StateProvince] = [
+        StateProvince("03", "Oslo", country: "NO"),
+        StateProvince("11", "Rogaland", country: "NO"),
+        StateProvince("15", "More og Romsdal", country: "NO"),
+        StateProvince("18", "Nordland", country: "NO"),
+        StateProvince("31", "Ostfold", country: "NO"),
+        StateProvince("32", "Akershus", country: "NO"),
+        StateProvince("33", "Buskerud", country: "NO"),
+        StateProvince("34", "Innlandet", country: "NO"),
+        StateProvince("39", "Vestfold", country: "NO"),
+        StateProvince("40", "Telemark", country: "NO"),
+        StateProvince("42", "Agder", country: "NO"),
+        StateProvince("46", "Vestland", country: "NO"),
+        StateProvince("50", "Trondelag", country: "NO"),
+        StateProvince("55", "Troms", country: "NO"),
+        StateProvince("56", "Finnmark", country: "NO"),
+    ]
+
     static func states(for countryCode: String) -> [StateProvince] {
         switch countryCode {
         case "US": return usStates
@@ -1081,6 +1172,9 @@ enum GeographicData {
         case "GB": return ukCouncilAreas
         case "RU": return russianFederalSubjects
         case "AR": return argentineProvinces
+        case "JP": return japanesePrefectures
+        case "KR": return southKoreanProvinces
+        case "NO": return norwegianCounties
         default: return []
         }
     }
@@ -1102,6 +1196,9 @@ enum GeographicData {
         case "GB": return .ukCountry
         case "RU": return .russianFederalSubject
         case "AR": return .argentineProvince
+        case "JP": return .japanesePrefecture
+        case "KR": return .southKoreanProvince
+        case "NO": return .norwegianCounty
         default: return nil
         }
     }

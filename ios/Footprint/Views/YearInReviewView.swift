@@ -67,6 +67,9 @@ struct YearInReviewData {
         VisitedPlace.RegionType.australianState.rawValue: "AU",
         VisitedPlace.RegionType.mexicanState.rawValue: "MX",
         VisitedPlace.RegionType.brazilianState.rawValue: "BR",
+        VisitedPlace.RegionType.japanesePrefecture.rawValue: "JP",
+        VisitedPlace.RegionType.southKoreanProvince.rawValue: "KR",
+        VisitedPlace.RegionType.norwegianCounty.rawValue: "NO",
     ]
 
     /// Convert country code to flag emoji
@@ -164,6 +167,9 @@ struct YearInReviewData {
             (.ukCountry, "UK Countries", "map.fill", "red"),
             (.russianFederalSubject, "Russian Regions", "map.fill", "blue"),
             (.argentineProvince, "Argentine Provinces", "map.fill", "blue"),
+            (.japanesePrefecture, "Japanese Prefectures", "map.fill", "red"),
+            (.southKoreanProvince, "South Korean Provinces", "map.fill", "blue"),
+            (.norwegianCounty, "Norwegian Counties", "map.fill", "blue"),
         ]
 
         var result: [(label: String, icon: String, color: String, count: Int, newCount: Int, places: [VisitedPlace], newPlaces: [VisitedPlace])] = []
@@ -235,12 +241,17 @@ struct YearInReviewData {
             VisitedPlace.RegionType.ukCountry.rawValue: "GB",
             VisitedPlace.RegionType.russianFederalSubject.rawValue: "RU",
             VisitedPlace.RegionType.argentineProvince.rawValue: "AR",
+            VisitedPlace.RegionType.japanesePrefecture.rawValue: "JP",
+            VisitedPlace.RegionType.southKoreanProvince.rawValue: "KR",
+            VisitedPlace.RegionType.norwegianCounty.rawValue: "NO",
         ]
         guard let countryCode = regionToCountry[regionType] else { return false }
-        return !AppSettings.shared.shouldTrackStates(for: countryCode)
+        return MainActor.assumeIsolated {
+            !AppSettings.shared.shouldTrackStates(for: countryCode)
+        }
     }
 
-    static func compute(for year: Int, allPlaces: [VisitedPlace]) -> YearInReviewData {
+    @MainActor static func compute(for year: Int, allPlaces: [VisitedPlace]) -> YearInReviewData {
         let calendar = Calendar.current
 
         // "New" places: visitedDate falls in this year (places without visitedDate are excluded)
