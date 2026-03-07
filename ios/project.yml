@@ -55,9 +55,13 @@ targets:
         product: FirebaseCrashlytics
     postBuildScripts:
       - name: Upload dSYMs to Crashlytics
+        basedOnDependencyAnalysis: false
         script: |
           if [ "${CONFIGURATION}" = "Release" ]; then
-            "${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run"
+            "${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run" \
+              --upload-symbols \
+              -gsp "${SRCROOT}/Footprint/GoogleService-Info.plist" \
+              -p ios
           fi
         inputFiles:
           - ${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}

@@ -664,7 +664,8 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [ \"${CONFIGURATION}\" = \"Release\" ]; then\n  \"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\nfi\n";
+			alwaysOutOfDate = 1;
+			shellScript = "if [ \"${CONFIGURATION}\" = \"Release\" ]; then\n  \"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\" \\\n    --upload-symbols \\\n    -gsp \"${SRCROOT}/Footprint/GoogleService-Info.plist\" \\\n    -p ios\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
