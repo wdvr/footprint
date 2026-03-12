@@ -20,32 +20,26 @@ struct OnboardingView: View {
             .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Skip button
-                HStack {
-                    Spacer()
-                    Button("Skip") {
-                        completeOnboarding()
+                // Top spacing (no skip button per App Store guidelines)
+                Spacer()
+                    .frame(height: 50)
+
+                // Page content — no swipe gesture, navigation only via buttons
+                Group {
+                    switch currentPage {
+                    case 0:
+                        WelcomePage()
+                    case 1:
+                        PhotoImportPage(permissionGranted: $photoPermissionGranted)
+                    case 2:
+                        LocationPage(permissionGranted: $locationPermissionGranted)
+                    case 3:
+                        ReadyPage(onGetStarted: completeOnboarding)
+                    default:
+                        EmptyView()
                     }
-                    .foregroundStyle(.secondary)
-                    .padding()
-                    .accessibilityHint("Skip onboarding and go directly to the app")
                 }
-
-                // Page content
-                TabView(selection: $currentPage) {
-                    WelcomePage()
-                        .tag(0)
-
-                    PhotoImportPage(permissionGranted: $photoPermissionGranted)
-                        .tag(1)
-
-                    LocationPage(permissionGranted: $locationPermissionGranted)
-                        .tag(2)
-
-                    ReadyPage(onGetStarted: completeOnboarding)
-                        .tag(3)
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 // Page indicator and navigation
                 VStack(spacing: 20) {
@@ -81,16 +75,10 @@ struct OnboardingView: View {
                         Spacer()
 
                         Button {
-                            withAnimation {
-                                if currentPage < totalPages - 1 {
-                                    currentPage += 1
-                                } else {
-                                    completeOnboarding()
-                                }
-                            }
+                            handleNextButton()
                         } label: {
                             HStack {
-                                Text(currentPage < totalPages - 1 ? "Next" : "Get Started")
+                                Text(nextButtonTitle)
                                 if currentPage < totalPages - 1 {
                                     Image(systemName: "chevron.right")
                                         .accessibilityHidden(true)
@@ -108,6 +96,51 @@ struct OnboardingView: View {
                     .padding(.horizontal, 30)
                 }
                 .padding(.bottom, 40)
+            }
+        }
+    }
+
+    private var nextButtonTitle: String {
+        switch currentPage {
+        case 1 where !photoPermissionGranted:
+            return "Enable & Continue"
+        case 2 where !locationPermissionGranted:
+            return "Enable & Continue"
+        case totalPages - 1:
+            return "Get Started"
+        default:
+            return "Next"
+        }
+    }
+
+    private func handleNextButton() {
+        switch currentPage {
+        case 1 where !photoPermissionGranted:
+            // Request photo permission before advancing
+            Task {
+                let status = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+                await MainActor.run {
+                    photoPermissionGranted = status == .authorized || status == .limited
+                    withAnimation {
+                        currentPage += 1
+                    }
+                }
+            }
+        case 2 where !locationPermissionGranted:
+            // Request location permission before advancing
+            LocationManager.shared.requestPermission()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                let status = LocationManager.shared.authorizationStatus
+                locationPermissionGranted = status == .authorizedAlways || status == .authorizedWhenInUse
+                withAnimation {
+                    currentPage += 1
+                }
+            }
+        case totalPages - 1:
+            completeOnboarding()
+        default:
+            withAnimation {
+                currentPage += 1
             }
         }
     }
@@ -241,7 +274,7 @@ private struct PhotoImportPage: View {
                 .padding(.top, 10)
             }
 
-            Text("This is optional - you can enable it later in Settings")
+            Text("All processing happens on your device — no photos are uploaded")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -332,7 +365,7 @@ private struct LocationPage: View {
                 .padding(.top, 10)
             }
 
-            Text("This is optional - you can always add places manually")
+            Text("Uses battery-efficient tracking that runs in the background")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
