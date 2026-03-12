@@ -263,6 +263,13 @@ struct SplashScreenView: View {
                 isFinished = true
             }
         }
+
+        // Failsafe: ensure splash always finishes even if animations stall
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            if !isFinished {
+                isFinished = true
+            }
+        }
     }
 }
 

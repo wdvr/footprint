@@ -1,11 +1,15 @@
 """Authentication API routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 from src.services.auth import TokenResponse, auth_service
-from src.services.dynamodb import db_service
+from src.services.dynamodb import db_service, table
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 security = HTTPBearer()
@@ -187,10 +191,60 @@ async def delete_account(current_user: dict = Depends(get_current_user)):
     Delete current user account.
 
     Permanently deletes the user account and all associated data.
+    This includes: PROFILE, PLACE#*, SYNC#*, FRIEND#*, FRIEND_REQUEST#*,
+    FEEDBACK#*, GOOGLE_TOKENS, DEVICE_TOKEN#*, IMPORT_JOB#*, IMPORT_RESULTS#*.
+    Also removes bidirectional friendships from other users.
     """
-    # TODO: Implement account deletion
-    # This should delete all user data, visited places, etc.
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Account deletion not yet implemented",
+    user_id = current_user["user_id"]
+    user_pk = f"USER#{user_id}"
+
+    logger.info(f"Starting account deletion for user {user_id}")
+
+    # Step 1: Query ALL items with pk=USER#{user_id}
+    all_items = []
+    friend_ids = []
+    last_evaluated_key = None
+
+    while True:
+        query_kwargs = {
+            "KeyConditionExpression": "pk = :pk",
+            "ExpressionAttributeValues": {":pk": user_pk},
+            "ProjectionExpression": "pk, sk",
+        }
+        if last_evaluated_key:
+            query_kwargs["ExclusiveStartKey"] = last_evaluated_key
+
+        response = table.query(**query_kwargs)
+        items = response.get("Items", [])
+        all_items.extend(items)
+
+        # Collect friend IDs for bidirectional cleanup
+        for item in items:
+            sk = item["sk"]
+            if sk.startswith("FRIEND#") and not sk.startswith("FRIEND_REQUEST#"):
+                friend_id = sk.removeprefix("FRIEND#")
+                friend_ids.append(friend_id)
+
+        last_evaluated_key = response.get("LastEvaluatedKey")
+        if not last_evaluated_key:
+            break
+
+    logger.info(
+        f"Found {len(all_items)} items to delete for user {user_id}, "
+        f"{len(friend_ids)} friendships to clean up"
     )
+
+    # Step 2: Batch-delete all user items
+    with table.batch_writer() as batch:
+        for item in all_items:
+            batch.delete_item(Key={"pk": item["pk"], "sk": item["sk"]})
+
+    # Step 3: Remove friendships where OTHER users have FRIEND#{user_id} as sk
+    for friend_id in friend_ids:
+        friend_pk = f"USER#{friend_id}"
+        friend_sk = f"FRIEND#{user_id}"
+        table.delete_item(Key={"pk": friend_pk, "sk": friend_sk})
+
+    logger.info(f"Account deletion completed for user {user_id}")
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

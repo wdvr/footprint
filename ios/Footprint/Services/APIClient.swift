@@ -339,6 +339,10 @@ actor APIClient {
         try await _requestWithRetry("/auth/me", authenticated: true)
     }
 
+    func deleteAccount() async throws {
+        let _: EmptyResponse = try await request(path: "/auth/me", method: .delete, authenticated: true)
+    }
+
     // MARK: - Places Endpoints
 
     struct VisitedPlaceRequest: Encodable {

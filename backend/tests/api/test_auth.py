@@ -1,6 +1,6 @@
 """Tests for auth API routes."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -212,23 +212,131 @@ class TestGetCurrentUser:
         assert response.status_code in [401, 403]
 
 
+@pytest.fixture
+def mock_table():
+    """Mock DynamoDB table."""
+    with patch("src.api.routes.auth.table") as mock:
+        yield mock
+
+
 class TestDeleteAccount:
     """Tests for DELETE /auth/me endpoint."""
 
-    def test_delete_account_not_implemented(
-        self, client, mock_auth_service, mock_db_service
+    def test_delete_account_success(
+        self, client, mock_auth_service, mock_db_service, mock_table
     ):
-        """Test account deletion returns 501."""
+        """Test successful account deletion returns 204."""
         mock_auth_service.verify_access_token.return_value = "user-123"
         mock_db_service.get_user.return_value = {
             "user_id": "user-123",
             "email": "test@example.com",
         }
 
+        # Simulate items returned by query (profile, a place, a friend)
+        mock_table.query.return_value = {
+            "Items": [
+                {"pk": "USER#user-123", "sk": "PROFILE"},
+                {"pk": "USER#user-123", "sk": "PLACE#country#US"},
+                {"pk": "USER#user-123", "sk": "FRIEND#friend-456"},
+                {"pk": "USER#user-123", "sk": "GOOGLE_TOKENS"},
+                {"pk": "USER#user-123", "sk": "FEEDBACK#fb-1"},
+                {"pk": "USER#user-123", "sk": "DEVICE_TOKEN#abc123"},
+            ],
+        }
+
+        # Mock batch_writer context manager
+        mock_batch = MagicMock()
+        mock_table.batch_writer.return_value.__enter__ = MagicMock(
+            return_value=mock_batch
+        )
+        mock_table.batch_writer.return_value.__exit__ = MagicMock(return_value=False)
+
         response = client.delete(
             "/auth/me",
             headers={"Authorization": "Bearer valid-token"},
         )
 
-        assert response.status_code == 501
-        assert "not yet implemented" in response.json()["detail"]
+        assert response.status_code == 204
+
+        # Verify all user items were batch-deleted
+        assert mock_batch.delete_item.call_count == 6
+
+        # Verify bidirectional friendship cleanup
+        mock_table.delete_item.assert_called_once_with(
+            Key={"pk": "USER#friend-456", "sk": "FRIEND#user-123"}
+        )
+
+    def test_delete_account_no_data(
+        self, client, mock_auth_service, mock_db_service, mock_table
+    ):
+        """Test account deletion when user has no items."""
+        mock_auth_service.verify_access_token.return_value = "user-123"
+        mock_db_service.get_user.return_value = {
+            "user_id": "user-123",
+            "email": "test@example.com",
+        }
+
+        mock_table.query.return_value = {"Items": []}
+
+        mock_batch = MagicMock()
+        mock_table.batch_writer.return_value.__enter__ = MagicMock(
+            return_value=mock_batch
+        )
+        mock_table.batch_writer.return_value.__exit__ = MagicMock(return_value=False)
+
+        response = client.delete(
+            "/auth/me",
+            headers={"Authorization": "Bearer valid-token"},
+        )
+
+        assert response.status_code == 204
+        assert mock_batch.delete_item.call_count == 0
+
+    def test_delete_account_unauthenticated(self, client, mock_auth_service):
+        """Test account deletion without valid auth."""
+        mock_auth_service.verify_access_token.return_value = None
+
+        response = client.delete(
+            "/auth/me",
+            headers={"Authorization": "Bearer invalid-token"},
+        )
+
+        assert response.status_code == 401
+
+    def test_delete_account_paginated_query(
+        self, client, mock_auth_service, mock_db_service, mock_table
+    ):
+        """Test account deletion handles paginated DynamoDB results."""
+        mock_auth_service.verify_access_token.return_value = "user-123"
+        mock_db_service.get_user.return_value = {
+            "user_id": "user-123",
+            "email": "test@example.com",
+        }
+
+        # Simulate paginated response
+        mock_table.query.side_effect = [
+            {
+                "Items": [{"pk": "USER#user-123", "sk": "PROFILE"}],
+                "LastEvaluatedKey": {"pk": "USER#user-123", "sk": "PROFILE"},
+            },
+            {
+                "Items": [{"pk": "USER#user-123", "sk": "PLACE#country#FR"}],
+            },
+        ]
+
+        mock_batch = MagicMock()
+        mock_table.batch_writer.return_value.__enter__ = MagicMock(
+            return_value=mock_batch
+        )
+        mock_table.batch_writer.return_value.__exit__ = MagicMock(return_value=False)
+
+        response = client.delete(
+            "/auth/me",
+            headers={"Authorization": "Bearer valid-token"},
+        )
+
+        assert response.status_code == 204
+        # Two items deleted across two pages
+        assert mock_batch.delete_item.call_count == 2
+        # Query called twice due to pagination
+        assert mock_table.query.call_count == 2

@@ -553,6 +553,14 @@ struct SettingsView: View {
                     } label: {
                         Label("Delete Account", systemImage: "trash")
                     }
+
+                    Button {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        Label("Open Settings", systemImage: "gear")
+                    }
                 } footer: {
                     Text("This will permanently delete your account and all data. This action cannot be undone.")
                 }
@@ -626,11 +634,21 @@ struct SettingsView: View {
     }
 
     private func deleteAccount() {
-        // Clear all local data first
-        clearAllData()
-        // TODO: Implement account deletion through backend API
-        // Then sign out
-        signOut()
+        Task {
+            // Try to delete from server first
+            do {
+                try await APIClient.shared.deleteAccount()
+            } catch {
+                // Continue with local deletion even if server fails
+                // (user might be offline or in offline mode)
+            }
+            // Clear all local data
+            await MainActor.run {
+                clearAllData()
+            }
+            // Sign out
+            await AuthManager.shared.signOut()
+        }
     }
 
     private func clearAllData() {
