@@ -321,7 +321,7 @@ async def update_visited_place(
     return _place_to_response(result)
 
 
-@router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/all", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_all_places(current_user: dict = Depends(get_current_user)):
     """Delete all visited places for the current user."""
     user_id = current_user["user_id"]

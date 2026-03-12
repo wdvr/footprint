@@ -397,7 +397,7 @@ actor APIClient {
     }
 
     func deleteAllPlaces() async throws {
-        let _: EmptyResponse = try await request(path: "/places", method: .delete, authenticated: true)
+        let _: EmptyResponse = try await request(path: "/places/all", method: .delete, authenticated: true)
     }
 
     // MARK: - Sync Endpoints
