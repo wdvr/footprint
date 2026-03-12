@@ -758,20 +758,24 @@ private struct ErrorView: View {
     let onRetry: () -> Void
     let onDismiss: () -> Void
 
+    private var isPermissionDenied: Bool {
+        message.lowercased().contains("denied") || message.lowercased().contains("settings")
+    }
+
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
 
-            Image(systemName: "exclamationmark.triangle")
+            Image(systemName: isPermissionDenied ? "gearshape.circle" : "exclamationmark.triangle")
                 .font(.system(size: 60))
-                .foregroundStyle(.orange)
+                .foregroundStyle(isPermissionDenied ? .blue : .orange)
 
             VStack(spacing: 12) {
-                Text("Something Went Wrong")
+                Text(isPermissionDenied ? "Photo Access Required" : "Something Went Wrong")
                     .font(.title2)
                     .fontWeight(.semibold)
 
-                Text(message)
+                Text(isPermissionDenied ? "To import locations from your photos, enable photo access in Settings." : message)
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -781,14 +785,32 @@ private struct ErrorView: View {
             Spacer()
 
             VStack(spacing: 12) {
-                Button(action: onRetry) {
-                    Label("Try Again", systemImage: "arrow.clockwise")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(.tint)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                if isPermissionDenied {
+                    #if os(iOS)
+                    Button {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        Label("Open Settings", systemImage: "gear")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(.tint)
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    #endif
+                } else {
+                    Button(action: onRetry) {
+                        Label("Try Again", systemImage: "arrow.clockwise")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(.tint)
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
                 }
 
                 Button("Cancel", action: onDismiss)

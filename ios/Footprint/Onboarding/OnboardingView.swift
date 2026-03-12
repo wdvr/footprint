@@ -1,10 +1,11 @@
 import SwiftUI
+import Photos
 
 struct OnboardingView: View {
     @Binding var hasCompletedOnboarding: Bool
     @State private var currentPage = 0
 
-    private let totalPages = 3
+    private let totalPages = 4
 
     var body: some View {
         ZStack {
@@ -26,8 +27,10 @@ struct OnboardingView: View {
                     case 0:
                         WelcomePage()
                     case 1:
-                        FeaturesPage()
+                        PhotoExplanationPage()
                     case 2:
+                        LocationExplanationPage()
+                    case 3:
                         ReadyPage(onGetStarted: completeOnboarding)
                     default:
                         EmptyView()
@@ -48,34 +51,12 @@ struct OnboardingView: View {
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Page \(currentPage + 1) of \(totalPages)")
 
-                    // Navigation buttons
+                    // Navigation — Next only, no Back, no Skip
                     HStack {
-                        if currentPage > 0 {
-                            Button {
-                                withAnimation {
-                                    currentPage -= 1
-                                }
-                            } label: {
-                                HStack {
-                                    Image(systemName: "chevron.left")
-                                    Text("Back")
-                                }
-                            }
-                            .foregroundStyle(.secondary)
-                            .accessibilityLabel("Back")
-                            .accessibilityHint("Go to previous page")
-                        }
-
                         Spacer()
 
                         Button {
-                            if currentPage == totalPages - 1 {
-                                completeOnboarding()
-                            } else {
-                                withAnimation {
-                                    currentPage += 1
-                                }
-                            }
+                            handleNextButton()
                         } label: {
                             HStack {
                                 Text(currentPage == totalPages - 1 ? "Get Started" : "Next")
@@ -100,6 +81,35 @@ struct OnboardingView: View {
         }
     }
 
+    private func handleNextButton() {
+        switch currentPage {
+        case 1:
+            // Trigger system photo permission dialog, then advance
+            Task {
+                _ = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+                await MainActor.run {
+                    withAnimation {
+                        currentPage += 1
+                    }
+                }
+            }
+        case 2:
+            // Trigger system location permission dialog, then advance
+            LocationManager.shared.requestPermission()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                withAnimation {
+                    currentPage += 1
+                }
+            }
+        case totalPages - 1:
+            completeOnboarding()
+        default:
+            withAnimation {
+                currentPage += 1
+            }
+        }
+    }
+
     private func completeOnboarding() {
         hasCompletedOnboarding = true
         UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
@@ -113,7 +123,6 @@ private struct WelcomePage: View {
         VStack(spacing: 30) {
             Spacer()
 
-            // World map illustration
             ZStack {
                 Circle()
                     .fill(Color.blue.opacity(0.1))
@@ -144,59 +153,113 @@ private struct WelcomePage: View {
                     .padding(.horizontal, 40)
             }
 
+            VStack(alignment: .leading, spacing: 16) {
+                FeatureRow(icon: "map.fill", color: .blue, text: "Visualize your travels on an interactive map")
+                FeatureRow(icon: "star.fill", color: .orange, text: "Create a bucket list of places to visit")
+                FeatureRow(icon: "chart.bar.fill", color: .red, text: "See your travel statistics")
+            }
+            .padding(.horizontal, 30)
+            .padding(.top, 20)
+
             Spacer()
             Spacer()
         }
     }
 }
 
-// MARK: - Features Page
+// MARK: - Photo Explanation Page
 
-private struct FeaturesPage: View {
+private struct PhotoExplanationPage: View {
     var body: some View {
         VStack(spacing: 30) {
             Spacer()
 
             ZStack {
                 Circle()
-                    .fill(Color.orange.opacity(0.1))
+                    .fill(Color.purple.opacity(0.1))
                     .frame(width: 180, height: 180)
 
-                Image(systemName: "map.fill")
+                Image(systemName: "photo.on.rectangle.angled")
                     .font(.system(size: 80))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.blue, .green],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .foregroundStyle(.purple)
             }
             .accessibilityHidden(true)
 
             VStack(spacing: 16) {
-                Text("What You Can Do")
+                Text("Photo Import")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .accessibilityAddTraits(.isHeader)
 
-                Text("Everything you need to track your travels")
+                Text("Footprint can scan your photo library to discover places you've been, based on where your photos were taken.")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
             }
 
-            // Features list
-            VStack(alignment: .leading, spacing: 16) {
-                FeatureRow(icon: "map.fill", color: .blue, text: "Visualize your travels on an interactive map")
-                FeatureRow(icon: "star.fill", color: .orange, text: "Create a bucket list of places to visit")
-                FeatureRow(icon: "photo.fill", color: .purple, text: "Import locations from your photos")
-                FeatureRow(icon: "location.fill", color: .green, text: "Auto-detect countries as you travel")
-                FeatureRow(icon: "chart.bar.fill", color: .red, text: "See your travel statistics")
+            VStack(alignment: .leading, spacing: 12) {
+                InfoRow(icon: "map.fill", text: "See photo pins on your travel map")
+                InfoRow(icon: "clock.fill", text: "Automatically find past travels")
+                InfoRow(icon: "lock.shield.fill", text: "All processing happens on your device")
             }
-            .padding(.horizontal, 30)
-            .padding(.top, 10)
+            .padding(.horizontal, 40)
+
+            Text("On the next screen, you'll be asked to grant photo access.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+
+            Spacer()
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Location Explanation Page
+
+private struct LocationExplanationPage: View {
+    var body: some View {
+        VStack(spacing: 30) {
+            Spacer()
+
+            ZStack {
+                Circle()
+                    .fill(Color.green.opacity(0.1))
+                    .frame(width: 180, height: 180)
+
+                Image(systemName: "location.fill")
+                    .font(.system(size: 80))
+                    .foregroundStyle(.green)
+            }
+            .accessibilityHidden(true)
+
+            VStack(spacing: 16) {
+                Text("Location Tracking")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .accessibilityAddTraits(.isHeader)
+
+                Text("Footprint can use your location to automatically detect when you visit a new country, so you never forget to log a trip.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                InfoRow(icon: "flag.fill", text: "Auto-detect new countries")
+                InfoRow(icon: "bell.fill", text: "Get notified when visiting new places")
+                InfoRow(icon: "battery.100", text: "Battery-efficient background tracking")
+            }
+            .padding(.horizontal, 40)
+
+            Text("On the next screen, you'll be asked to grant location access.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
 
             Spacer()
             Spacer()
@@ -237,11 +300,10 @@ private struct ReadyPage: View {
                     .padding(.horizontal, 40)
             }
 
-            // Tips
             VStack(alignment: .leading, spacing: 16) {
                 TipRow(icon: "hand.tap.fill", text: "Tap any country to mark it as visited")
                 TipRow(icon: "star.fill", text: "Long press to add to your bucket list")
-                TipRow(icon: "gearshape.fill", text: "Enable location & photos in Settings")
+                TipRow(icon: "gearshape.fill", text: "Change permissions anytime in Settings")
             }
             .padding(.horizontal, 30)
             .padding(.top, 20)
@@ -269,6 +331,26 @@ private struct FeatureRow: View {
 
             Text(text)
                 .font(.subheadline)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct InfoRow: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 20)
+                .accessibilityHidden(true)
+
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
     }
