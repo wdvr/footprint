@@ -1,6 +1,6 @@
 """Visited places API routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel
 
 from src.api.routes.auth import get_current_user
@@ -319,6 +319,26 @@ async def update_visited_place(
         _update_user_stats(user_id)
 
     return _place_to_response(result)
+
+
+@router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_all_places(current_user: dict = Depends(get_current_user)):
+    """Delete all visited places for the current user."""
+    user_id = current_user["user_id"]
+    # Query all PLACE# items and batch delete them
+    places = db_service.get_user_visited_places(user_id)
+    for place in places:
+        db_service.delete_visited_place(
+            user_id,
+            place["region_type"],
+            place["region_code"],
+            soft_delete=False,  # Hard delete since we're clearing everything
+        )
+
+    # Update user stats
+    _update_user_stats(user_id)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.delete("/{region_type}/{region_code}", status_code=status.HTTP_204_NO_CONTENT)

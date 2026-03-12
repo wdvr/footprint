@@ -650,6 +650,11 @@ struct SettingsView: View {
     }
 
     private func clearAllData() {
+        // Delete all places from server first (fire and forget)
+        Task {
+            try? await APIClient.shared.deleteAllPlaces()
+        }
+
         // Soft-delete all visited places
         for place in visitedPlaces {
             place.isDeleted = true

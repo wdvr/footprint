@@ -396,6 +396,10 @@ actor APIClient {
         let _: EmptyResponse = try await request(path: "/places/\(regionType)/\(regionCode)", method: .delete, authenticated: true)
     }
 
+    func deleteAllPlaces() async throws {
+        let _: EmptyResponse = try await request(path: "/places", method: .delete, authenticated: true)
+    }
+
     // MARK: - Sync Endpoints
 
     struct SyncRequest: Encodable {
