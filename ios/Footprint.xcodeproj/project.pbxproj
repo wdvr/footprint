@@ -646,6 +646,7 @@
 /* Begin PBXShellScriptBuildPhase section */
 		75CB433CA122AED5E7169104 /* Upload dSYMs to Crashlytics */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -664,7 +665,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			alwaysOutOfDate = 1;
 			shellScript = "if [ \"${CONFIGURATION}\" = \"Release\" ]; then\n  \"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\" \\\n    --upload-symbols \\\n    -gsp \"${SRCROOT}/Footprint/GoogleService-Info.plist\" \\\n    -p ios\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -883,7 +883,7 @@
 				MARKETING_VERSION = 2.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wouterdevriendt.footprint;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -1000,7 +1000,7 @@
 				MARKETING_VERSION = 2.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wouterdevriendt.footprint;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};

@@ -1,9 +1,13 @@
 import SwiftUI
+import UIKit
 import Photos
+import CoreLocation
 
 struct OnboardingView: View {
     @Binding var hasCompletedOnboarding: Bool
     @State private var currentPage = 0
+    @State private var showPhotoSettingsAlert = false
+    @State private var showLocationSettingsAlert = false
 
     private let totalPages = 4
 
@@ -79,27 +83,65 @@ struct OnboardingView: View {
                 .padding(.bottom, 40)
             }
         }
+        .alert("Photo Access", isPresented: $showPhotoSettingsAlert) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Continue Without Photos") {
+                withAnimation { currentPage += 1 }
+            }
+        } message: {
+            Text("Photo access was previously denied. To enable photo import, open Settings and allow photo access for Footprint.")
+        }
+        .alert("Location Access", isPresented: $showLocationSettingsAlert) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Continue Without Location") {
+                withAnimation { currentPage += 1 }
+            }
+        } message: {
+            Text("Location access was previously denied. To enable automatic country detection, open Settings and allow location access for Footprint.")
+        }
     }
 
     private func handleNextButton() {
         switch currentPage {
         case 1:
-            // Trigger system photo permission dialog, then advance
-            Task {
-                _ = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
-                await MainActor.run {
-                    withAnimation {
-                        currentPage += 1
+            let currentStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+            if currentStatus == .denied || currentStatus == .restricted {
+                // Already denied — show settings alert
+                showPhotoSettingsAlert = true
+            } else if currentStatus == .notDetermined {
+                // First time — trigger system dialog
+                Task {
+                    _ = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+                    await MainActor.run {
+                        withAnimation { currentPage += 1 }
                     }
                 }
+            } else {
+                // Already authorized
+                withAnimation { currentPage += 1 }
             }
         case 2:
-            // Trigger system location permission dialog, then advance
-            LocationManager.shared.requestPermission()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                withAnimation {
-                    currentPage += 1
+            let currentStatus = LocationManager.shared.authorizationStatus
+            if currentStatus == .denied || currentStatus == .restricted {
+                // Already denied — show settings alert
+                showLocationSettingsAlert = true
+            } else if currentStatus == .notDetermined {
+                // First time — trigger system dialog
+                LocationManager.shared.requestPermission()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    withAnimation { currentPage += 1 }
                 }
+            } else {
+                // Already authorized
+                withAnimation { currentPage += 1 }
             }
         case totalPages - 1:
             completeOnboarding()
@@ -205,11 +247,9 @@ private struct PhotoExplanationPage: View {
             }
             .padding(.horizontal, 40)
 
-            Text("On the next screen, you'll be asked to grant photo access.")
+            Text("Tap Next to set up photo access.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
 
             Spacer()
             Spacer()
@@ -255,11 +295,9 @@ private struct LocationExplanationPage: View {
             }
             .padding(.horizontal, 40)
 
-            Text("On the next screen, you'll be asked to grant location access.")
+            Text("Tap Next to set up location access.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
 
             Spacer()
             Spacer()
