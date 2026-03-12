@@ -269,6 +269,7 @@ struct SettingsView: View {
     @Query(filter: #Predicate<VisitedPlace> { !$0.isDeleted })
     private var visitedPlaces: [VisitedPlace]
 
+    @State private var appSettings = AppSettings.shared
     @State private var showingSignOutAlert = false
     @State private var showingDeleteAccountAlert = false
     @State private var showingClearAllAlert = false
@@ -425,30 +426,27 @@ struct SettingsView: View {
 
                 // State/Province Tracking Section
                 Section {
-                    Picker(selection: Binding(
-                        get: { AppSettings.shared.countryTrackingMode },
-                        set: { AppSettings.shared.countryTrackingMode = $0 }
-                    )) {
+                    Picker(selection: $appSettings.countryTrackingMode) {
                         ForEach(AppSettings.CountryTrackingMode.allCases, id: \.self) { mode in
                             Text(mode.displayName).tag(mode)
                         }
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("State/Province Tracking")
-                            Text(AppSettings.shared.countryTrackingMode.description)
+                            Text(appSettings.countryTrackingMode.description)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
 
-                    if AppSettings.shared.countryTrackingMode == .custom {
+                    if appSettings.countryTrackingMode == .custom {
                         NavigationLink {
                             StateTrackingCountryPicker()
                         } label: {
                             HStack {
                                 Text("Countries")
                                 Spacer()
-                                let count = AppSettings.shared.stateTrackingCountries.count
+                                let count = appSettings.stateTrackingCountries.count
                                 let total = AppSettings.supportedStateCountries.count
                                 Text("\(count)/\(total)")
                                     .foregroundStyle(.secondary)
