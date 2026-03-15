@@ -238,7 +238,8 @@ jobs:
           -authenticationKeyID ${{ secrets.APP_STORE_CONNECT_KEY_ID }} \
           -authenticationKeyIssuerID ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
           CODE_SIGN_STYLE=Automatic \
-          DEVELOPMENT_TEAM=${{ env.TEAM_ID }}
+          DEVELOPMENT_TEAM=${{ env.TEAM_ID }} \
+          CURRENT_PROJECT_VERSION=${{ steps.version.outputs.build }}
 
     - name: Export IPA
       if: github.event_name != 'pull_request'
