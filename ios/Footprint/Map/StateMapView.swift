@@ -139,8 +139,8 @@ struct StateMapView: UIViewRepresentable {
         default:
             // Default fallback - world view
             return MKCoordinateRegion(
-                center: CLLocationCoordinate2D(latitude: 20, longitude: 0),
-                span: MKCoordinateSpan(latitudeDelta: 100, longitudeDelta: 180)
+                center: CLLocationCoordinate2D(latitude: 15, longitude: 0),
+                span: MKCoordinateSpan(latitudeDelta: 180, longitudeDelta: 360)
             )
         }
     }

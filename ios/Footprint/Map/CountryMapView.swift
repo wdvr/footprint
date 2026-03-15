@@ -231,10 +231,10 @@ struct CountryMapView: UIViewRepresentable {
         mapView.showsScale = true
         mapView.showsUserLocation = showUserLocation
 
-        // Set initial region to show the world
+        // Set initial region to show the full world
         let worldRegion = MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 20, longitude: 0),
-            span: MKCoordinateSpan(latitudeDelta: 120, longitudeDelta: 180)
+            center: CLLocationCoordinate2D(latitude: 15, longitude: 0),
+            span: MKCoordinateSpan(latitudeDelta: 180, longitudeDelta: 360)
         )
         mapView.setRegion(worldRegion, animated: false)
 
