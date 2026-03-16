@@ -172,53 +172,21 @@ jobs:
           rm -f $RUNNER_TEMP/cert.p12
         fi
 
-        # Ensure signing keychain is in search list and set as default
-        # Default keychain is where Xcode installs new dev certs — must be unlocked
+        # Save original default keychain to restore later
+        ORIGINAL_DEFAULT=$(security default-keychain -d user 2>/dev/null | tr -d '"' | xargs)
+
+        # Ensure signing keychain is in search list and set as default for build
         CURRENT_KEYCHAINS=$(security list-keychains -d user | tr -d '"' | tr '\n' ' ')
         if ! echo "$CURRENT_KEYCHAINS" | grep -q "ios-signing.keychain-db"; then
           security list-keychains -d user -s "$KEYCHAIN_PATH" $CURRENT_KEYCHAINS
         fi
         security default-keychain -s "$KEYCHAIN_PATH"
 
-        # Revoke stale dev certs from Apple + delete from local keychains
-        pip3 install --break-system-packages PyJWT cryptography 2>/dev/null || true
-        python3 - <<'PYEOF'
-        import jwt, time, os, json, urllib.request, urllib.error
-        key_id = os.environ["KEY_ID"]
-        issuer_id = os.environ["ISSUER_ID"]
-        key_path = f"{os.environ['RUNNER_TEMP']}/private_keys/AuthKey_{key_id}.p8"
-        with open(key_path) as f:
-            private_key = f.read()
-        token = jwt.encode(
-            {"iss": issuer_id, "iat": int(time.time()), "exp": int(time.time()) + 1200, "aud": "appstoreconnect-v1"},
-            private_key, algorithm="ES256", headers={"kid": key_id}
-        )
-        req = urllib.request.Request(
-            "https://api.appstoreconnect.apple.com/v1/certificates?filter[certificateType]=DEVELOPMENT",
-            headers={"Authorization": f"Bearer {token}"}
-        )
-        resp = json.loads(urllib.request.urlopen(req).read())
-        for cert in resp.get("data", []):
-            try:
-                urllib.request.urlopen(urllib.request.Request(
-                    f"https://api.appstoreconnect.apple.com/v1/certificates/{cert['id']}",
-                    method="DELETE", headers={"Authorization": f"Bearer {token}"}
-                ))
-                print(f"Revoked dev cert {cert['id']}")
-            except urllib.error.HTTPError as e:
-                print(f"Failed to revoke {cert['id']}: {e.code}")
-        PYEOF
-
-        # Delete stale dev certs from ALL local keychains
-        for kc in ~/Library/Keychains/login.keychain-db "$KEYCHAIN_PATH"; do
-          while security find-certificate -c "Apple Development: Created via API" -Z "$kc" 2>/dev/null | grep -q "SHA-1"; do
-            HASH=$(security find-certificate -c "Apple Development: Created via API" -Z "$kc" 2>/dev/null | grep "SHA-1" | head -1 | awk '{print $NF}')
-            security delete-certificate -Z "$HASH" "$kc" 2>/dev/null && echo "Deleted local cert $HASH from $kc" || break
-          done
+        # Only clean up old CI-created dev certs from the signing keychain (NOT login)
+        while security find-certificate -c "Apple Development: Created via API" -Z "$KEYCHAIN_PATH" 2>/dev/null | grep -q "SHA-1"; do
+          HASH=$(security find-certificate -c "Apple Development: Created via API" -Z "$KEYCHAIN_PATH" 2>/dev/null | grep "SHA-1" | head -1 | awk '{print $NF}')
+          security delete-certificate -Z "$HASH" "$KEYCHAIN_PATH" 2>/dev/null && echo "Deleted old CI cert $HASH" || break
         done
-
-        # Clear cached provisioning profiles
-        rm -rf ~/Library/MobileDevice/Provisioning\ Profiles/*
 
         # Ensure codesign can access keychain without UI prompt
         security set-key-partition-list -S apple-tool:,apple:,codesign: \
@@ -295,4 +263,6 @@ jobs:
     - name: Cleanup
       if: always()
       run: |
+        # Restore default keychain to login so local Xcode signing works
+        security default-keychain -s ~/Library/Keychains/login.keychain-db 2>/dev/null || true
         rm -rf $RUNNER_TEMP/private_keys $RUNNER_TEMP/Export
