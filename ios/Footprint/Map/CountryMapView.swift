@@ -228,20 +228,16 @@ struct CountryMapView: UIViewRepresentable {
         mapView.delegate = context.coordinator
         mapView.showsCompass = true
         mapView.showsScale = true
+        mapView.mapType = .mutedStandard
         mapView.showsUserLocation = showUserLocation
 
-        // Use globe view with muted style
-        let config = MKStandardMapConfiguration(emphasisStyle: .muted)
-        mapView.preferredConfiguration = config
-
-        // Set camera to show the full globe
-        let camera = MKMapCamera(
-            lookingAtCenter: CLLocationCoordinate2D(latitude: 20, longitude: 0),
-            fromDistance: 30_000_000,
-            pitch: 0,
-            heading: 0
+        // Set initial region to show the full world
+        let worldRegion = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 20, longitude: 0),
+            latitudinalMeters: 15_000_000,
+            longitudinalMeters: 40_000_000
         )
-        mapView.setCamera(camera, animated: false)
+        mapView.setRegion(worldRegion, animated: false)
 
         // Add tap gesture recognizer for country selection
         let tapGesture = UITapGestureRecognizer(

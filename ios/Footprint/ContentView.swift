@@ -941,6 +941,7 @@ struct WorldMapView: View {
     @State private var showingVisitDatePicker = false
     @State private var onThisDayService = OnThisDayService.shared
     @State private var showingTimelinePlayback = false
+    @State private var showingWorldMapExport = false
 
     private var visitedCountryCodes: Set<String> {
         Set(
@@ -1176,6 +1177,14 @@ struct WorldMapView: View {
                     HStack(spacing: 16) {
                         // Photo pins toggle - always visible when on map view
                         if !showListView {
+                            // Export full world map
+                            Button {
+                                showingWorldMapExport = true
+                            } label: {
+                                Image(systemName: "square.and.arrow.up")
+                            }
+                            .accessibilityLabel("Export world map")
+
                             // Timeline playback button
                             Button {
                                 showingTimelinePlayback = true
@@ -1302,6 +1311,15 @@ struct WorldMapView: View {
             }
             .fullScreenCover(isPresented: $showingTimelinePlayback) {
                 TimelinePlaybackView(visitedPlaces: visitedPlaces)
+            }
+            .sheet(isPresented: $showingWorldMapExport) {
+                WorldMapExportView(
+                    visitedCountryCodes: visitedCountryCodes,
+                    bucketListCountryCodes: bucketListCountryCodes,
+                    visitedStateCodes: visitedStateCodes,
+                    bucketListStateCodes: bucketListStateCodes,
+                    visitedPlaces: visitedPlaces
+                )
             }
             .sheet(isPresented: $showingPhotoGallery) {
                 PhotoGalleryView(photoAssetIDs: selectedPhotoAssetIDs)
