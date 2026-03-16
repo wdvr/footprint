@@ -231,15 +231,6 @@ struct CountryMapView: UIViewRepresentable {
         mapView.mapType = .mutedStandard
         mapView.showsUserLocation = showUserLocation
 
-        // Set initial camera to show the full world
-        let camera = MKMapCamera(
-            lookingAtCenter: CLLocationCoordinate2D(latitude: 20, longitude: 0),
-            fromDistance: 40_000_000,
-            pitch: 0,
-            heading: 0
-        )
-        mapView.setCamera(camera, animated: false)
-
         // Add tap gesture recognizer for country selection
         let tapGesture = UITapGestureRecognizer(
             target: context.coordinator,
@@ -254,6 +245,16 @@ struct CountryMapView: UIViewRepresentable {
     }
 
     func updateUIView(_ mapView: MKMapView, context: Context) {
+        // Set initial region to show the full world on first layout
+        if !context.coordinator.hasSetInitialRegion && mapView.bounds.width > 0 {
+            context.coordinator.hasSetInitialRegion = true
+            let region = MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 20, longitude: 20),
+                span: MKCoordinateSpan(latitudeDelta: 160, longitudeDelta: 360)
+            )
+            mapView.setRegion(region, animated: false)
+        }
+
         // Update visited countries and states when they change
         context.coordinator.visitedCountryCodes = visitedCountryCodes
         context.coordinator.bucketListCountryCodes = bucketListCountryCodes
@@ -308,6 +309,7 @@ struct CountryMapView: UIViewRepresentable {
         var onPhotoPinTapped: (([String]) -> Void)?
         weak var mapView: MKMapView?
         var photoPinsShown: Bool = false
+        var hasSetInitialRegion: Bool = false
 
         init(_ parent: CountryMapView) {
             self.parent = parent
