@@ -115,8 +115,7 @@ enum WorldMapRenderer {
         let options = MKMapSnapshotter.Options()
         options.region = MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 20, longitude: 0),
-            latitudinalMeters: 15_000_000,
-            longitudinalMeters: 40_000_000
+            span: MKCoordinateSpan(latitudeDelta: 150, longitudeDelta: 360)
         )
         options.size = size
         options.mapType = .mutedStandard

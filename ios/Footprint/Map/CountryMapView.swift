@@ -231,13 +231,14 @@ struct CountryMapView: UIViewRepresentable {
         mapView.mapType = .mutedStandard
         mapView.showsUserLocation = showUserLocation
 
-        // Set initial region to show the full world
-        let worldRegion = MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 20, longitude: 0),
-            latitudinalMeters: 15_000_000,
-            longitudinalMeters: 40_000_000
+        // Set initial camera to show the full world
+        let camera = MKMapCamera(
+            lookingAtCenter: CLLocationCoordinate2D(latitude: 20, longitude: 0),
+            fromDistance: 40_000_000,
+            pitch: 0,
+            heading: 0
         )
-        mapView.setRegion(worldRegion, animated: false)
+        mapView.setCamera(camera, animated: false)
 
         // Add tap gesture recognizer for country selection
         let tapGesture = UITapGestureRecognizer(
