@@ -231,6 +231,9 @@ struct CountryMapView: UIViewRepresentable {
         mapView.mapType = .mutedStandard
         mapView.showsUserLocation = showUserLocation
 
+        // Allow zooming all the way out to see the full world
+        mapView.cameraZoomRange = MKMapView.CameraZoomRange(minCenterCoordinateDistance: 1000, maxCenterCoordinateDistance: 50_000_000)
+
         // Add tap gesture recognizer for country selection
         let tapGesture = UITapGestureRecognizer(
             target: context.coordinator,

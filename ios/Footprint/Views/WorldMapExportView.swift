@@ -12,7 +12,6 @@ enum PosterDisplayMode: String, CaseIterable, Identifiable {
     case passport
 
     var id: String { rawValue }
-
     var label: String {
         switch self {
         case .live: return "Live"
@@ -22,7 +21,6 @@ enum PosterDisplayMode: String, CaseIterable, Identifiable {
         case .passport: return "Stamps"
         }
     }
-
     var icon: String {
         switch self {
         case .live: return "map.fill"
@@ -32,29 +30,19 @@ enum PosterDisplayMode: String, CaseIterable, Identifiable {
         case .passport: return "seal.fill"
         }
     }
+
+    /// Whether this mode uses rendered images (vs interactive map)
+    var isRendered: Bool { self != .live }
 }
 
 enum PosterLabelMode: String, CaseIterable, Identifiable {
-    case none
-    case onMap
-    case list
-
+    case none, onMap, list
     var id: String { rawValue }
-
     var label: String {
-        switch self {
-        case .none: return "None"
-        case .onMap: return "On Map"
-        case .list: return "List"
-        }
+        switch self { case .none: return "None"; case .onMap: return "On Map"; case .list: return "List" }
     }
-
     var icon: String {
-        switch self {
-        case .none: return "text.badge.xmark"
-        case .onMap: return "character.textbox"
-        case .list: return "list.bullet"
-        }
+        switch self { case .none: return "text.badge.xmark"; case .onMap: return "character.textbox"; case .list: return "list.bullet" }
     }
 }
 
@@ -68,7 +56,7 @@ struct WorldMapExportView: View {
     let visitedPlaces: [VisitedPlace]
 
     @Environment(\.dismiss) private var dismiss
-    @State private var displayMode: PosterDisplayMode = .highlighted
+    @State private var displayMode: PosterDisplayMode = .live
     @State private var labelMode: PosterLabelMode = .none
     @State private var colorScheme: PosterColorScheme = .dark
     @State private var renderedImage: UIImage?
@@ -79,48 +67,46 @@ struct WorldMapExportView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(spacing: 16) {
                     posterPreview
                         .padding(.horizontal)
-                        .onTapGesture { showFullScreen = true }
+                        .onTapGesture {
+                            if displayMode.isRendered { showFullScreen = true }
+                        }
 
+                    // Style picker - always visible
                     pickerSection("Style") {
-                        HStack(spacing: 8) {
-                            ForEach(PosterDisplayMode.allCases) { mode in
-                                modeButton(mode)
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(PosterDisplayMode.allCases) { mode in
+                                    modeButton(mode)
+                                }
                             }
                         }
                     }
 
-                    pickerSection("Labels") {
-                        HStack(spacing: 12) {
-                            ForEach(PosterLabelMode.allCases) { mode in
-                                labelButton(mode)
+                    // Labels & Theme - only for rendered modes
+                    if displayMode.isRendered {
+                        pickerSection("Labels") {
+                            HStack(spacing: 12) {
+                                ForEach(PosterLabelMode.allCases) { labelButton($0) }
                             }
                         }
-                    }
 
-                    pickerSection("Theme") {
-                        HStack(spacing: 12) {
-                            ForEach(PosterColorScheme.allCases) { scheme in
-                                schemeButton(scheme)
+                        pickerSection("Theme") {
+                            HStack(spacing: 12) {
+                                ForEach(PosterColorScheme.allCases) { schemeButton($0) }
                             }
                         }
-                    }
 
-                    Button {
-                        shareImage()
-                    } label: {
-                        Label("Share Poster", systemImage: "square.and.arrow.up")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(.blue)
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        Button { shareImage() } label: {
+                            Label("Share Poster", systemImage: "square.and.arrow.up")
+                                .font(.headline).frame(maxWidth: .infinity).padding()
+                                .background(.blue).foregroundStyle(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        .padding(.horizontal).disabled(isRendering)
                     }
-                    .padding(.horizontal)
-                    .disabled(isRendering)
                 }
                 .padding(.vertical)
             }
@@ -129,9 +115,11 @@ struct WorldMapExportView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } }
-                ToolbarItem(placement: .primaryAction) {
-                    Button { showFullScreen = true } label: {
-                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                if displayMode.isRendered {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button { showFullScreen = true } label: {
+                            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        }
                     }
                 }
             }
@@ -141,10 +129,10 @@ struct WorldMapExportView: View {
             .fullScreenCover(isPresented: $showFullScreen) {
                 PosterFullScreenView(image: renderedImage)
             }
-            .task { renderPreview() }
-            .onChange(of: displayMode) { renderPreview() }
-            .onChange(of: colorScheme) { renderPreview() }
-            .onChange(of: labelMode) { renderPreview() }
+            .task { if displayMode.isRendered { renderPreview() } }
+            .onChange(of: displayMode) { if displayMode.isRendered { renderPreview() } }
+            .onChange(of: colorScheme) { if displayMode.isRendered { renderPreview() } }
+            .onChange(of: labelMode) { if displayMode.isRendered { renderPreview() } }
         }
     }
 
@@ -155,10 +143,11 @@ struct WorldMapExportView: View {
         }
     }
 
+    // MARK: - Preview
+
     @ViewBuilder
     private var posterPreview: some View {
         if displayMode == .live {
-            // Interactive MapKit view
             CountryMapView(
                 visitedCountryCodes: visitedCountryCodes,
                 bucketListCountryCodes: bucketListCountryCodes,
@@ -167,29 +156,30 @@ struct WorldMapExportView: View {
                 selectedCountry: .constant(nil),
                 centerOnUserLocation: .constant(false)
             )
-            .frame(height: 300)
+            .frame(height: 400)
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
+            .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
         } else if let image = renderedImage {
             Image(uiImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
+                .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
                 .overlay(alignment: .bottomTrailing) {
                     Image(systemName: "arrow.up.left.and.arrow.down.right")
                         .font(.caption).padding(6)
                         .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .padding(8)
+                        .clipShape(RoundedRectangle(cornerRadius: 6)).padding(8)
                 }
         } else {
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(colorScheme.backgroundColor))
-                .aspectRatio(2.0, contentMode: .fit)
+                .aspectRatio(2.5, contentMode: .fit)
                 .overlay { ProgressView() }
         }
     }
+
+    // MARK: - Buttons
 
     private func modeButton(_ mode: PosterDisplayMode) -> some View {
         Button { displayMode = mode } label: {
@@ -197,7 +187,7 @@ struct WorldMapExportView: View {
                 Image(systemName: mode.icon).font(.title3)
                 Text(mode.label).font(.caption2).fontWeight(.medium)
             }
-            .frame(maxWidth: .infinity).padding(.vertical, 10)
+            .frame(width: 64).padding(.vertical, 10)
             .background(displayMode == mode ? Color.blue.opacity(0.15) : Color(.secondarySystemGroupedBackground))
             .foregroundStyle(displayMode == mode ? .blue : .primary)
             .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -234,12 +224,14 @@ struct WorldMapExportView: View {
         }
     }
 
+    // MARK: - Rendering
+
     private func renderPreview() {
         isRendering = true
         let p = RenderParams(displayMode: displayMode, labelMode: labelMode, colorScheme: colorScheme,
                              visited: visitedCountryCodes, bucketList: bucketListCountryCodes)
         Task.detached {
-            let img = PosterMapRenderer.renderImage(width: 2400, params: p)
+            let img = PosterMapRenderer.renderImage(width: 3600, params: p)
             await MainActor.run { renderedImage = img; isRendering = false }
         }
     }
@@ -249,7 +241,7 @@ struct WorldMapExportView: View {
         let p = RenderParams(displayMode: displayMode, labelMode: labelMode, colorScheme: colorScheme,
                              visited: visitedCountryCodes, bucketList: bucketListCountryCodes)
         Task.detached {
-            let img = PosterMapRenderer.renderImage(width: 4000, params: p)
+            let img = PosterMapRenderer.renderImage(width: 6000, params: p)
             await MainActor.run { renderedImage = img; isRendering = false; showShareSheet = true }
         }
     }
@@ -286,7 +278,7 @@ struct PosterFullScreenView: View {
                         }
                     }
             }
-            VStack { HStack { Spacer(); Button { dismiss() } label: { Image(systemName: "xmark.circle.fill").font(.title).foregroundStyle(.white.opacity(0.8)).padding() } }; Spacer() }
+            VStack { HStack { Spacer(); Button { dismiss() } label: { Image(systemName: "xmark.circle.fill").font(.title).symbolRenderingMode(.hierarchical).foregroundStyle(.white).padding() } }; Spacer() }
         }
         .statusBarHidden()
     }
@@ -305,10 +297,13 @@ struct RenderParams: Sendable {
 // MARK: - Renderer
 
 enum PosterMapRenderer {
+    // More horizontal = less vertically stretched
+    private static let mapAspectRatio: CGFloat = 2.5
+
     static func renderImage(width: CGFloat, params: RenderParams) -> UIImage {
         let hasListBelow = params.labelMode == .list
-        let listH: CGFloat = hasListBelow ? width * 0.2 : 0
-        let mapH = width / 2.0
+        let mapH = width / mapAspectRatio
+        let listH: CGFloat = hasListBelow ? width * 0.15 : 0
         let size = CGSize(width: width, height: mapH + listH)
         let boundaries = GeoJSONParser.parseCountries()
         guard !boundaries.isEmpty else { return UIImage() }
@@ -317,17 +312,18 @@ enum PosterMapRenderer {
         return renderer.image { ctx in
             let c = ctx.cgContext
             let s = params.colorScheme
+
+            // Background
             c.setFillColor(s.backgroundColor.cgColor)
             c.fill(CGRect(origin: .zero, size: size))
 
-            let titleH: CGFloat = mapH * 0.07
-            let footerH: CGFloat = mapH * 0.05
-            let sideM: CGFloat = width * 0.03
+            let titleH: CGFloat = mapH * 0.06
+            let footerH: CGFloat = mapH * 0.04
+            let sideM: CGFloat = width * 0.025
             let mapRect = CGRect(x: sideM, y: titleH, width: width - sideM * 2, height: mapH - titleH - footerH)
 
             switch params.displayMode {
-            case .live: drawHighlighted(c, mapRect, boundaries, params) // fallback for share
-            case .highlighted: drawHighlighted(c, mapRect, boundaries, params)
+            case .live, .highlighted: drawHighlighted(c, mapRect, boundaries, params)
             case .scratched: drawScratched(c, mapRect, boundaries, params)
             case .pins: drawPins(c, mapRect, boundaries, params)
             case .passport: drawPassport(c, mapRect, boundaries, params)
@@ -335,9 +331,8 @@ enum PosterMapRenderer {
 
             if params.labelMode == .onMap { drawLabelsOnMap(c, mapRect, boundaries, params) }
 
-            drawTitle(c, width, titleH, s)
-            drawFooter(c, width, mapH, footerH, s, params.visited.count)
-
+            drawTitle(c, width, titleH, s, params.visited.count)
+            drawFooter(c, width, mapH, footerH, s)
             if hasListBelow { drawCountryList(c, boundaries, params, mapH, width, listH) }
         }
     }
@@ -347,9 +342,11 @@ enum PosterMapRenderer {
     private static func drawHighlighted(_ c: CGContext, _ r: CGRect,
                                         _ bs: [GeoJSONParser.CountryBoundary], _ p: RenderParams) {
         for b in bs {
-            let fill: UIColor = p.visited.contains(b.id) ? p.colorScheme.visitedColor
-                : p.bucketList.contains(b.id) ? .systemOrange : p.colorScheme.landColor
-            drawCountry(c, r, b, fill, p.colorScheme.borderColor)
+            let fill: UIColor
+            if p.visited.contains(b.id) { fill = p.colorScheme.visitedColor }
+            else if p.bucketList.contains(b.id) { fill = .systemOrange }
+            else { fill = p.colorScheme.landColor }
+            drawCountry(c, r, b, fill, p.colorScheme.borderColor, 0.5)
         }
     }
 
@@ -360,86 +357,66 @@ enum PosterMapRenderer {
         let scheme = p.colorScheme
         let isSilver = (scheme == .dark || scheme == .ocean)
         let metalBase: UIColor = isSilver
-            ? UIColor(red: 0.75, green: 0.76, blue: 0.78, alpha: 1.0)
-            : UIColor(red: 0.82, green: 0.74, blue: 0.48, alpha: 1.0)
-        let metalDark: UIColor = isSilver
-            ? UIColor(red: 0.60, green: 0.61, blue: 0.63, alpha: 1.0)
-            : UIColor(red: 0.68, green: 0.60, blue: 0.36, alpha: 1.0)
+            ? UIColor(red: 0.78, green: 0.79, blue: 0.81, alpha: 1.0)
+            : UIColor(red: 0.84, green: 0.76, blue: 0.50, alpha: 1.0)
 
-        // Layer 1: Colorful map underneath everything
+        // Layer 1: Colorful map underneath
         for b in bs {
             let hue = countryHue(b.id)
-            let color = UIColor(hue: hue, saturation: 0.6, brightness: 0.88, alpha: 1.0)
-            drawCountry(c, r, b, color, color.withAlphaComponent(0.5), 0.3)
+            let color = UIColor(hue: hue, saturation: 0.55, brightness: 0.88, alpha: 1.0)
+            drawCountry(c, r, b, color, color.withAlphaComponent(0.4), 0.3)
         }
 
-        // Layer 2: Full metallic overlay on ALL countries
+        // Layer 2: Metallic overlay on ALL countries
         for b in bs {
-            drawCountry(c, r, b, metalBase, metalDark.withAlphaComponent(0.3), 0.3)
+            drawCountry(c, r, b, metalBase, metalBase.withAlphaComponent(0.3), 0.2)
         }
 
-        // Layer 3: Metallic texture (subtle noise-like pattern)
-        c.saveGState()
-        let hash0: UInt64 = 42
-        for i in 0..<Int(r.width / 3) {
-            let x = r.minX + CGFloat(i) * 3
-            let yOff = CGFloat((hash0 &* UInt64(i * 7 + 3)) % 5) - 2
-            c.setStrokeColor(UIColor.white.withAlphaComponent(0.04).cgColor)
-            c.setLineWidth(0.5)
-            c.move(to: CGPoint(x: x, y: r.minY + yOff))
-            c.addLine(to: CGPoint(x: x + 2, y: r.maxY + yOff))
-            c.strokePath()
-        }
-        c.restoreGState()
-
-        // Layer 4: "Scratch off" visited countries — remove metal, reveal color
-        // Use clip-to-country + clear to punch through the metallic layer
+        // Layer 3: "Scratch off" visited countries — reveal color, leave organic residue
         for b in bs {
             guard p.visited.contains(b.id) else { continue }
 
-            // Redraw the colorful country on top (punching through metal)
+            // Reveal the colorful country
             let hue = countryHue(b.id)
-            let revealColor = UIColor(hue: hue, saturation: 0.6, brightness: 0.88, alpha: 1.0)
-            drawCountry(c, r, b, revealColor, revealColor.withAlphaComponent(0.7), 0.3)
+            let revealColor = UIColor(hue: hue, saturation: 0.55, brightness: 0.88, alpha: 1.0)
+            drawCountry(c, r, b, revealColor, revealColor.withAlphaComponent(0.6), 0.4)
 
-            // Draw organic scratch residue patches (unscratched metallic bits remaining)
+            // Organic residue patches — elliptical blobs of remaining metal
             for polygon in b.polygons {
                 let coords = polygon.coordinates
                 guard coords.count >= 3 else { continue }
-
                 let path = countryPath(coords, r)
+                let bounds = path.boundingBox
+                guard bounds.width > 2, bounds.height > 2 else { continue }
+
                 c.saveGState()
                 c.addPath(path)
                 c.clip()
 
-                let bounds = path.boundingBox
                 let h = countryHash(b.id)
-
-                // Draw 2-4 organic residue patches (curved blobs, not lines)
-                let patchCount = 2 + Int(h % 3)
+                let patchCount = 2 + Int(h % 4)
                 for pi in 0..<patchCount {
-                    let ph = h &* UInt64(pi + 1) &+ UInt64(pi * 37)
+                    let ph = h &* UInt64(pi + 1) &+ UInt64(pi * 53)
                     let cx = bounds.minX + CGFloat(ph % UInt64(max(1, bounds.width)))
                     let cy = bounds.minY + CGFloat((ph >> 8) % UInt64(max(1, bounds.height)))
-                    let sw = bounds.width * (0.15 + CGFloat((ph >> 4) % 20) / 100.0)
-                    let sh = bounds.height * (0.1 + CGFloat((ph >> 12) % 15) / 100.0)
+                    let sw = bounds.width * (0.1 + CGFloat((ph >> 4) % 25) / 100.0)
+                    let sh = bounds.height * (0.08 + CGFloat((ph >> 12) % 20) / 100.0)
 
-                    let blob = CGMutablePath()
-                    blob.addEllipse(in: CGRect(x: cx - sw/2, y: cy - sh/2, width: sw, height: sh))
-
-                    c.addPath(blob)
-                    c.setFillColor(metalBase.withAlphaComponent(0.45).cgColor)
-                    c.fillPath()
-
-                    // Slightly darker edge on residue
-                    c.addPath(blob)
-                    c.setStrokeColor(metalDark.withAlphaComponent(0.2).cgColor)
-                    c.setLineWidth(0.8)
-                    c.strokePath()
+                    // Rotated ellipse for organic feel
+                    let angle = CGFloat((ph >> 16) % 180) * .pi / 180.0
+                    c.saveGState()
+                    c.translateBy(x: cx, y: cy)
+                    c.rotate(by: angle)
+                    let blob = CGRect(x: -sw/2, y: -sh/2, width: sw, height: sh)
+                    c.setFillColor(metalBase.withAlphaComponent(0.5).cgColor)
+                    c.fillEllipse(in: blob)
+                    c.restoreGState()
                 }
-
                 c.restoreGState()
             }
+
+            // Edge highlight
+            drawCountry(c, r, b, .clear, UIColor.white.withAlphaComponent(0.4), 0.8)
         }
     }
 
@@ -447,111 +424,145 @@ enum PosterMapRenderer {
 
     private static func drawPins(_ c: CGContext, _ r: CGRect,
                                  _ bs: [GeoJSONParser.CountryBoundary], _ p: RenderParams) {
-        for b in bs { drawCountry(c, r, b, p.colorScheme.landColor, p.colorScheme.borderColor) }
-        for b in bs where p.visited.contains(b.id) { drawPin(c, centroid(b, r), p.colorScheme.visitedColor, r.width) }
-        for b in bs where p.bucketList.contains(b.id) { drawPin(c, centroid(b, r), .systemOrange, r.width, true) }
+        for b in bs { drawCountry(c, r, b, p.colorScheme.landColor, p.colorScheme.borderColor, 0.5) }
+        // Scale pin size to map width
+        let pinR = max(4, r.width * 0.005)
+        for b in bs where p.visited.contains(b.id) {
+            drawPin(c, centroid(b, r), p.colorScheme.visitedColor, pinR)
+        }
+        for b in bs where p.bucketList.contains(b.id) {
+            drawPin(c, centroid(b, r), .systemOrange, pinR * 0.7)
+        }
     }
 
-    // MARK: - Passport Stamps
+    // MARK: - Passport Stamps (with collision avoidance)
 
     private static func drawPassport(_ c: CGContext, _ r: CGRect,
                                      _ bs: [GeoJSONParser.CountryBoundary], _ p: RenderParams) {
-        // Draw all countries in subtle land color
-        for b in bs { drawCountry(c, r, b, p.colorScheme.landColor, p.colorScheme.borderColor) }
+        for b in bs { drawCountry(c, r, b, p.colorScheme.landColor, p.colorScheme.borderColor, 0.5) }
 
-        // Draw passport-style stamps on visited countries
         let stampColors: [UIColor] = [
-            UIColor(red: 0.8, green: 0.15, blue: 0.15, alpha: 0.7),   // red
-            UIColor(red: 0.1, green: 0.3, blue: 0.7, alpha: 0.7),     // blue
-            UIColor(red: 0.15, green: 0.55, blue: 0.15, alpha: 0.7),   // green
-            UIColor(red: 0.5, green: 0.1, blue: 0.5, alpha: 0.7),     // purple
+            UIColor(red: 0.75, green: 0.12, blue: 0.12, alpha: 0.75),
+            UIColor(red: 0.10, green: 0.28, blue: 0.68, alpha: 0.75),
+            UIColor(red: 0.12, green: 0.50, blue: 0.12, alpha: 0.75),
+            UIColor(red: 0.45, green: 0.10, blue: 0.50, alpha: 0.75),
+            UIColor(red: 0.70, green: 0.45, blue: 0.05, alpha: 0.75),
         ]
 
         UIGraphicsPushContext(c)
-        let stampSize = max(16, r.width * 0.028)
+        let baseStampSize = max(14, r.width * 0.022)
+        var placedRects: [CGRect] = []
 
-        for b in bs {
-            guard p.visited.contains(b.id) else { continue }
+        // Sort by area (largest countries first) for better placement
+        let sorted = bs.filter { p.visited.contains($0.id) }
+            .sorted { countryArea($0, r) > countryArea($1, r) }
+
+        for b in sorted {
             let center = centroid(b, r)
             let h = countryHash(b.id)
+            let area = countryArea(b, r)
+
+            // Scale stamp size based on country area
+            let sizeScale = min(2.0, max(0.6, sqrt(area) / (r.width * 0.04)))
+            let stampSize = baseStampSize * sizeScale
+            let rotation = CGFloat(Int(h >> 4) % 25 - 12) * .pi / 180.0
+
+            let stampRect = CGRect(x: center.x - stampSize, y: center.y - stampSize,
+                                   width: stampSize * 2, height: stampSize * 2)
+
+            // Skip if overlaps
+            if placedRects.contains(where: { $0.intersects(stampRect.insetBy(dx: -2, dy: -2)) }) { continue }
+            guard r.contains(CGPoint(x: center.x, y: center.y)) else { continue }
+            placedRects.append(stampRect)
+
             let colorIdx = Int(h % UInt64(stampColors.count))
             let color = stampColors[colorIdx]
-            let rotation = CGFloat(Int(h >> 4) % 30 - 15) * .pi / 180.0
 
             c.saveGState()
             c.translateBy(x: center.x, y: center.y)
             c.rotate(by: rotation)
 
-            // Stamp circle border
-            let stampRect = CGRect(x: -stampSize/2, y: -stampSize/2, width: stampSize, height: stampSize)
+            let outerRect = CGRect(x: -stampSize, y: -stampSize, width: stampSize * 2, height: stampSize * 2)
+            let borderW = max(1.5, stampSize * 0.06)
+
+            // Outer circle
             c.setStrokeColor(color.cgColor)
-            c.setLineWidth(max(1.5, stampSize * 0.08))
-            c.strokeEllipse(in: stampRect)
+            c.setLineWidth(borderW)
+            c.strokeEllipse(in: outerRect)
 
             // Inner circle
-            let innerRect = stampRect.insetBy(dx: stampSize * 0.12, dy: stampSize * 0.12)
-            c.setLineWidth(max(0.5, stampSize * 0.03))
+            let innerRect = outerRect.insetBy(dx: stampSize * 0.15, dy: stampSize * 0.15)
+            c.setLineWidth(borderW * 0.4)
             c.strokeEllipse(in: innerRect)
 
-            // Country code text
-            let fontSize = max(5, stampSize * 0.3)
+            // Country code
+            let fontSize = max(5, stampSize * 0.45)
             let font = UIFont.systemFont(ofSize: fontSize, weight: .heavy)
             let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]
             let code = NSAttributedString(string: b.id, attributes: attrs)
             let codeSize = code.size()
-            code.draw(at: CGPoint(x: -codeSize.width / 2, y: -codeSize.height / 2))
+            code.draw(at: CGPoint(x: -codeSize.width / 2, y: -fontSize * 0.2 - codeSize.height / 2))
+
+            // Country name below code (smaller)
+            let nameFont = UIFont.systemFont(ofSize: max(3, fontSize * 0.35), weight: .medium)
+            let nameAttrs: [NSAttributedString.Key: Any] = [.font: nameFont, .foregroundColor: color]
+            let name = NSAttributedString(string: b.name.uppercased(), attributes: nameAttrs)
+            let nameSize = name.size()
+            if nameSize.width < stampSize * 1.6 {
+                name.draw(at: CGPoint(x: -nameSize.width / 2, y: fontSize * 0.25))
+            }
 
             c.restoreGState()
         }
         UIGraphicsPopContext()
     }
 
-    // MARK: - Labels on Map (with collision avoidance)
+    // MARK: - Labels on Map (collision avoidance)
 
     private static func drawLabelsOnMap(_ c: CGContext, _ r: CGRect,
                                         _ bs: [GeoJSONParser.CountryBoundary], _ p: RenderParams) {
         UIGraphicsPushContext(c)
-        let fontSize = max(8, r.width * 0.007)
-        let font = UIFont.systemFont(ofSize: fontSize, weight: .semibold)
+        let baseFontSize = max(7, r.width * 0.006)
         var placedRects: [CGRect] = []
 
-        // Sort by polygon area (largest first) so big countries get labeled first
         let sorted = bs.filter { p.visited.contains($0.id) }
             .sorted { countryArea($0, r) > countryArea($1, r) }
 
         for b in sorted {
             let center = centroid(b, r)
+            let area = countryArea(b, r)
+
+            // Scale font to country size
+            let sizeScale = min(1.8, max(0.7, sqrt(area) / (r.width * 0.03)))
+            let fontSize = baseFontSize * sizeScale
+            let font = UIFont.systemFont(ofSize: fontSize, weight: .semibold)
+
             let attrs: [NSAttributedString.Key: Any] = [
                 .font: font, .foregroundColor: p.colorScheme.textColor.withAlphaComponent(0.9)
             ]
             let str = NSAttributedString(string: b.name, attributes: attrs)
             let strSize = str.size()
-
-            let labelRect = CGRect(x: center.x - strSize.width / 2 - 4,
+            let labelRect = CGRect(x: center.x - strSize.width / 2 - 3,
                                    y: center.y - strSize.height / 2 - 2,
-                                   width: strSize.width + 8, height: strSize.height + 4)
+                                   width: strSize.width + 6, height: strSize.height + 4)
 
-            // Skip if overlaps with any placed label
-            if placedRects.contains(where: { $0.intersects(labelRect.insetBy(dx: -2, dy: -1)) }) { continue }
-            // Skip if outside map bounds
+            if placedRects.contains(where: { $0.intersects(labelRect.insetBy(dx: -1, dy: -1)) }) { continue }
             guard r.contains(labelRect) else { continue }
-
             placedRects.append(labelRect)
 
             // Background pill
-            c.setFillColor(p.colorScheme.backgroundColor.withAlphaComponent(0.75).cgColor)
-            c.addPath(UIBezierPath(roundedRect: labelRect, cornerRadius: 3).cgPath)
+            c.setFillColor(p.colorScheme.backgroundColor.withAlphaComponent(0.8).cgColor)
+            c.addPath(UIBezierPath(roundedRect: labelRect, cornerRadius: fontSize * 0.3).cgPath)
             c.fillPath()
+            // Subtle border
+            c.setStrokeColor(p.colorScheme.borderColor.withAlphaComponent(0.3).cgColor)
+            c.setLineWidth(0.5)
+            c.addPath(UIBezierPath(roundedRect: labelRect, cornerRadius: fontSize * 0.3).cgPath)
+            c.strokePath()
 
             str.draw(at: CGPoint(x: center.x - strSize.width / 2, y: center.y - strSize.height / 2))
         }
         UIGraphicsPopContext()
-    }
-
-    private static func countryArea(_ b: GeoJSONParser.CountryBoundary, _ r: CGRect) -> CGFloat {
-        guard let biggest = b.polygons.max(by: { $0.coordinates.count < $1.coordinates.count }) else { return 0 }
-        let path = countryPath(biggest.coordinates, r)
-        return path.boundingBox.width * path.boundingBox.height
     }
 
     // MARK: - Country List
@@ -562,30 +573,26 @@ enum PosterMapRenderer {
         guard !names.isEmpty else { return }
         UIGraphicsPushContext(c)
 
-        c.setStrokeColor(p.colorScheme.borderColor.withAlphaComponent(0.3).cgColor)
+        // Separator
+        c.setStrokeColor(p.colorScheme.borderColor.withAlphaComponent(0.2).cgColor)
         c.setLineWidth(0.5)
-        c.move(to: CGPoint(x: w * 0.03, y: y + 4))
-        c.addLine(to: CGPoint(x: w * 0.97, y: y + 4))
+        c.move(to: CGPoint(x: w * 0.025, y: y + 2))
+        c.addLine(to: CGPoint(x: w * 0.975, y: y + 2))
         c.strokePath()
 
-        let fs: CGFloat = max(8, w * 0.009)
-        let bold = UIFont.systemFont(ofSize: fs * 1.1, weight: .semibold)
+        let fs: CGFloat = max(7, w * 0.007)
         let reg = UIFont.systemFont(ofSize: fs, weight: .regular)
-
-        NSAttributedString(string: "Countries Visited", attributes: [.font: bold, .foregroundColor: p.colorScheme.textColor])
-            .draw(at: CGPoint(x: w * 0.03, y: y + 10))
-
-        let startY = y + 10 + fs * 1.8
-        let colW = w * 0.23
-        let lineH = fs * 1.4
-        let margin = w * 0.03
-        let maxPerCol = Int((h - 24) / lineH)
+        let lineH = fs * 1.35
+        let margin = w * 0.025
+        let maxPerCol = max(1, Int((h - 16) / lineH))
+        let cols = min(5, (names.count + maxPerCol - 1) / maxPerCol)
+        let colW = (w - margin * 2) / CGFloat(cols)
 
         for (i, name) in names.enumerated() {
             let col = i / maxPerCol; let row = i % maxPerCol
-            if col >= 4 { break }
+            if col >= cols { break }
             NSAttributedString(string: name, attributes: [.font: reg, .foregroundColor: p.colorScheme.subtitleColor])
-                .draw(at: CGPoint(x: margin + CGFloat(col) * colW, y: startY + CGFloat(row) * lineH))
+                .draw(at: CGPoint(x: margin + CGFloat(col) * colW, y: y + 8 + CGFloat(row) * lineH))
         }
         UIGraphicsPopContext()
     }
@@ -595,9 +602,7 @@ enum PosterMapRenderer {
     private static func drawCountry(_ c: CGContext, _ r: CGRect, _ b: GeoJSONParser.CountryBoundary,
                                     _ fill: UIColor, _ stroke: UIColor, _ lw: CGFloat = 0.3) {
         for polygon in b.polygons {
-            let coords = polygon.coordinates
-            guard coords.count >= 3 else { continue }
-            let path = countryPath(coords, r)
+            let path = countryPath(polygon.coordinates, r)
             c.addPath(path)
             c.setFillColor(fill.cgColor)
             c.setStrokeColor(stroke.cgColor)
@@ -608,6 +613,7 @@ enum PosterMapRenderer {
 
     private static func countryPath(_ coords: [CLLocationCoordinate2D], _ r: CGRect) -> CGPath {
         let path = CGMutablePath()
+        guard coords.count >= 3 else { return path }
         let first = project(coords[0].latitude, coords[0].longitude, r)
         path.move(to: first)
         for i in 1..<coords.count {
@@ -619,14 +625,13 @@ enum PosterMapRenderer {
         return path
     }
 
-    private static func drawPin(_ c: CGContext, _ pt: CGPoint, _ color: UIColor, _ mapWidth: CGFloat, _ small: Bool = false) {
-        let r = small ? max(3, mapWidth * 0.004) : max(5, mapWidth * 0.006)
-        let rect = CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2)
+    private static func drawPin(_ c: CGContext, _ pt: CGPoint, _ color: UIColor, _ radius: CGFloat) {
+        let rect = CGRect(x: pt.x - radius, y: pt.y - radius, width: radius * 2, height: radius * 2)
         c.saveGState()
         c.setShadow(offset: CGSize(width: 0, height: 1), blur: 2, color: UIColor.black.withAlphaComponent(0.3).cgColor)
         c.setFillColor(color.cgColor); c.fillEllipse(in: rect)
         c.restoreGState()
-        c.setStrokeColor(UIColor.white.cgColor); c.setLineWidth(small ? 1 : 1.5); c.strokeEllipse(in: rect)
+        c.setStrokeColor(UIColor.white.cgColor); c.setLineWidth(max(1, radius * 0.3)); c.strokeEllipse(in: rect)
     }
 
     private static func centroid(_ b: GeoJSONParser.CountryBoundary, _ r: CGRect) -> CGPoint {
@@ -638,12 +643,15 @@ enum PosterMapRenderer {
         return project(lat, lon, r)
     }
 
-    private static func countryHue(_ code: String) -> CGFloat { CGFloat(countryHash(code) % 360) / 360.0 }
+    private static func countryArea(_ b: GeoJSONParser.CountryBoundary, _ r: CGRect) -> CGFloat {
+        guard let biggest = b.polygons.max(by: { $0.coordinates.count < $1.coordinates.count }) else { return 0 }
+        let box = countryPath(biggest.coordinates, r).boundingBox
+        return box.width * box.height
+    }
 
+    private static func countryHue(_ code: String) -> CGFloat { CGFloat(countryHash(code) % 360) / 360.0 }
     private static func countryHash(_ code: String) -> UInt64 {
-        var h: UInt64 = 5381
-        for ch in code.utf8 { h = ((h << 5) &+ h) &+ UInt64(ch) }
-        return h
+        var h: UInt64 = 5381; for ch in code.utf8 { h = ((h << 5) &+ h) &+ UInt64(ch) }; return h
     }
 
     // MARK: - Miller Projection
@@ -653,29 +661,38 @@ enum PosterMapRenderer {
         let latRad = lat * .pi / 180.0
         let millerY = 1.25 * log(tan(.pi / 4.0 + 0.4 * latRad))
         let yN = (1.0 - millerY / 2.3) / 2.0
-        return CGPoint(x: r.origin.x + max(0, min(1, x)) * r.width, y: r.origin.y + max(0, min(1, yN)) * r.height)
+        return CGPoint(x: r.origin.x + max(0, min(1, x)) * r.width,
+                       y: r.origin.y + max(0, min(1, yN)) * r.height)
     }
 
     // MARK: - Title & Footer
 
-    private static func drawTitle(_ c: CGContext, _ w: CGFloat, _ h: CGFloat, _ s: PosterColorScheme) {
-        let f = UIFont.systemFont(ofSize: h * 0.4, weight: .bold)
-        let str = NSAttributedString(string: "My Footprint", attributes: [.font: f, .foregroundColor: s.textColor])
-        let sz = str.size()
-        UIGraphicsPushContext(c); str.draw(at: CGPoint(x: (w - sz.width) / 2, y: (h - sz.height) / 2)); UIGraphicsPopContext()
+    private static func drawTitle(_ c: CGContext, _ w: CGFloat, _ h: CGFloat, _ s: PosterColorScheme, _ count: Int) {
+        UIGraphicsPushContext(c)
+
+        // Title
+        let titleFont = UIFont.systemFont(ofSize: h * 0.45, weight: .bold)
+        let title = NSAttributedString(string: "My Footprint", attributes: [.font: titleFont, .foregroundColor: s.textColor])
+        let titleSize = title.size()
+        title.draw(at: CGPoint(x: w * 0.025, y: (h - titleSize.height) / 2))
+
+        // Count on right side
+        let countFont = UIFont.systemFont(ofSize: h * 0.32, weight: .medium)
+        let countStr = NSAttributedString(string: "\(count) countries", attributes: [.font: countFont, .foregroundColor: s.subtitleColor])
+        let countSize = countStr.size()
+        countStr.draw(at: CGPoint(x: w - countSize.width - w * 0.025, y: (h - countSize.height) / 2))
+
+        UIGraphicsPopContext()
     }
 
-    private static func drawFooter(_ c: CGContext, _ w: CGFloat, _ mh: CGFloat, _ fh: CGFloat, _ s: PosterColorScheme, _ count: Int) {
+    private static func drawFooter(_ c: CGContext, _ w: CGFloat, _ mh: CGFloat, _ fh: CGFloat, _ s: PosterColorScheme) {
         let y = mh - fh
         UIGraphicsPushContext(c)
-        let str = NSAttributedString(string: "\(count) countries visited",
-                                     attributes: [.font: UIFont.systemFont(ofSize: fh * 0.3, weight: .medium), .foregroundColor: s.subtitleColor])
-        let sz = str.size()
-        str.draw(at: CGPoint(x: (w - sz.width) / 2, y: y + (fh - sz.height) / 2))
-        let brand = NSAttributedString(string: "Footprint",
-                                       attributes: [.font: UIFont.systemFont(ofSize: fh * 0.2, weight: .regular), .foregroundColor: s.subtitleColor.withAlphaComponent(0.5)])
+        let brand = NSAttributedString(string: "Made with Footprint",
+                                       attributes: [.font: UIFont.systemFont(ofSize: fh * 0.4, weight: .regular),
+                                                    .foregroundColor: s.subtitleColor.withAlphaComponent(0.4)])
         let bs = brand.size()
-        brand.draw(at: CGPoint(x: w - bs.width - w * 0.03, y: y + (fh - bs.height) / 2))
+        brand.draw(at: CGPoint(x: (w - bs.width) / 2, y: y + (fh - bs.height) / 2))
         UIGraphicsPopContext()
     }
 }
