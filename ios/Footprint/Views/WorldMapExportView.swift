@@ -348,29 +348,77 @@ enum PosterMapRenderer {
         }
     }
 
-    // MARK: - Scratched Mode (visited revealed, unvisited hidden)
+    // MARK: - Scratched Mode (lottery scratch-card style)
 
     private static func drawScratchedMap(
         in context: CGContext, rect: CGRect,
         boundaries: [GeoJSONParser.CountryBoundary],
         visited: Set<String>, scheme: PosterColorScheme
     ) {
-        // Draw a subtle outline for ALL countries first
+        // Step 1: Draw ALL countries with vibrant colors underneath (the "prize")
         for boundary in boundaries {
-            let outlineColor = scheme.borderColor.withAlphaComponent(0.15)
+            // Each country gets a unique hue based on its code for a colorful revealed map
+            let hue = countryHue(boundary.id)
+            let revealColor = UIColor(hue: hue, saturation: 0.55, brightness: 0.85, alpha: 1.0)
             drawCountry(in: context, rect: rect, boundary: boundary,
-                        fillColor: scheme.landColor.withAlphaComponent(0.08),
-                        strokeColor: outlineColor, lineWidth: 0.2)
+                        fillColor: revealColor,
+                        strokeColor: revealColor.withAlphaComponent(0.6),
+                        lineWidth: 0.3)
         }
 
-        // Then draw visited countries fully revealed with vibrant color
+        // Step 2: Draw metallic scratch overlay on UNVISITED countries
+        for boundary in boundaries {
+            guard !visited.contains(boundary.id) else { continue }
+
+            // Gold/silver metallic color depending on theme
+            let scratchColor: UIColor
+            switch scheme {
+            case .dark, .ocean:
+                // Silver metallic
+                scratchColor = UIColor(red: 0.72, green: 0.73, blue: 0.74, alpha: 1.0)
+            case .light, .classic:
+                // Gold metallic
+                scratchColor = UIColor(red: 0.80, green: 0.72, blue: 0.46, alpha: 1.0)
+            }
+
+            drawCountry(in: context, rect: rect, boundary: boundary,
+                        fillColor: scratchColor,
+                        strokeColor: scratchColor.withAlphaComponent(0.5),
+                        lineWidth: 0.3)
+        }
+
+        // Step 3: Add subtle scratch texture lines on unvisited countries
+        context.saveGState()
+        context.setStrokeColor(UIColor.white.withAlphaComponent(0.08).cgColor)
+        context.setLineWidth(0.5)
+        let lineSpacing: CGFloat = 4
+        var y = rect.minY
+        while y < rect.maxY {
+            context.move(to: CGPoint(x: rect.minX, y: y))
+            context.addLine(to: CGPoint(x: rect.maxX, y: y + 2))
+            y += lineSpacing
+        }
+        context.strokePath()
+        context.restoreGState()
+
+        // Step 4: Add sparkle/scratch marks on edges of visited countries
         for boundary in boundaries {
             guard visited.contains(boundary.id) else { continue }
+            // Draw a subtle glow border around scratched-off areas
             drawCountry(in: context, rect: rect, boundary: boundary,
-                        fillColor: scheme.visitedColor,
-                        strokeColor: scheme.visitedColor.withAlphaComponent(0.8),
-                        lineWidth: 0.5)
+                        fillColor: .clear,
+                        strokeColor: UIColor.white.withAlphaComponent(0.6),
+                        lineWidth: 1.0)
         }
+    }
+
+    /// Generate a consistent hue for a country code (for colorful scratch reveal)
+    private static func countryHue(_ code: String) -> CGFloat {
+        var hash: UInt64 = 5381
+        for char in code.utf8 {
+            hash = ((hash << 5) &+ hash) &+ UInt64(char)
+        }
+        return CGFloat(hash % 360) / 360.0
     }
 
     // MARK: - Pins Mode (all countries drawn, pins on visited)

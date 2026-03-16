@@ -1177,13 +1177,15 @@ struct WorldMapView: View {
                     HStack(spacing: 16) {
                         // Photo pins toggle - always visible when on map view
                         if !showListView {
-                            // Export full world map
+                            // Poster view
                             Button {
                                 showingWorldMapExport = true
                             } label: {
-                                Image(systemName: "square.and.arrow.up")
+                                Label("Poster", systemImage: "globe.desk")
+                                    .labelStyle(.titleAndIcon)
+                                    .font(.subheadline)
                             }
-                            .accessibilityLabel("Export world map")
+                            .accessibilityLabel("Create travel poster")
 
                             // Timeline playback button
                             Button {
