@@ -251,11 +251,9 @@ struct CountryMapView: UIViewRepresentable {
         // Set initial region to show the full world on first layout
         if !context.coordinator.hasSetInitialRegion && mapView.bounds.width > 0 {
             context.coordinator.hasSetInitialRegion = true
-            let region = MKCoordinateRegion(
-                center: CLLocationCoordinate2D(latitude: 20, longitude: 20),
-                span: MKCoordinateSpan(latitudeDelta: 160, longitudeDelta: 360)
-            )
-            mapView.setRegion(region, animated: false)
+            mapView.setVisibleMapRect(MKMapRect.world,
+                                      edgePadding: UIEdgeInsets(top: 20, left: 0, bottom: 20, right: 0),
+                                      animated: false)
         }
 
         // Update visited countries and states when they change
