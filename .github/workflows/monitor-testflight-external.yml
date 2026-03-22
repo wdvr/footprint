@@ -1,0 +1,115 @@
+name: Monitor TestFlight External Review
+
+# Runs every 10 minutes to check if external beta review is approved
+# Sends notification when build becomes available
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # Every 10 minutes
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup App Store Connect API
+        run: |
+          mkdir -p ~/.private_keys
+          echo "${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}" > ~/.private_keys/AuthKey.p8
+          chmod 600 ~/.private_keys/AuthKey.p8
+          pip3 install PyJWT cryptography requests
+
+      - name: Check Build Status
+        id: check
+        env:
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          BUNDLE_ID: com.wouterdevriendt.footprint
+        run: |
+          python3 << 'EOF'
+          import jwt, time, os, requests, json, sys
+
+          # Generate JWT
+          key_id = os.environ['KEY_ID']
+          issuer_id = os.environ['ISSUER_ID']
+          bundle_id = os.environ['BUNDLE_ID']
+          key_path = os.path.expanduser('~/.private_keys/AuthKey.p8')
+
+          token = jwt.encode({
+            'iss': issuer_id,
+            'iat': int(time.time()),
+            'exp': int(time.time()) + 1200,
+            'aud': 'appstoreconnect-v1'
+          }, open(key_path).read(), algorithm='ES256', headers={'kid': key_id})
+
+          headers = {'Authorization': f'Bearer {token}'}
+
+          # Get app ID
+          resp = requests.get(
+              f'https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]={bundle_id}',
+              headers=headers
+          )
+          app_data = resp.json()
+          if 'data' not in app_data or len(app_data['data']) == 0:
+              print(f"❌ App not found: {bundle_id}")
+              sys.exit(1)
+
+          app_id = app_data['data'][0]['id']
+          print(f"✅ App ID: {app_id}")
+
+          # Get latest build with review submission
+          resp = requests.get(
+              f'https://api.appstoreconnect.apple.com/v1/builds?filter[app]={app_id}&sort=-version&limit=1&include=betaAppReviewSubmission',
+              headers=headers
+          )
+
+          builds_data = resp.json()
+          if 'data' not in builds_data or len(builds_data['data']) == 0:
+              print("❌ No builds found")
+              sys.exit(1)
+
+          build = builds_data['data'][0]
+          build_version = build['attributes']['version']
+          processing_state = build['attributes']['processingState']
+
+          print(f"📦 Build: {build_version}")
+          print(f"⚙️  Processing: {processing_state}")
+
+          # Find beta review status
+          review_state = "NOT_SUBMITTED"
+          for item in builds_data.get('included', []):
+              if item['type'] == 'betaAppReviewSubmissions':
+                  review_state = item['attributes']['betaReviewState']
+                  break
+
+          print(f"📋 Review State: {review_state}")
+
+          # Write to GitHub output
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"build_version={build_version}\n")
+              f.write(f"review_state={review_state}\n")
+              f.write(f"processing_state={processing_state}\n")
+
+          if review_state == "APPROVED":
+              print("✅ APPROVED - Build is available for external testers!")
+              sys.exit(0)
+          elif review_state in ["IN_REVIEW", "WAITING_FOR_REVIEW"]:
+              print(f"⏳ Still in review")
+              sys.exit(0)
+          else:
+              print(f"ℹ️  State: {review_state}")
+              sys.exit(0)
+          EOF
+
+      - name: Notify if Approved
+        if: steps.check.outputs.review_state == 'APPROVED'
+        run: |
+          echo "::notice::🎉 Footprint build ${{ steps.check.outputs.build_version }} is now available on TestFlight External!"
+
+          # Send OpenClaw notification if in a coordinated environment
+          if command -v openclaw &> /dev/null; then
+            openclaw system event --text "✅ Footprint build ${{ steps.check.outputs.build_version }} approved and available on TestFlight External!" --mode now || true
+          fi
