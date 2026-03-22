@@ -1,0 +1,116 @@
+name: Submit External Review (One-time)
+on:
+  workflow_dispatch:
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup
+        run: |
+          mkdir -p ~/.private_keys
+          echo "${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}" > ~/.private_keys/AuthKey.p8
+          pip3 install PyJWT cryptography requests
+
+      - name: Submit Build 319
+        env:
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          python3 <<PYEOF
+          import jwt, time, os, requests, json, sys
+
+          key_id = os.environ['KEY_ID']
+          issuer_id = os.environ['ISSUER_ID']
+          key_path = os.path.expanduser('~/.private_keys/AuthKey.p8')
+
+          token = jwt.encode({
+            'iss': issuer_id,
+            'iat': int(time.time()),
+            'exp': int(time.time()) + 1200,
+            'aud': 'appstoreconnect-v1'
+          }, open(key_path).read(), algorithm='ES256', headers={'kid': key_id})
+
+          headers = {
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json'
+          }
+
+          bundle_id = 'com.wouterdevriendt.footprint'
+
+          # Get app ID
+          resp = requests.get(
+              f'https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]={bundle_id}',
+              headers=headers
+          )
+          app_id = resp.json()['data'][0]['id']
+          print(f"App ID: {app_id}")
+
+          # Get build 319
+          resp = requests.get(
+              f'https://api.appstoreconnect.apple.com/v1/builds?filter[app]={app_id}&filter[version]=319',
+              headers=headers
+          )
+
+          builds = resp.json()['data']
+          if not builds:
+              print("Build 319 not found")
+              sys.exit(1)
+
+          build = builds[0]
+          build_id = build['id']
+          processing_state = build['attributes']['processingState']
+
+          print(f"Build ID: {build_id}")
+          print(f"Processing state: {processing_state}")
+
+          # Check if already submitted
+          resp = requests.get(
+              f'https://api.appstoreconnect.apple.com/v1/builds/{build_id}/betaAppReviewSubmission',
+              headers=headers
+          )
+
+          if resp.status_code == 200:
+              submission = resp.json()['data']
+              state = submission['attributes']['betaReviewState']
+              print(f"Already submitted. Review state: {state}")
+              sys.exit(0)
+
+          # Submit for review
+          print("Submitting for external review...")
+          payload = {
+              "data": {
+                  "type": "betaAppReviewSubmissions",
+                  "relationships": {
+                      "build": {
+                          "data": {
+                              "type": "builds",
+                              "id": build_id
+                          }
+                      }
+                  }
+              }
+          }
+
+          resp = requests.post(
+              'https://api.appstoreconnect.apple.com/v1/betaAppReviewSubmissions',
+              headers=headers,
+              json=payload
+          )
+
+          if resp.status_code in [200, 201]:
+              print("Successfully submitted for external review!")
+              submission = resp.json()['data']
+              state = submission['attributes']['betaReviewState']
+              print(f"Review state: {state}")
+          elif resp.status_code == 409:
+              print("Already submitted (409 conflict)")
+          elif resp.status_code == 422:
+              error = resp.json()
+              print(f"422 Error: {json.dumps(error, indent=2)}")
+              if processing_state != 'VALID':
+                  print(f"Build processing state is {processing_state}, not VALID. Wait for processing to complete.")
+          else:
+              print(f"Submission failed with status {resp.status_code}")
+              print(resp.text)
+              sys.exit(1)
+          PYEOF
