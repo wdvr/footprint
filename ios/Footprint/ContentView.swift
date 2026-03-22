@@ -2314,7 +2314,7 @@ struct CountryListView: View {
     @State private var showingListDatePicker = false
 
     private var visitedCodes: Set<String> {
-        Set(visitedPlaces.map { "\($0.regionType):\($0.regionCode)" })
+        Set(visitedPlaces.filter { $0.isVisited && !$0.isDeleted }.map { "\($0.regionType):\($0.regionCode)" })
     }
 
     private var isSearching: Bool {
@@ -2483,7 +2483,7 @@ struct CountryListView: View {
     }
 
     private func countVisitedCountries() -> Int {
-        visitedPlaces.filter { $0.regionType == VisitedPlace.RegionType.country.rawValue }.count
+        visitedPlaces.filter { $0.regionType == VisitedPlace.RegionType.country.rawValue && $0.isVisited && !$0.isDeleted }.count
     }
 
     private func toggleCountry(_ country: Country) {

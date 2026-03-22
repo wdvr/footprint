@@ -4,6 +4,7 @@ import XCTest
 /// Regression tests for YearInReviewData.compute().
 /// Ensures that Year in Review only includes places with an explicit visitedDate,
 /// not places that were merely marked in the app (markedAt).
+@MainActor
 final class YearInReviewTests: XCTestCase {
 
     // MARK: - Helper
