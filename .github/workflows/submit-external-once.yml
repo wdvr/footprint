@@ -70,10 +70,12 @@ jobs:
           )
 
           if resp.status_code == 200:
-              submission = resp.json()['data']
-              state = submission['attributes']['betaReviewState']
-              print(f"Already submitted. Review state: {state}")
-              sys.exit(0)
+              resp_data = resp.json()
+              if 'data' in resp_data and resp_data['data']:
+                  submission = resp_data['data']
+                  state = submission['attributes']['betaReviewState']
+                  print(f"Already submitted. Review state: {state}")
+                  sys.exit(0)
 
           # Submit for review
           print("Submitting for external review...")
