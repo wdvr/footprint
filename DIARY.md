@@ -5,6 +5,22 @@ Status: done | pending | n/a (not applicable) | backlog
 
 ---
 
+## Apr 22, 2026
+
+### Fix: Disable TestFlight external review monitor cron (#116)
+Stopped the `Monitor TestFlight External Review` workflow that was running every 10 minutes, failing with `App not found` on the ASC API, and emailing ~144 failures/day. The monitor was set up for the 2026-03-22 one-time external submission and long since outlived its purpose. Removed the `cron` trigger; kept `workflow_dispatch` for future manual use. The underlying ASC API key lost app-level access — needs a fix in App Store Connect if the monitor is ever re-enabled.
+| iOS | Android | Web | API |
+|-----|---------|-----|-----|
+| n/a | n/a | n/a | n/a |
+
+### Fix: Infrastructure Deploy workflow — seed pip into uv venv (#117)
+Pulumi calls `.venv/bin/python3 -m pip list --format json` to discover Python deps at runtime. `uv venv` doesn't install pip by default, so preview/up was failing on every push to main since 2026-03-22. Fix: add `--seed` to both `uv venv` invocations in `infrastructure-deploy.yml`. The merge itself re-triggered the workflow, which succeeded.
+| iOS | Android | Web | API |
+|-----|---------|-----|-----|
+| n/a | n/a | n/a | done |
+
+---
+
 ## Feb 22, 2026
 
 ### Android App: Initial Kotlin + Jetpack Compose implementation
