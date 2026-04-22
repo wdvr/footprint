@@ -61,7 +61,7 @@ jobs:
       - name: Build Lambda package
         run: |
           cd infrastructure
-          uv venv
+          uv venv --seed
           uv pip install -r requirements.txt
           uv run python deploy_lambda.py
 
@@ -110,7 +110,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           cd infrastructure
-          uv venv
+          uv venv --seed
           uv pip install -r requirements.txt
 
       - name: Pulumi login
