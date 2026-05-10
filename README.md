@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  <a href="https://apps.apple.com/app/footprint-travel-tracker">
-    <img src="https://img.shields.io/badge/App_Store-Coming_Soon-blue?style=flat&logo=apple" alt="App Store">
+  <a href="https://apps.apple.com/app/footprint-travel-map/id6758334183">
+    <img src="https://img.shields.io/badge/App_Store-Download-007AFF?style=flat-square&logo=apple&logoColor=white" alt="App Store">
   </a>
   <a href="https://footprintmaps.com">
     <img src="https://img.shields.io/badge/Website-footprintmaps.com-green?style=flat" alt="Website">
