@@ -872,7 +872,7 @@
 				CODE_SIGN_ENTITLEMENTS = Footprint/Footprint.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2026111601;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Footprint/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -989,7 +989,7 @@
 				CODE_SIGN_ENTITLEMENTS = Footprint/Footprint.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2026111601;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Footprint/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

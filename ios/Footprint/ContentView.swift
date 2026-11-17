@@ -923,6 +923,7 @@ extension Notification.Name {
 struct WorldMapView: View {
     let visitedPlaces: [VisitedPlace]
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -1174,16 +1175,22 @@ struct WorldMapView: View {
                     .accessibilityLabel(LocationManager.shared.isTracking ? "Center on current location" : "Start tracking location")
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 16) {
+                    HStack(spacing: horizontalSizeClass == .regular ? 10 : 16) {
                         // Photo pins toggle - always visible when on map view
                         if !showListView {
                             // Poster view
                             Button {
                                 showingWorldMapExport = true
                             } label: {
-                                Label("Poster", systemImage: "globe.desk")
-                                    .labelStyle(.titleAndIcon)
-                                    .font(.subheadline)
+                                if horizontalSizeClass == .regular {
+                                    Label("Poster", systemImage: "globe.desk")
+                                        .labelStyle(.iconOnly)
+                                        .font(.subheadline)
+                                } else {
+                                    Label("Poster", systemImage: "globe.desk")
+                                        .labelStyle(.titleAndIcon)
+                                        .font(.subheadline)
+                                }
                             }
                             .accessibilityLabel("Create travel poster")
 

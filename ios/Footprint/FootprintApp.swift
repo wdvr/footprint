@@ -371,6 +371,7 @@ struct LoginView: View {
 
 struct SignInWithAppleButton: View {
     @Environment(AuthManager.self) private var authManager
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Button(action: {
@@ -382,8 +383,8 @@ struct SignInWithAppleButton: View {
             }
             .frame(maxWidth: .infinity)
             .padding()
-            .background(.black)
-            .foregroundStyle(.white)
+            .background(colorScheme == .dark ? Color.white : Color.black)
+            .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 10))
         }
     }
