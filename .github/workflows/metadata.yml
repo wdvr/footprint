@@ -13,6 +13,11 @@ on:
         required: false
         default: false
         type: boolean
+      upload_description:
+        description: 'Upload description.txt (OVERWRITES the App Store description)'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   upload-metadata:
@@ -50,6 +55,13 @@ jobs:
       run: |
         cd ios/fastlane
         bundle exec fastlane upload_icon
+
+    - name: Keep App Store description untouched
+      if: ${{ github.event.inputs.upload_description != 'true' }}
+      run: |
+        # deliver uploads every description.txt it finds; remove them so the
+        # App Store description is only overwritten when explicitly requested.
+        find ios/fastlane/metadata -name description.txt -print -delete
 
     - name: Upload metadata
       if: ${{ github.event.inputs.upload_icon != 'true' }}
