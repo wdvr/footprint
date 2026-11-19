@@ -186,7 +186,8 @@ struct VisitDatePickerSheet: View {
 }
 
 /// Represents a pending visit action that needs a date before completing.
-struct PendingVisitAction {
+struct PendingVisitAction: Identifiable {
+    let id = UUID()
     let regionType: VisitedPlace.RegionType
     let regionCode: String
     let regionName: String
@@ -939,7 +940,9 @@ struct WorldMapView: View {
     @State private var showingCountryMemories = false
     @State private var memoriesCountryCode: String?
     @State private var pendingVisitAction: PendingVisitAction?
-    @State private var showingVisitDatePicker = false
+    /// Drives the date picker sheet. Item-based so the sheet always has its content:
+    /// `isPresented` + `if let` could present an empty full-height sheet.
+    @State private var presentedVisitAction: PendingVisitAction?
     @State private var onThisDayService = OnThisDayService.shared
     @State private var showingTimelinePlayback = false
     @State private var showingWorldMapExport = false
@@ -1115,10 +1118,12 @@ struct WorldMapView: View {
                         }
                     }
 
-                    // Overlay showing visited count
+                    // Overlay showing visited count. Trailing, so it never covers the
+                    // Apple Maps logo and Legal link MapKit draws at the bottom-leading corner.
                     VStack {
                         Spacer()
                         HStack {
+                            Spacer()
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack(spacing: 12) {
                                     HStack(spacing: 4) {
@@ -1149,7 +1154,6 @@ struct WorldMapView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                             .accessibilityElement(children: .ignore)
                             .accessibilityLabel("\(visitedCountryCodes.count) countries visited\(bucketListCountryCodes.isEmpty ? "" : ", \(bucketListCountryCodes.count) on bucket list")")
-                            Spacer()
                         }
                         .padding()
                     }
@@ -1348,21 +1352,19 @@ struct WorldMapView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingVisitDatePicker) {
-                if let action = pendingVisitAction {
-                    VisitDatePickerSheet(placeName: action.regionName) { date in
-                        completePendingVisit(visitedDate: date)
-                    }
-                    .presentationDetents([.medium])
-                    .presentationDragIndicator(.visible)
+            .sheet(item: $presentedVisitAction) { action in
+                VisitDatePickerSheet(placeName: action.regionName) { date in
+                    completePendingVisit(visitedDate: date)
                 }
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
             }
             .onChange(of: showingCountryPopup) { _, isShowing in
                 // When the country popup dismisses and there's a pending visit action,
                 // show the date picker after a brief delay to avoid sheet conflicts
                 if !isShowing && pendingVisitAction != nil {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        showingVisitDatePicker = true
+                        presentedVisitAction = pendingVisitAction
                     }
                 }
             }
@@ -1942,7 +1944,8 @@ struct StateMapSheet: View {
     @State private var selectedState: String?
     @State private var showingStatePopup = false
     @State private var pendingStateVisitAction: PendingVisitAction?
-    @State private var showingStateDatePicker = false
+    /// Drives the date picker sheet (item-based, see ContentView.presentedVisitAction)
+    @State private var presentedStateVisitAction: PendingVisitAction?
 
     /// Screen height that works on both iOS and macOS (Mac Catalyst)
     private var screenHeight: CGFloat {
@@ -2082,7 +2085,7 @@ struct StateMapSheet: View {
                                                 regionCode: state.id,
                                                 regionName: state.name
                                             )
-                                            showingStateDatePicker = true
+                                            presentedStateVisitAction = pendingStateVisitAction
                                         }
                                     } label: {
                                         HStack {
@@ -2171,19 +2174,17 @@ struct StateMapSheet: View {
                     .presentationDragIndicator(.visible)
                 }
             }
-            .sheet(isPresented: $showingStateDatePicker) {
-                if let action = pendingStateVisitAction {
-                    VisitDatePickerSheet(placeName: action.regionName) { date in
-                        completeStatePendingVisit(visitedDate: date)
-                    }
-                    .presentationDetents([.medium])
-                    .presentationDragIndicator(.visible)
+            .sheet(item: $presentedStateVisitAction) { action in
+                VisitDatePickerSheet(placeName: action.regionName) { date in
+                    completeStatePendingVisit(visitedDate: date)
                 }
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
             }
             .onChange(of: showingStatePopup) { _, isShowing in
                 if !isShowing && pendingStateVisitAction != nil {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        showingStateDatePicker = true
+                        presentedStateVisitAction = pendingStateVisitAction
                     }
                 }
             }
@@ -2317,8 +2318,9 @@ struct CountryListView: View {
     // Start with all continents collapsed
     @State private var collapsedContinents: Set<String> = Set(Continent.allCases.map { $0.id })
     @State private var isRefreshing = false
+    /// Drives the date picker sheet. Item-based: `isPresented` + `if let` presented an
+    /// empty full-height sheet, so a country could not be marked visited from the list.
     @State private var pendingListVisitAction: PendingVisitAction?
-    @State private var showingListDatePicker = false
 
     private var visitedCodes: Set<String> {
         Set(visitedPlaces.filter { $0.isVisited && !$0.isDeleted }.map { "\($0.regionType):\($0.regionCode)" })
@@ -2438,21 +2440,18 @@ struct CountryListView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingListDatePicker) {
-                if let action = pendingListVisitAction {
-                    VisitDatePickerSheet(placeName: action.regionName) { date in
-                        completeListPendingVisit(visitedDate: date)
-                    }
-                    .presentationDetents([.medium])
-                    .presentationDragIndicator(.visible)
+            .sheet(item: $pendingListVisitAction) { action in
+                VisitDatePickerSheet(placeName: action.regionName) { date in
+                    completeListPendingVisit(action, visitedDate: date)
                 }
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
             }
         }
     }
 
     /// Complete a pending visit action from the list view with an optional date
-    private func completeListPendingVisit(visitedDate: Date?) {
-        guard let action = pendingListVisitAction else { return }
+    private func completeListPendingVisit(_ action: PendingVisitAction, visitedDate: Date?) {
         let place = VisitedPlace(
             regionType: action.regionType,
             regionCode: action.regionCode,
@@ -2511,7 +2510,6 @@ struct CountryListView: View {
                 regionCode: country.id,
                 regionName: country.name
             )
-            showingListDatePicker = true
         }
     }
 
@@ -2542,7 +2540,6 @@ struct CountryListView: View {
                 regionCode: state.id,
                 regionName: state.name
             )
-            showingListDatePicker = true
         }
     }
 }
