@@ -710,7 +710,7 @@ enum GeographicData {
         StateProvince("VWV", "West Flanders", country: "BE"),
     ]
 
-    // UK Council Areas (217 total - local government areas)
+    // UK Council Areas (229 total - local government areas)
     static let ukCouncilAreas: [StateProvince] = [
         StateProvince("ABE", "Aberdeen", country: "GB"),
         StateProvince("ABD", "Aberdeenshire", country: "GB"),
