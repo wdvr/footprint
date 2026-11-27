@@ -38,10 +38,10 @@ final class GeographicDataTests: XCTestCase {
 
     func testCountriesWithStates() {
         let countriesWithStates = GeographicData.countries.filter { $0.hasStates }
-        // US, CA, AU, MX, BR, DE, FR, ES, IT, NL, BE, GB, RU, AR = 14 countries with states
-        XCTAssertEqual(countriesWithStates.count, 14, "14 countries should have states/provinces/regions")
+        // US, CA, AU, MX, BR, DE, FR, ES, IT, NL, BE, GB, RU, AR, JP, KR, NO = 17 countries with states
+        XCTAssertEqual(countriesWithStates.count, 17, "17 countries should have states/provinces/regions")
 
-        let expectedCountries = ["US", "CA", "AU", "MX", "BR", "DE", "FR", "ES", "IT", "NL", "BE", "GB", "RU", "AR"]
+        let expectedCountries = ["US", "CA", "AU", "MX", "BR", "DE", "FR", "ES", "IT", "NL", "BE", "GB", "RU", "AR", "JP", "KR", "NO"]
         for code in expectedCountries {
             let country = countriesWithStates.first { $0.id == code }
             XCTAssertNotNil(country, "Country \(code) should have states/provinces")
@@ -153,14 +153,17 @@ final class GeographicDataTests: XCTestCase {
         XCTAssertEqual(GeographicData.states(for: "MX").count, 32, "Mexico should have 32 states")
         XCTAssertEqual(GeographicData.states(for: "BR").count, 27, "Brazil should have 27 states")
         XCTAssertEqual(GeographicData.states(for: "DE").count, 16, "Germany should have 16 Lander")
-        XCTAssertEqual(GeographicData.states(for: "FR").count, 18, "France should have 18 regions")
+        XCTAssertEqual(GeographicData.states(for: "FR").count, 101, "France should have 101 departments (96 metropolitan + 5 overseas)")
         XCTAssertEqual(GeographicData.states(for: "ES").count, 52, "Spain should have 52 provinces")
-        XCTAssertEqual(GeographicData.states(for: "IT").count, 20, "Italy should have 20 regions")
+        XCTAssertEqual(GeographicData.states(for: "IT").count, 110, "Italy should have 110 provinces")
         XCTAssertEqual(GeographicData.states(for: "NL").count, 15, "Netherlands should have 12 provinces + 3 Caribbean municipalities")
         XCTAssertEqual(GeographicData.states(for: "BE").count, 11, "Belgium should have 11 provinces")
-        XCTAssertEqual(GeographicData.states(for: "GB").count, 4, "UK should have 4 countries")
+        XCTAssertEqual(GeographicData.states(for: "GB").count, 232, "UK should have 232 council areas")
         XCTAssertEqual(GeographicData.states(for: "RU").count, 83, "Russia should have 83 federal subjects (Sevastopol is its own territory entry)")
         XCTAssertEqual(GeographicData.states(for: "AR").count, 24, "Argentina should have 24 provinces")
+        XCTAssertEqual(GeographicData.states(for: "JP").count, 47, "Japan should have 47 prefectures")
+        XCTAssertEqual(GeographicData.states(for: "KR").count, 17, "South Korea should have 17 provinces")
+        XCTAssertEqual(GeographicData.states(for: "NO").count, 15, "Norway should have 15 counties")
         XCTAssertTrue(GeographicData.states(for: "XX").isEmpty, "Invalid country should return empty")
     }
 
