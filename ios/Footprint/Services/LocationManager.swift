@@ -292,7 +292,10 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
     // MARK: - Pipeline
 
     /// Feeds fixes to the visit pipeline and announces newly recorded places.
+    /// Fixes are evidence only when the user opted into automatic tracking (§5.1); otherwise
+    /// (e.g. map centering) they are used for display and discarded.
     func ingest(_ samples: [EvidenceSample]) {
+        guard isBackgroundTrackingEnabled else { return }
         let newPlaces = pipeline.record(samples)
         deliver(newPlaces)
         updateStayForming()
