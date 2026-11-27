@@ -194,6 +194,7 @@ enum GeographicData {
         Country("RU", "Russia", continent: "Europe", hasStates: true),
         Country("SM", "San Marino", continent: "Europe"),
         Country("RS", "Serbia", continent: "Europe"),
+        Country("XS", "Sevastopol", continent: "Europe"),
         Country("SK", "Slovakia", continent: "Europe"),
         Country("SI", "Slovenia", continent: "Europe"),
         Country("ES", "Spain", continent: "Europe", hasStates: true),
@@ -542,27 +543,60 @@ enum GeographicData {
         StateProvince("YT", "Mayotte", country: "FR"),
     ]
 
-    // Spanish Autonomous Communities (19 total: 17 communities + 2 autonomous cities)
-    static let spanishCommunities: [StateProvince] = [
-        StateProvince("AN", "Andalusia", country: "ES"),
-        StateProvince("AR", "Aragon", country: "ES"),
-        StateProvince("AS", "Asturias", country: "ES"),
-        StateProvince("IB", "Balearic Islands", country: "ES"),
-        StateProvince("PV", "Basque Country", country: "ES"),
-        StateProvince("CN", "Canary Islands", country: "ES"),
-        StateProvince("CB", "Cantabria", country: "ES"),
-        StateProvince("CL", "Castile and Leon", country: "ES"),
-        StateProvince("CM", "Castilla-La Mancha", country: "ES"),
-        StateProvince("CT", "Catalonia", country: "ES"),
+    // Spanish Provinces (52 total: 50 provinces + 2 autonomous cities)
+    static let spanishProvinces: [StateProvince] = [
+        StateProvince("AB", "Albacete", country: "ES"),
+        StateProvince("A", "Alicante", country: "ES"),
+        StateProvince("AL", "Almería", country: "ES"),
+        StateProvince("O", "Asturias", country: "ES"),
+        StateProvince("BA", "Badajoz", country: "ES"),
+        StateProvince("PM", "Baleares", country: "ES"),
+        StateProvince("B", "Barcelona", country: "ES"),
+        StateProvince("BI", "Bizkaia", country: "ES"),
+        StateProvince("BU", "Burgos", country: "ES"),
+        StateProvince("S", "Cantabria", country: "ES"),
+        StateProvince("CS", "Castellón", country: "ES"),
         StateProvince("CE", "Ceuta", country: "ES"),
-        StateProvince("EX", "Extremadura", country: "ES"),
-        StateProvince("GA", "Galicia", country: "ES"),
-        StateProvince("RI", "La Rioja", country: "ES"),
-        StateProvince("MD", "Madrid", country: "ES"),
+        StateProvince("CR", "Ciudad Real", country: "ES"),
+        StateProvince("CU", "Cuenca", country: "ES"),
+        StateProvince("CC", "Cáceres", country: "ES"),
+        StateProvince("CA", "Cádiz", country: "ES"),
+        StateProvince("CO", "Córdoba", country: "ES"),
+        StateProvince("GI", "Gerona", country: "ES"),
+        StateProvince("SS", "Gipuzkoa", country: "ES"),
+        StateProvince("GR", "Granada", country: "ES"),
+        StateProvince("GU", "Guadalajara", country: "ES"),
+        StateProvince("H", "Huelva", country: "ES"),
+        StateProvince("HU", "Huesca", country: "ES"),
+        StateProvince("J", "Jaén", country: "ES"),
+        StateProvince("C", "La Coruña", country: "ES"),
+        StateProvince("LO", "La Rioja", country: "ES"),
+        StateProvince("GC", "Las Palmas", country: "ES"),
+        StateProvince("LE", "León", country: "ES"),
+        StateProvince("LU", "Lugo", country: "ES"),
+        StateProvince("L", "Lérida", country: "ES"),
+        StateProvince("M", "Madrid", country: "ES"),
         StateProvince("ML", "Melilla", country: "ES"),
-        StateProvince("MC", "Murcia", country: "ES"),
-        StateProvince("NC", "Navarre", country: "ES"),
-        StateProvince("VC", "Valencia", country: "ES"),
+        StateProvince("MU", "Murcia", country: "ES"),
+        StateProvince("MA", "Málaga", country: "ES"),
+        StateProvince("NA", "Navarra", country: "ES"),
+        StateProvince("OR", "Orense", country: "ES"),
+        StateProvince("P", "Palencia", country: "ES"),
+        StateProvince("PO", "Pontevedra", country: "ES"),
+        StateProvince("SA", "Salamanca", country: "ES"),
+        StateProvince("TF", "Santa Cruz de Tenerife", country: "ES"),
+        StateProvince("SG", "Segovia", country: "ES"),
+        StateProvince("SE", "Sevilla", country: "ES"),
+        StateProvince("SO", "Soria", country: "ES"),
+        StateProvince("T", "Tarragona", country: "ES"),
+        StateProvince("TE", "Teruel", country: "ES"),
+        StateProvince("TO", "Toledo", country: "ES"),
+        StateProvince("V", "Valencia", country: "ES"),
+        StateProvince("VA", "Valladolid", country: "ES"),
+        StateProvince("ZA", "Zamora", country: "ES"),
+        StateProvince("Z", "Zaragoza", country: "ES"),
+        StateProvince("VI", "Álava", country: "ES"),
+        StateProvince("AV", "Ávila", country: "ES"),
     ]
 
     // Italian Provinces (110 total)
@@ -976,7 +1010,6 @@ enum GeographicData {
         // Federal cities
         StateProvince("MOW", "Moscow", country: "RU"),
         StateProvince("SPE", "Saint Petersburg", country: "RU"),
-        StateProvince("SEV", "Sevastopol", country: "RU"),
         // Krais (Administrative Territories)
         StateProvince("ALT", "Altai Krai", country: "RU"),
         StateProvince("KAM", "Kamchatka Krai", country: "RU"),
@@ -1171,7 +1204,7 @@ enum GeographicData {
         case "BR": return brazilianStates
         case "DE": return germanStates
         case "FR": return frenchDepartments
-        case "ES": return spanishCommunities
+        case "ES": return spanishProvinces
         case "IT": return italianProvinces
         case "NL": return dutchProvinces
         case "BE": return belgianProvinces

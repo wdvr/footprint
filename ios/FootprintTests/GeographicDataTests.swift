@@ -157,14 +157,11 @@ final class GeographicDataTests: XCTestCase {
             let stateCount = GeographicData.states(for: country.id).count
             let boundary = boundaryCodes(for: country.id)
 
-            if countriesPendingBoundaryDecision.contains(country.id) {
-                XCTAssertGreaterThan(stateCount, 0, "\(country.id) should have subdivisions")
-            } else if boundary.isEmpty {
+            if boundary.isEmpty {
                 let expected = try worldStatesCount(for: country.id)
                 XCTAssertEqual(stateCount, expected, "\(country.id) count should match world_states.json")
             } else {
-                let exempt = codesWithoutGeometry[country.id]?.count ?? 0
-                XCTAssertEqual(stateCount, boundary.count + exempt, "\(country.id) count should match its boundary file")
+                XCTAssertEqual(stateCount, boundary.count, "\(country.id) count should match its boundary file")
             }
         }
         XCTAssertTrue(GeographicData.states(for: "XX").isEmpty, "Invalid country should return empty")
@@ -187,27 +184,19 @@ final class GeographicDataTests: XCTestCase {
 
     // MARK: - Boundary Data Tests
 
-    /// Countries whose subdivision list and boundary file are known not to match, pending an
-    /// owner decision: ES_states.geojson has 52 provinces but GeographicData has 19 communities.
-    private let countriesPendingBoundaryDecision: Set<String> = ["ES"]
-
-    /// Subdivisions intentionally listed without boundary geometry (manual entry only, pending decision).
-    private let codesWithoutGeometry: [String: Set<String>] = ["RU": ["SEV"]]
-
     func testSubdivisionCodesMatchBoundaryFiles() {
         var countriesChecked = 0
         for country in GeographicData.countries where country.hasStates {
             let boundaries = GeoJSONParser.parseStates(forCountry: country.id)
-            guard !boundaries.isEmpty, !countriesPendingBoundaryDecision.contains(country.id) else { continue }
+            guard !boundaries.isEmpty else { continue }
             countriesChecked += 1
 
             let boundaryCodes = boundaries.map { String($0.id.split(separator: "-").last ?? "") }
             let stateCodes = Set(GeographicData.states(for: country.id).map { $0.id })
-            let exempt = codesWithoutGeometry[country.id] ?? []
 
             XCTAssertEqual(boundaryCodes.count, Set(boundaryCodes).count, "\(country.id) boundary file has duplicate codes")
             XCTAssertEqual(
-                stateCodes.subtracting(exempt).subtracting(boundaryCodes), [],
+                stateCodes.subtracting(boundaryCodes), [],
                 "\(country.id) subdivisions without boundary geometry"
             )
             XCTAssertEqual(
@@ -215,7 +204,7 @@ final class GeographicDataTests: XCTestCase {
                 "\(country.id) boundary features without a GeographicData subdivision"
             )
         }
-        XCTAssertGreaterThanOrEqual(countriesChecked, 12, "Boundary files should load for every mapped country")
+        XCTAssertGreaterThanOrEqual(countriesChecked, 13, "Boundary files should load for every mapped country")
     }
 
     // MARK: - Continent Emoji Tests
