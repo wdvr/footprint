@@ -154,14 +154,39 @@ final class GeographicDataTests: XCTestCase {
         XCTAssertEqual(GeographicData.states(for: "BR").count, 27, "Brazil should have 27 states")
         XCTAssertEqual(GeographicData.states(for: "DE").count, 16, "Germany should have 16 Lander")
         XCTAssertEqual(GeographicData.states(for: "FR").count, 18, "France should have 18 regions")
-        XCTAssertEqual(GeographicData.states(for: "ES").count, 19, "Spain should have 19 communities")
+        XCTAssertEqual(GeographicData.states(for: "ES").count, 52, "Spain should have 52 provinces")
         XCTAssertEqual(GeographicData.states(for: "IT").count, 20, "Italy should have 20 regions")
-        XCTAssertEqual(GeographicData.states(for: "NL").count, 12, "Netherlands should have 12 provinces")
+        XCTAssertEqual(GeographicData.states(for: "NL").count, 15, "Netherlands should have 12 provinces + 3 Caribbean municipalities")
         XCTAssertEqual(GeographicData.states(for: "BE").count, 11, "Belgium should have 11 provinces")
         XCTAssertEqual(GeographicData.states(for: "GB").count, 4, "UK should have 4 countries")
-        XCTAssertEqual(GeographicData.states(for: "RU").count, 84, "Russia should have 84 federal subjects (excluding disputed territories)")
+        XCTAssertEqual(GeographicData.states(for: "RU").count, 83, "Russia should have 83 federal subjects (Sevastopol is its own territory entry)")
         XCTAssertEqual(GeographicData.states(for: "AR").count, 24, "Argentina should have 24 provinces")
         XCTAssertTrue(GeographicData.states(for: "XX").isEmpty, "Invalid country should return empty")
+    }
+
+    // MARK: - Boundary Data Tests
+
+    func testSubdivisionCodesMatchBoundaryFiles() {
+        var countriesChecked = 0
+        for country in GeographicData.countries where country.hasStates {
+            let boundaries = GeoJSONParser.parseStates(forCountry: country.id)
+            guard !boundaries.isEmpty else { continue }
+            countriesChecked += 1
+
+            let boundaryCodes = boundaries.map { String($0.id.split(separator: "-").last ?? "") }
+            let stateCodes = Set(GeographicData.states(for: country.id).map { $0.id })
+
+            XCTAssertEqual(boundaryCodes.count, Set(boundaryCodes).count, "\(country.id) boundary file has duplicate codes")
+            XCTAssertEqual(
+                stateCodes.subtracting(boundaryCodes), [],
+                "\(country.id) subdivisions without boundary geometry"
+            )
+            XCTAssertEqual(
+                Set(boundaryCodes).subtracting(stateCodes), [],
+                "\(country.id) boundary features without a GeographicData subdivision"
+            )
+        }
+        XCTAssertGreaterThanOrEqual(countriesChecked, 13, "Boundary files should load for every mapped country")
     }
 
     // MARK: - Continent Emoji Tests
