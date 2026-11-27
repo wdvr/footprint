@@ -64,6 +64,12 @@ struct FootprintApp: App {
             #endif
 
             VisitPipeline.shared.configure(container: container)
+            // Counties arrived after samples were recorded: derive county visits from them once.
+            if let countyData = CountyIndex.shared?.source {
+                Task { @MainActor in
+                    VisitPipeline.shared.reresolveIfNeeded(dataVersion: countyData)
+                }
+            }
             self.sharedModelContainer = container
             self.modelContainerError = nil
         } catch {

@@ -310,7 +310,9 @@ struct TimelinePlaybackView: View {
     // MARK: - Timeline Building
 
     private func buildTimeline() {
-        let activePlaces = visitedPlaces.filter { !$0.isDeleted && $0.isVisited }
+        let activePlaces = visitedPlaces.filter {
+            !$0.isDeleted && $0.isVisited && $0.regionType != VisitedPlace.RegionType.usCounty.rawValue
+        }
 
         // Sentinel date for places with no date (far future so they sort last)
         let distantFuture = Date.distantFuture

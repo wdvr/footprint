@@ -1182,6 +1182,24 @@ final class PhotoImportManager: NSObject {
                                     existingPlacePhotoDates[key] = clusterDate
                                 }
                             }
+
+                            if countryCode == "US" || countryCode == "PR",
+                               let county = Self.county(at: cluster.representativeLocation.coordinate,
+                                                        state: countryCode == "PR" ? "PR" : stateCode) {
+                                let countyKey = "\(VisitedPlace.RegionType.usCounty.rawValue):\(county.fips)"
+                                if !existingCodes.contains(countyKey) {
+                                    var entry = locationCounts[countyKey] ?? (.usCounty, county.fips, county.name, 0, nil)
+                                    entry.count += cluster.photoCount
+                                    if let clusterDate = cluster.earliestDate,
+                                       entry.earliestDate.map({ clusterDate < $0 }) ?? true {
+                                        entry.earliestDate = clusterDate
+                                    }
+                                    locationCounts[countyKey] = entry
+                                } else if let clusterDate = cluster.earliestDate,
+                                          existingPlacePhotoDates[countyKey].map({ clusterDate < $0 }) ?? true {
+                                    existingPlacePhotoDates[countyKey] = clusterDate
+                                }
+                            }
                         }
 
                         // Save photo location for map display
@@ -1403,6 +1421,12 @@ final class PhotoImportManager: NSObject {
                 }
             }
         }
+    }
+
+    /// The US county containing a photo cluster, from the bundled county packs.
+    nonisolated static func county(at coordinate: CLLocationCoordinate2D, state: String) -> CountyInfo? {
+        CountyMatcher.shared.county(latitude: coordinate.latitude, longitude: coordinate.longitude, state: state)
+            .flatMap { CountyIndex.shared?.counties[$0] }
     }
 
     private func buildDiscoveredLocations(

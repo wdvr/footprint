@@ -282,6 +282,7 @@ struct YearInReviewData {
             place.regionType != VisitedPlace.RegionType.country.rawValue
             && place.regionType != VisitedPlace.RegionType.usState.rawValue
             && place.regionType != VisitedPlace.RegionType.canadianProvince.rawValue
+            && place.regionType != VisitedPlace.RegionType.usCounty.rawValue
             && !isCountryLevelTracked(regionType: place.regionType)
         }
 
@@ -301,6 +302,7 @@ struct YearInReviewData {
             place.regionType != VisitedPlace.RegionType.country.rawValue
             && place.regionType != VisitedPlace.RegionType.usState.rawValue
             && place.regionType != VisitedPlace.RegionType.canadianProvince.rawValue
+            && place.regionType != VisitedPlace.RegionType.usCounty.rawValue
             && !isCountryLevelTracked(regionType: place.regionType)
         }
 

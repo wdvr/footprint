@@ -53,9 +53,9 @@ final class VisitPipeline {
         let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
         guard let match = GeoLocationMatcher.matchCoordinateNonisolated(coordinate) else { return nil }
         let subdivision = match.stateCode.map { String($0.split(separator: "-").last ?? Substring($0)) }
-        let county = match.countryCode == "US"
-            ? subdivision.flatMap { CountyMatcher.shared.county(latitude: latitude, longitude: longitude, state: $0) }
-            : nil
+        // Puerto Rico is its own country in the app but its municipios are county equivalents.
+        let countyState = match.countryCode == "PR" ? "PR" : (match.countryCode == "US" ? subdivision : nil)
+        let county = countyState.flatMap { CountyMatcher.shared.county(latitude: latitude, longitude: longitude, state: $0) }
         return PlaceKey(countryCode: match.countryCode, subdivisionCode: subdivision, countyFips: county)
     }
 

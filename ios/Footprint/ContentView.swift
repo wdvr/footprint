@@ -2105,6 +2105,15 @@ struct StateMapSheet: View {
                         onDismiss()
                     }
                 }
+                if countryCode == "US" {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        NavigationLink {
+                            USCountiesView()
+                        } label: {
+                            Label("Counties", systemImage: "square.grid.3x3.square")
+                        }
+                    }
+                }
             }
             .sheet(isPresented: $showingStatePopup) {
                 if let state = selectedStateInfo {

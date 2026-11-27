@@ -31,10 +31,10 @@ final class CountyDataTests: XCTestCase {
         XCTAssertEqual(index.counties(inState: "DC").count, 1)
     }
 
+    /// Puerto Rico is a country in the app, so it is the one pack without a US subdivision.
     func testEveryIndexStateIsAnAppSubdivision() {
         let usStates = Set(GeographicData.states(for: "US").map(\.id))
-        let missing = Set(Self.index.states).subtracting(usStates)
-        XCTAssertTrue(missing.isEmpty, "index states without a US subdivision: \(missing.sorted())")
+        XCTAssertEqual(Set(Self.index.states).subtracting(usStates), ["PR"])
     }
 
     func testPacksAndIndexAgreeOnFips() {
