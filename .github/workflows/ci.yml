@@ -261,7 +261,7 @@ jobs:
         ')"
           if [ -n "${RUNTIME:-}" ] && [ -n "${DEVTYPE:-}" ]; then
             echo "No iPhone simulator found; creating one ($DEVTYPE on $RUNTIME)"
-            UDID=$(xcrun simctl create "CI iPhone" "$DEVTYPE" "$RUNTIME")
+            UDID=$(xcrun simctl create "iPhone CI" "$DEVTYPE" "$RUNTIME")
           fi
         fi
         if [ -z "$UDID" ]; then
