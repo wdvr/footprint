@@ -1144,8 +1144,8 @@ final class PhotoImportManager: NSObject {
                                 stateCode = stateNameToCode(adminArea, country: countryCode)
                             }
                         } else if let boundaryStateCode = result.stateCode {
-                            // Use state code from GeoJSON boundary matching
-                            stateCode = boundaryStateCode
+                            // Boundary files use "GB-WRL"; places are stored as "WRL"
+                            stateCode = SubdivisionCode.short(boundaryStateCode)
                         }
 
                         if let stateCode = stateCode {

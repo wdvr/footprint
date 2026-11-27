@@ -61,6 +61,7 @@ struct FootprintApp: App {
             }
             #endif
 
+            SubdivisionCodeMigration.run(in: container.mainContext)
             self.sharedModelContainer = container
             self.modelContainerError = nil
         } catch {
