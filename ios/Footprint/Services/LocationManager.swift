@@ -151,6 +151,7 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
 
     /// Reverse geocode to get country/state/city from coordinates
     private func reverseGeocode(_ location: CLLocation) {
+        let coordinate = location.coordinate
         let geocoder = CLGeocoder()
         geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
             guard let self = self, error == nil,
@@ -158,7 +159,8 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
 
             DispatchQueue.main.async {
                 // Get country code (ISO 3166-1 alpha-2)
-                if let countryCode = placemark.isoCountryCode {
+                if let geocodedCode = placemark.isoCountryCode {
+                    let countryCode = GeoLocationMatcher.appCountryCode(forGeocoded: geocodedCode, at: coordinate)
                     let previousCountry = self.currentCountryCode
                     self.currentCountryCode = countryCode
 

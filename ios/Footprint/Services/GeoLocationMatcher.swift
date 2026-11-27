@@ -115,6 +115,21 @@ final class GeoLocationMatcher {
         return nil
     }
 
+    /// Territories the app tracks separately from the country a geocoder reports for them.
+    private nonisolated static let territoriesByGeocoderCountry: [String: String] = ["UA": "XS", "RU": "XS"]
+
+    /// Replaces a geocoder country code with the app's own territory code when the
+    /// coordinate lies inside that territory's boundary (e.g. Sevastopol → `XS`).
+    static nonisolated func appCountryCode(forGeocoded code: String, at coordinate: CLLocationCoordinate2D) -> String {
+        guard let territory = territoriesByGeocoderCountry[code] else { return code }
+        let storage = BoundaryStorage.shared
+        storage.loadIfNeeded()
+        guard let boundary = storage.countryBoundaries.first(where: { $0.id == territory }),
+              isPoint(MKMapPoint(coordinate), inside: boundary.overlay)
+        else { return code }
+        return territory
+    }
+
     /// Check if a point is inside a multi-polygon
     private static nonisolated func isPoint(_ point: MKMapPoint, inside multiPolygon: MKMultiPolygon) -> Bool {
         for polygon in multiPolygon.polygons {

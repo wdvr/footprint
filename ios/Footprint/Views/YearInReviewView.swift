@@ -160,7 +160,7 @@ struct YearInReviewData {
             (.brazilianState, "Brazilian States", "map.fill", "green"),
             (.germanState, "German States", "map.fill", "yellow"),
             (.frenchRegion, "French Regions", "map.fill", "blue"),
-            (.spanishCommunity, "Spanish Communities", "map.fill", "red"),
+            (.spanishCommunity, "Spanish Provinces", "map.fill", "red"),
             (.italianRegion, "Italian Regions", "map.fill", "green"),
             (.dutchProvince, "Dutch Provinces", "map.fill", "orange"),
             (.belgianProvince, "Belgian Provinces", "map.fill", "yellow"),

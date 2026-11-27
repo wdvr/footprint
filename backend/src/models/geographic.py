@@ -322,6 +322,7 @@ COUNTRY_CONTINENTS: dict[str, Continent] = {
     "SE": Continent.EUROPE,
     "CH": Continent.EUROPE,
     "UA": Continent.EUROPE,
+    "XS": Continent.EUROPE,  # Sevastopol (own territory entry)
     "GB": Continent.EUROPE,
     "VA": Continent.EUROPE,
     # North America (23 countries)
@@ -383,7 +384,7 @@ CONTINENT_COUNTRY_COUNTS: dict[Continent, int] = {
     Continent.AFRICA: 54,
     Continent.ANTARCTICA: 0,
     Continent.ASIA: 49,
-    Continent.EUROPE: 44,
+    Continent.EUROPE: 45,
     Continent.NORTH_AMERICA: 23,
     Continent.OCEANIA: 14,
     Continent.SOUTH_AMERICA: 12,
@@ -506,6 +507,7 @@ COUNTRY_TIMEZONES: dict[str, list[int]] = {
     "LV": [2],
     "LT": [2],
     "UA": [2],
+    "XS": [3],
     "MD": [2],
     "RO": [2],
     "BG": [2],

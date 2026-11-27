@@ -83,7 +83,7 @@ final class StatisticsTests: XCTestCase {
         let europe = stats.first { $0.name == "Europe" }
         XCTAssertNotNil(europe)
         XCTAssertEqual(europe?.visited, 3) // FR, DE, IT
-        XCTAssertEqual(europe?.total, 44)
+        XCTAssertEqual(europe?.total, 45) // includes Sevastopol (XS)
     }
 
     func testContinentStatsEmpty() {
@@ -100,7 +100,7 @@ final class StatisticsTests: XCTestCase {
 
         let europe = stats.first { $0.name == "Europe" }
         XCTAssertNotNil(europe)
-        let expectedPercentage = Double(2) / Double(44) * 100
+        let expectedPercentage = Double(2) / Double(45) * 100
         XCTAssertEqual(europe?.percentage ?? 0, expectedPercentage, accuracy: 0.01)
     }
 

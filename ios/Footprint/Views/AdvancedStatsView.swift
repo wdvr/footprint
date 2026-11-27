@@ -350,7 +350,7 @@ struct LocalContinentStats: Identifiable {
     }
 
     static let continentData: [(name: String, emoji: String, total: Int, codes: Set<String>)] = [
-        ("Europe", "🏰", 44, Set(["AL", "AD", "AT", "BY", "BE", "BA", "BG", "HR", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IS", "IE", "IT", "LV", "LI", "LT", "LU", "MT", "MD", "MC", "ME", "NL", "MK", "NO", "PL", "PT", "RO", "RU", "SM", "RS", "SK", "SI", "ES", "SE", "CH", "UA", "GB", "VA"])),
+        ("Europe", "🏰", 45, Set(["AL", "AD", "AT", "BY", "BE", "BA", "BG", "HR", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IS", "IE", "IT", "LV", "LI", "LT", "LU", "MT", "MD", "MC", "ME", "NL", "MK", "NO", "PL", "PT", "RO", "RU", "SM", "RS", "SK", "SI", "ES", "SE", "CH", "UA", "GB", "VA", "XS"])),
         ("Asia", "🌏", 49, Set(["AF", "AM", "AZ", "BH", "BD", "BT", "BN", "KH", "CN", "CY", "GE", "IN", "ID", "IR", "IQ", "IL", "JP", "JO", "KZ", "KW", "KG", "LA", "LB", "MY", "MV", "MN", "MM", "NP", "KP", "OM", "PK", "PS", "PH", "QA", "SA", "SG", "KR", "LK", "SY", "TW", "TJ", "TH", "TL", "TR", "TM", "AE", "UZ", "VN", "YE"])),
         ("Africa", "🌍", 54, Set(["DZ", "AO", "BJ", "BW", "BF", "BI", "CV", "CM", "CF", "TD", "KM", "CG", "CD", "CI", "DJ", "EG", "GQ", "ER", "SZ", "ET", "GA", "GM", "GH", "GN", "GW", "KE", "LS", "LR", "LY", "MG", "MW", "ML", "MR", "MU", "MA", "MZ", "NA", "NE", "NG", "RW", "ST", "SN", "SC", "SL", "SO", "ZA", "SS", "SD", "TZ", "TG", "TN", "UG", "ZM", "ZW"])),
         ("North America", "🗽", 23, Set(["AG", "BS", "BB", "BZ", "CA", "CR", "CU", "DM", "DO", "SV", "GD", "GT", "HT", "HN", "JM", "MX", "NI", "PA", "KN", "LC", "VC", "TT", "US"])),
@@ -384,7 +384,7 @@ struct TimeZoneLocalStats {
         "GB": 0, "IE": 0, "IS": 0, "PT": 0,
         "FR": 1, "DE": 1, "IT": 1, "ES": 1, "NL": 1, "BE": 1, "PL": 1, "CZ": 1, "AT": 1, "CH": 1,
         "GR": 2, "EG": 2, "ZA": 2, "IL": 2, "FI": 2, "RO": 2, "BG": 2,
-        "SA": 3, "KE": 3, "TR": 3, "IQ": 3,
+        "SA": 3, "KE": 3, "TR": 3, "IQ": 3, "XS": 3,
         "AE": 4, "OM": 4,
         "IN": 5, "PK": 5, "LK": 5,
         "BD": 6, "KZ": 6,
