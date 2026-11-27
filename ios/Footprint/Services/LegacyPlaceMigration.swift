@@ -11,10 +11,22 @@ enum LegacyPlaceMigration {
     }
 
     /// Spanish autonomous communities that map onto exactly one province.
-    /// Multi-province communities (e.g. Andalusia) have no faithful province equivalent.
     static let spanishCommunityToProvince: [String: String] = [
         "AS": "O", "CB": "S", "IB": "PM", "MC": "MU", "MD": "M", "NC": "NA", "RI": "LO",
     ]
+
+    /// Multi-province communities have no faithful province equivalent, so saved visits to them are
+    /// dropped rather than expanded into province visits that never happened.
+    /// (Ceuta and Melilla keep their codes: CE and ML are also province codes.)
+    static let droppedSpanishCommunities: Set<String> = [
+        "AN", "AR", "CL", "CM", "CN", "CT", "EX", "GA", "PV", "VC",
+    ]
+
+    static func isDropped(regionType: String, regionCode: String) -> Bool {
+        let code = String(regionCode.split(separator: "-").last ?? Substring(regionCode))
+        return regionType == VisitedPlace.RegionType.spanishCommunity.rawValue
+            && droppedSpanishCommunities.contains(code)
+    }
 
     static func target(regionType: String, regionCode: String) -> Target? {
         let code = String(regionCode.split(separator: "-").last ?? Substring(regionCode))
@@ -38,6 +50,13 @@ enum LegacyPlaceMigration {
         }
         var changed = false
         for place in places {
+            if isDropped(regionType: place.regionType, regionCode: place.regionCode) {
+                place.isDeleted = true
+                place.lastModifiedAt = now
+                place.isSynced = false
+                changed = true
+                continue
+            }
             guard let target = target(regionType: place.regionType, regionCode: place.regionCode) else { continue }
             if let existing = places.first(where: {
                 !$0.isDeleted && $0.regionType == target.regionType.rawValue

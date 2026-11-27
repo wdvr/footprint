@@ -42,12 +42,18 @@ final class LegacyPlaceMigrationTests: XCTestCase {
         XCTAssertTrue(GeographicData.states(for: "ES").contains { $0.id == "M" })
     }
 
-    func testMultiProvinceCommunityIsLeftUntouched() throws {
-        context.insert(VisitedPlace(regionType: .spanishCommunity, regionCode: "AN", regionName: "Andalusia"))
+    func testMultiProvinceCommunityIsDropped() throws {
+        let andalusia = VisitedPlace(regionType: .spanishCommunity, regionCode: "AN", regionName: "Andalusia",
+                                     isSynced: true)
+        context.insert(andalusia)
+        context.insert(VisitedPlace(regionType: .spanishCommunity, regionCode: "ES-CT", regionName: "Catalonia"))
+        context.insert(VisitedPlace(regionType: .spanishCommunity, regionCode: "CE", regionName: "Ceuta"))
 
         LegacyPlaceMigration.run(in: context)
 
-        XCTAssertEqual(try activePlaces().map(\.regionCode), ["AN"])
+        XCTAssertEqual(try activePlaces().map(\.regionCode), ["CE"])
+        XCTAssertTrue(andalusia.isDeleted)
+        XCTAssertFalse(andalusia.isSynced)
     }
 
     func testMigrationIsIdempotentAndDoesNotDuplicateExistingTarget() throws {
@@ -93,5 +99,8 @@ final class LegacyPlaceMigrationTests: XCTestCase {
             XCTAssertTrue(GeographicData.states(for: "ES").contains { $0.id == province }, province)
         }
         XCTAssertTrue(GeographicData.countries.contains { $0.id == "XS" })
+        for community in LegacyPlaceMigration.droppedSpanishCommunities {
+            XCTAssertFalse(GeographicData.states(for: "ES").contains { $0.id == community }, community)
+        }
     }
 }
