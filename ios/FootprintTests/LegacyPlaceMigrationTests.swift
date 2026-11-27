@@ -62,6 +62,19 @@ final class LegacyPlaceMigrationTests: XCTestCase {
         XCTAssertEqual(places.first?.regionCode, "XS")
     }
 
+    func testMergingIntoExistingProvinceKeepsSavedDateAndNotes() throws {
+        let visited = Date(timeIntervalSince1970: 1_400_000_000)
+        context.insert(VisitedPlace(regionType: .spanishCommunity, regionCode: "M", regionName: "Madrid"))
+        context.insert(VisitedPlace(regionType: .spanishCommunity, regionCode: "MD", regionName: "Madrid", visitedDate: visited, notes: "Prado"))
+
+        LegacyPlaceMigration.run(in: context)
+
+        let places = try activePlaces()
+        XCTAssertEqual(places.map(\.regionCode), ["M"])
+        XCTAssertEqual(places.first?.visitedDate, visited)
+        XCTAssertEqual(places.first?.notes, "Prado")
+    }
+
     func testEveryMigrationTargetExistsInGeographicData() {
         for province in LegacyPlaceMigration.spanishCommunityToProvince.values {
             XCTAssertTrue(GeographicData.states(for: "ES").contains { $0.id == province }, province)
