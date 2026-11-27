@@ -167,6 +167,15 @@ def audit(swift_file=SWIFT_FILE, geo_dir=GEO_DIR):
         if missing := sorted(swift_only - exempt):
             errors.append(f"{cc}: in GeographicData but not {path.name}: {missing}")
 
+    exceptions = {
+        "PENDING_COUNTRIES": PENDING_COUNTRIES,
+        "CODES_WITHOUT_GEOMETRY": CODES_WITHOUT_GEOMETRY,
+        "COUNTRIES_WITHOUT_BOUNDARY_FILE": COUNTRIES_WITHOUT_BOUNDARY_FILE,
+    }
+    for name, codes in exceptions.items():
+        if stale := sorted(set(codes) - states.keys()):
+            errors.append(f"{stale} have no subdivisions; remove from {name}")
+
     known = {geojson_file(geo_dir, cc).name for cc in states}
     for path in sorted(geo_dir.glob("*_states.geojson")):
         if path.name not in known:

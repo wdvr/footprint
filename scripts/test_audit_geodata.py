@@ -135,3 +135,16 @@ def test_parenthesized_country_name_passes(tmp_path):
     errors, _ = audit(swift, GEO_DIR)
 
     assert errors == []
+
+
+def test_exception_for_country_without_subdivisions_fails(monkeypatch):
+    monkeypatch.setattr(
+        audit_geodata, "COUNTRIES_WITHOUT_BOUNDARY_FILE", {"AU", "BR", "DE", "MX", "IS"}
+    )
+
+    errors, _ = audit()
+
+    assert (
+        "['IS'] have no subdivisions; remove from COUNTRIES_WITHOUT_BOUNDARY_FILE"
+        in errors
+    )
