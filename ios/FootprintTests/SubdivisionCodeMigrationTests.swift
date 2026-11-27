@@ -60,15 +60,34 @@ final class SubdivisionCodeMigrationTests: XCTestCase {
         XCTAssertFalse(existing.isSynced)
     }
 
-    func testLeavesValidAndUnknownCodesAlone() throws {
+    func testLeavesValidCodesAndOtherCountryPrefixesAlone() throws {
         context.insert(VisitedPlace(regionType: .usState, regionCode: "CA", regionName: "California"))
         context.insert(VisitedPlace(regionType: .country, regionCode: "GB", regionName: "United Kingdom"))
-        // Prefix of another country than the region type, and a code not in the region list.
         context.insert(VisitedPlace(regionType: .ukCountry, regionCode: "FR-75C", regionName: "Paris"))
-        context.insert(VisitedPlace(regionType: .ukCountry, regionCode: "GB-ZZZ", regionName: "Nowhere"))
 
         XCTAssertEqual(SubdivisionCodeMigration.run(in: context, now: now), 0)
-        XCTAssertEqual(try live().count, 4)
+        XCTAssertEqual(try live().count, 3)
+    }
+
+    func testCodeMissingFromRegionListKeepsItsName() throws {
+        context.insert(VisitedPlace(regionType: .ukCountry, regionCode: "GB-ZZZ", regionName: "Nowhere"))
+
+        XCTAssertEqual(SubdivisionCodeMigration.run(in: context, now: now), 1)
+        let places = try live()
+        XCTAssertEqual(places.map(\.regionCode), ["ZZZ"])
+        XCTAssertEqual(places.first?.regionName, "Nowhere")
+    }
+
+    func testRemovedShortCodeIsNotRestored() throws {
+        context.insert(VisitedPlace(regionType: .ukCountry, regionCode: "MAN", regionName: "Manchester",
+                                    lastModifiedAt: Date(timeIntervalSince1970: 1_750_000_000), isDeleted: true))
+        let old = VisitedPlace(regionType: .ukCountry, regionCode: "GB-MAN", regionName: "Manchester",
+                               lastModifiedAt: Date(timeIntervalSince1970: 1_700_000_000))
+        context.insert(old)
+
+        XCTAssertEqual(SubdivisionCodeMigration.run(in: context, now: now), 1)
+        XCTAssertTrue(old.isDeleted)
+        XCTAssertTrue(try live().isEmpty)
     }
 
     func testRunningTwiceIsANoOp() throws {
