@@ -116,7 +116,7 @@ final class GeoLocationMatcher {
     }
 
     /// Territories the app tracks separately from the country a geocoder reports for them.
-    private static let territoriesByGeocoderCountry: [String: String] = ["UA": "XS", "RU": "XS"]
+    private nonisolated static let territoriesByGeocoderCountry: [String: String] = ["UA": "XS", "RU": "XS"]
 
     /// Replaces a geocoder country code with the app's own territory code when the
     /// coordinate lies inside that territory's boundary (e.g. Sevastopol → `XS`).
