@@ -85,7 +85,7 @@ class TestContinentStats:
         # Check Europe stats
         europe = next(c for c in data["continents"] if c["continent"] == "Europe")
         assert europe["countries_visited"] == 2
-        assert europe["countries_total"] == 44
+        assert europe["countries_total"] == 45
         assert "FR" in europe["visited_countries"]
         assert "DE" in europe["visited_countries"]
 
