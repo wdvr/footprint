@@ -48,7 +48,9 @@ def parse_swift(text):
     mapping = dict(re.findall(r'case "([A-Z]{2})": return (\w+)', body.group(0)))
     countries = re.findall(r'Country\(\s*"([A-Z]{2})"', text)
     has_states = set(
-        re.findall(r'Country\(\s*"([A-Z]{2})"[^)]*hasStates:\s*true', text)
+        re.findall(
+            r'Country\(\s*"([A-Z]{2})"(?:[^"()]|"[^"]*")*?hasStates:\s*true', text
+        )
     )
     return {cc: lists[name] for cc, name in mapping.items()}, has_states, countries
 

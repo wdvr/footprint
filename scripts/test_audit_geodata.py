@@ -122,3 +122,16 @@ def test_deleted_boundary_file_fails(geo_dir):
     errors, _ = audit(SWIFT_FILE, geo_dir)
 
     assert "NL: boundary file NL_states.geojson is missing" in errors
+
+
+def test_parenthesized_country_name_passes(tmp_path):
+    swift = tmp_path / "GeographicData.swift"
+    swift.write_text(
+        SWIFT_FILE.read_text().replace(
+            'Country("GB", "United Kingdom"', 'Country("GB", "United Kingdom (UK)"'
+        )
+    )
+
+    errors, _ = audit(swift, GEO_DIR)
+
+    assert errors == []
