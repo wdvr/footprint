@@ -43,14 +43,25 @@ enum LegacyPlaceMigration {
                 !$0.isDeleted && $0.regionType == target.regionType.rawValue
                     && $0.regionCode == target.regionCode && $0.status == place.status
             }) {
-                // Keep the retired record's history on the surviving one.
+                // Keep the retired record's history on the surviving one; touch it only if that adds
+                // something, so an unchanged stale copy is never re-uploaded.
+                var gainedHistory = false
                 if let date = place.visitedDate, existing.visitedDate.map({ date < $0 }) ?? true {
                     existing.visitedDate = date
+                    gainedHistory = true
                 }
-                existing.departureDate = existing.departureDate ?? place.departureDate
-                existing.notes = existing.notes ?? place.notes
-                existing.lastModifiedAt = now
-                existing.isSynced = false
+                if existing.departureDate == nil, let departure = place.departureDate {
+                    existing.departureDate = departure
+                    gainedHistory = true
+                }
+                if existing.notes == nil, let notes = place.notes {
+                    existing.notes = notes
+                    gainedHistory = true
+                }
+                if gainedHistory {
+                    existing.lastModifiedAt = now
+                    existing.isSynced = false
+                }
             } else {
                 context.insert(VisitedPlace(
                     regionType: target.regionType,
