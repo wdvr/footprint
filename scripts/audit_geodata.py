@@ -31,6 +31,8 @@ PENDING_COUNTRIES = {
     "ES": "ES_states.geojson has 52 provinces; GeographicData has 19 autonomous communities",
 }
 CODES_WITHOUT_GEOMETRY = {"RU": {"SEV"}}  # Sevastopol: manual entry only
+# Countries with subdivisions but no bundled boundary file; any other missing file is an error.
+COUNTRIES_WITHOUT_BOUNDARY_FILE = {"AU", "BR", "DE", "MX"}
 
 
 def parse_swift(text):
@@ -129,8 +131,17 @@ def audit(swift_file=SWIFT_FILE, geo_dir=GEO_DIR):
             errors.append(f"{cc}: duplicate codes in GeographicData: {dup}")
         path = geojson_file(geo_dir, cc)
         if not path.exists():
-            warnings.append(f"{cc}: no boundary file ({path.name}); codes not audited")
+            if cc in COUNTRIES_WITHOUT_BOUNDARY_FILE:
+                warnings.append(
+                    f"{cc}: no boundary file ({path.name}); codes not audited"
+                )
+            else:
+                errors.append(f"{cc}: boundary file {path.name} is missing")
             continue
+        if cc in COUNTRIES_WITHOUT_BOUNDARY_FILE:
+            errors.append(
+                f"{cc}: has {path.name}; remove from COUNTRIES_WITHOUT_BOUNDARY_FILE"
+            )
         geo_codes = {
             c.split("-")[-1] for c in load_features(path, "state_code", errors, cc)
         }

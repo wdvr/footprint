@@ -114,3 +114,11 @@ def test_stale_exception_fails(monkeypatch):
     errors, _ = audit()
 
     assert "GB: remove ['WRL'] from CODES_WITHOUT_GEOMETRY" in errors
+
+
+def test_deleted_boundary_file_fails(geo_dir):
+    (geo_dir / "NL_states.geojson").unlink()
+
+    errors, _ = audit(SWIFT_FILE, geo_dir)
+
+    assert "NL: boundary file NL_states.geojson is missing" in errors
