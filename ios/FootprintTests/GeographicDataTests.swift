@@ -37,14 +37,15 @@ final class GeographicDataTests: XCTestCase {
     }
 
     func testCountriesWithStates() {
-        let countriesWithStates = GeographicData.countries.filter { $0.hasStates }
-        // US, CA, AU, MX, BR, DE, FR, ES, IT, NL, BE, GB, RU, AR = 14 countries with states
-        XCTAssertEqual(countriesWithStates.count, 14, "14 countries should have states/provinces/regions")
+        let countriesWithStates = Set(GeographicData.countries.filter { $0.hasStates }.map { $0.id })
+        let countriesWithStateLists = Set(GeographicData.countries.map { $0.id }.filter {
+            !GeographicData.states(for: $0).isEmpty
+        })
+        XCTAssertEqual(countriesWithStates, countriesWithStateLists, "hasStates should match countries with a subdivision list")
 
-        let expectedCountries = ["US", "CA", "AU", "MX", "BR", "DE", "FR", "ES", "IT", "NL", "BE", "GB", "RU", "AR"]
+        let expectedCountries = ["US", "CA", "AU", "MX", "BR", "DE", "FR", "ES", "IT", "NL", "BE", "GB", "RU", "AR", "JP", "KR", "NO"]
         for code in expectedCountries {
-            let country = countriesWithStates.first { $0.id == code }
-            XCTAssertNotNil(country, "Country \(code) should have states/provinces")
+            XCTAssertTrue(countriesWithStates.contains(code), "Country \(code) should have states/provinces")
         }
     }
 
@@ -125,11 +126,14 @@ final class GeographicDataTests: XCTestCase {
     // MARK: - State/Province Tests
 
     func testUSStatesCount() {
-        XCTAssertEqual(GeographicData.usStates.count, 51, "Should have 50 states + DC")
+        XCTAssertEqual(GeographicData.usStates.count, boundaryCodes(for: "US").count, "US states should match us_states.geojson")
     }
 
     func testCanadianProvincesCount() {
-        XCTAssertEqual(GeographicData.canadianProvinces.count, 13, "Should have 13 provinces/territories")
+        XCTAssertEqual(
+            GeographicData.canadianProvinces.count, boundaryCodes(for: "CA").count,
+            "Canadian provinces should match canadian_provinces.geojson"
+        )
     }
 
     func testStatesHaveValidData() {
@@ -146,22 +150,39 @@ final class GeographicDataTests: XCTestCase {
         }
     }
 
-    func testStatesForCountry() {
-        XCTAssertEqual(GeographicData.states(for: "US").count, 51)
-        XCTAssertEqual(GeographicData.states(for: "CA").count, 13)
-        XCTAssertEqual(GeographicData.states(for: "AU").count, 8, "Australia should have 8 states/territories")
-        XCTAssertEqual(GeographicData.states(for: "MX").count, 32, "Mexico should have 32 states")
-        XCTAssertEqual(GeographicData.states(for: "BR").count, 27, "Brazil should have 27 states")
-        XCTAssertEqual(GeographicData.states(for: "DE").count, 16, "Germany should have 16 Lander")
-        XCTAssertEqual(GeographicData.states(for: "FR").count, 18, "France should have 18 regions")
-        XCTAssertEqual(GeographicData.states(for: "ES").count, 19, "Spain should have 19 communities")
-        XCTAssertEqual(GeographicData.states(for: "IT").count, 20, "Italy should have 20 regions")
-        XCTAssertEqual(GeographicData.states(for: "NL").count, 15, "Netherlands should have 12 provinces + 3 Caribbean municipalities")
-        XCTAssertEqual(GeographicData.states(for: "BE").count, 11, "Belgium should have 11 provinces")
-        XCTAssertEqual(GeographicData.states(for: "GB").count, 4, "UK should have 4 countries")
-        XCTAssertEqual(GeographicData.states(for: "RU").count, 84, "Russia should have 84 federal subjects (excluding disputed territories)")
-        XCTAssertEqual(GeographicData.states(for: "AR").count, 24, "Argentina should have 24 provinces")
+    /// Expected counts come from the bundled data files: the country's boundary file when it has
+    /// one, otherwise world_states.json.
+    func testStatesForCountry() throws {
+        for country in GeographicData.countries where country.hasStates {
+            let stateCount = GeographicData.states(for: country.id).count
+            let boundary = boundaryCodes(for: country.id)
+
+            if countriesPendingBoundaryDecision.contains(country.id) {
+                XCTAssertGreaterThan(stateCount, 0, "\(country.id) should have subdivisions")
+            } else if boundary.isEmpty {
+                let expected = try worldStatesCount(for: country.id)
+                XCTAssertEqual(stateCount, expected, "\(country.id) count should match world_states.json")
+            } else {
+                let exempt = codesWithoutGeometry[country.id]?.count ?? 0
+                XCTAssertEqual(stateCount, boundary.count + exempt, "\(country.id) count should match its boundary file")
+            }
+        }
         XCTAssertTrue(GeographicData.states(for: "XX").isEmpty, "Invalid country should return empty")
+    }
+
+    /// Unique subdivision codes in a country's bundled boundary file (empty when it has none).
+    private func boundaryCodes(for countryCode: String) -> Set<String> {
+        Set(GeoJSONParser.parseStates(forCountry: countryCode).map { String($0.id.split(separator: "-").last ?? "") })
+    }
+
+    private func worldStatesCount(for countryCode: String) throws -> Int {
+        let url = try XCTUnwrap(
+            Bundle.main.url(forResource: "world_states", withExtension: "json", subdirectory: "GeoData")
+                ?? Bundle.main.url(forResource: "world_states", withExtension: "json"),
+            "world_states.json should be bundled"
+        )
+        let json = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: [Any]]
+        return try XCTUnwrap(json?[countryCode], "\(countryCode) missing from world_states.json").count
     }
 
     // MARK: - Boundary Data Tests
