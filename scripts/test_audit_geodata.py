@@ -52,6 +52,32 @@ def test_swift_code_missing_fails(tmp_path):
     assert "GB: in GB_states.geojson but not GeographicData: ['WRL']" in errors
 
 
+def test_commented_out_swift_code_fails(tmp_path):
+    swift = tmp_path / "GeographicData.swift"
+    swift.write_text(
+        SWIFT_FILE.read_text().replace('StateProvince("WRL"', '// StateProvince("WRL"')
+    )
+
+    errors, _ = audit(swift, GEO_DIR)
+
+    assert "GB: in GB_states.geojson but not GeographicData: ['WRL']" in errors
+
+
+def test_multiline_constructors_pass(tmp_path):
+    swift = tmp_path / "GeographicData.swift"
+    swift.write_text(
+        SWIFT_FILE.read_text()
+        .replace(
+            'StateProvince("WRL", ', 'StateProvince(\n            "WRL",\n            '
+        )
+        .replace('Country("GB", ', 'Country(\n            "GB",\n            ')
+    )
+
+    errors, _ = audit(swift, GEO_DIR)
+
+    assert errors == []
+
+
 def test_unclosed_ring_fails(geo_dir):
     def open_ring(data):
         geometry = data["features"][0]["geometry"]

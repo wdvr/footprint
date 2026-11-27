@@ -34,17 +34,20 @@ CODES_WITHOUT_GEOMETRY = {"RU": {"SEV"}}  # Sevastopol: manual entry only
 
 
 def parse_swift(text):
+    text = re.sub(r"//[^\n]*", "", text)
     lists = {}
     for m in re.finditer(
         r"static let (\w+): \[StateProvince\] = \[(.*?)\n    \]", text, re.S
     ):
-        lists[m.group(1)] = re.findall(r'StateProvince\("([^"]+)"', m.group(2))
+        lists[m.group(1)] = re.findall(r'StateProvince\(\s*"([^"]+)"', m.group(2))
     body = re.search(
         r"static func states\(for countryCode: String\).*?\n    \}", text, re.S
     )
     mapping = dict(re.findall(r'case "([A-Z]{2})": return (\w+)', body.group(0)))
-    countries = re.findall(r'Country\("([A-Z]{2})"', text)
-    has_states = set(re.findall(r'Country\("([A-Z]{2})"[^\n]*hasStates: true', text))
+    countries = re.findall(r'Country\(\s*"([A-Z]{2})"', text)
+    has_states = set(
+        re.findall(r'Country\(\s*"([A-Z]{2})"[^)]*hasStates:\s*true', text)
+    )
     return {cc: lists[name] for cc, name in mapping.items()}, has_states, countries
 
 
