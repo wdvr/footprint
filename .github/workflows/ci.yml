@@ -275,19 +275,27 @@ jobs:
     - name: Build and Test
       run: |
         cd ios
-        set -o pipefail
+        # Write the full log to a file: piping through `head` made tee die of SIGPIPE, which
+        # failed the step under pipefail regardless of the test result.
+        STATUS=0
         xcodebuild test \
           -project Footprint.xcodeproj \
           -scheme Footprint \
           -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.simulator_id }}" \
           -only-testing:FootprintTests \
           -resultBundlePath TestResults.xcresult \
-          2>&1 | tee build.log | head -500
+          > build.log 2>&1 || STATUS=$?
 
-        # Show summary
+        echo "=== Errors and failed tests ==="
+        grep -E "error:|Test Case .* failed" build.log | head -200 || true
         echo ""
         echo "=== Test Summary ==="
-        grep -E "(Test Suite|tests.*failures|TEST.*PASSED|TEST.*FAILED)" build.log | tail -20 || true
+        grep -E "(Test Suite .* (passed|failed)|Executed [0-9]+ test|TEST (SUCCEEDED|FAILED))" build.log | tail -20 || true
+        if [ "$STATUS" -ne 0 ]; then
+          echo "--- last 80 lines of build.log ---"
+          tail -80 build.log
+        fi
+        exit "$STATUS"
 
     - name: Upload Test Results
       uses: actions/upload-artifact@v4
