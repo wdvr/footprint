@@ -679,8 +679,9 @@ enum GeographicData {
         StateProvince("VT", "Viterbo", country: "IT"),
     ]
 
-    // Dutch Provinces (12 total)
+    // Dutch Provinces (12 provinces + 3 Caribbean special municipalities = 15 total)
     static let dutchProvinces: [StateProvince] = [
+        StateProvince("BQ1", "Bonaire", country: "NL"),
         StateProvince("DR", "Drenthe", country: "NL"),
         StateProvince("FL", "Flevoland", country: "NL"),
         StateProvince("FR", "Friesland", country: "NL"),
@@ -690,6 +691,8 @@ enum GeographicData {
         StateProvince("NB", "North Brabant", country: "NL"),
         StateProvince("NH", "North Holland", country: "NL"),
         StateProvince("OV", "Overijssel", country: "NL"),
+        StateProvince("BQ2", "Saba", country: "NL"),
+        StateProvince("BQ3", "Sint Eustatius", country: "NL"),
         StateProvince("UT", "Utrecht", country: "NL"),
         StateProvince("ZE", "Zeeland", country: "NL"),
         StateProvince("ZH", "South Holland", country: "NL"),
@@ -710,7 +713,7 @@ enum GeographicData {
         StateProvince("VWV", "West Flanders", country: "BE"),
     ]
 
-    // UK Council Areas (217 total - local government areas)
+    // UK Council Areas (232 total - local government areas)
     static let ukCouncilAreas: [StateProvince] = [
         StateProvince("ABE", "Aberdeen", country: "GB"),
         StateProvince("ABD", "Aberdeenshire", country: "GB"),
@@ -761,6 +764,7 @@ enum GeographicData {
         StateProvince("CLK", "Clackmannanshire", country: "GB"),
         StateProvince("CLR", "Coleraine", country: "GB"),
         StateProvince("CWY", "Conwy", country: "GB"),
+        StateProvince("CKT", "Cookstown", country: "GB"),
         StateProvince("CON", "Cornwall", country: "GB"),
         StateProvince("COV", "Coventry", country: "GB"),
         StateProvince("CGV", "Craigavon", country: "GB"),
@@ -902,6 +906,7 @@ enum GeographicData {
         StateProvince("STH", "Southampton", country: "GB"),
         StateProvince("SOS", "Southend-on-Sea", country: "GB"),
         StateProvince("SWK", "Southwark", country: "GB"),
+        StateProvince("SHN", "St Helens", country: "GB"),
         StateProvince("STS", "Staffordshire", country: "GB"),
         StateProvince("STG", "Stirling", country: "GB"),
         StateProvince("SKP", "Stockport", country: "GB"),
@@ -936,6 +941,7 @@ enum GeographicData {
         StateProvince("WGN", "Wigan", country: "GB"),
         StateProvince("WIL", "Wiltshire", country: "GB"),
         StateProvince("WNM", "Windsor and Maidenhead", country: "GB"),
+        StateProvince("WRL", "Wirral", country: "GB"),
         StateProvince("WOK", "Wokingham", country: "GB"),
         StateProvince("WLV", "Wolverhampton", country: "GB"),
         StateProvince("WOR", "Worcestershire", country: "GB"),
