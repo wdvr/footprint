@@ -1319,7 +1319,10 @@ final class PhotoImportManager: NSObject {
             )
 
             if let placemark = placemarks.first, let code = placemark.isoCountryCode {
-                countryCode = code
+                countryCode = GeoLocationMatcher.appCountryCode(
+                    forGeocoded: code,
+                    at: cluster.representativeLocation.coordinate
+                )
                 countryName = placemark.country
                 adminArea = placemark.administrativeArea
                 matched = true
