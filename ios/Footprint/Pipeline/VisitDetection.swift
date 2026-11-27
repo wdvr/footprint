@@ -29,6 +29,10 @@ struct VisitDetectionConfig: Sendable, Equatable {
     var flightSpeedKmh: Double = 250
     /// A stay between two flight legs is a layover: country-level transit if it lasts this long.
     var layoverDwell: TimeInterval = 45 * 60
+    /// A stay between two flights longer than this is a visit, not a layover. A stay that began with
+    /// a flight and is still open at the arrival point is held back until it moves on, closes, or
+    /// exceeds this, since an outbound flight could still turn it into a layover.
+    var maxLayover: TimeInterval = 12 * 3600
     /// Owner ruling on spec Open Question 5: a ground pass-through (e.g. a highway drive-through)
     /// counts as a full visit, not transit. `false` restores the spec's transit default.
     var passThroughCountsAsVisit = true
@@ -251,7 +255,15 @@ enum VisitDetector {
 
         let kind: DetectedVisitKind
         var centroid = GeoMath.centroid(runSamples[...])
-        let isLayover = track.fastLegBefore[run.lowerBound] && track.isFastLeg(after: run.upperBound)
+        let arrivedByAir = track.fastLegBefore[run.lowerBound]
+        let isOpen = run.upperBound == track.samples.count - 1
+        let stillAtArrivalPoint = runSamples.allSatisfy {
+            GeoMath.distanceMeters(runSamples[0], $0) <= config.stayRadiusMeters
+        }
+        if arrivedByAir, isOpen, stillAtArrivalPoint, span <= config.maxLayover {
+            return nil
+        }
+        let isLayover = arrivedByAir && track.isFastLeg(after: run.upperBound) && span <= config.maxLayover
         if isLayover {
             // Between two flights: country-level transit only, and only for a real layover.
             guard level == .country, span >= config.layoverDwell else { return nil }
