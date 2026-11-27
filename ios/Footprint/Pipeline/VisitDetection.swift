@@ -182,26 +182,44 @@ enum VisitDetector {
         return PreparedTrack(samples: kept, fastLegBefore: fast)
     }
 
+    struct Analysis: Sendable, Equatable {
+        let visits: [DetectedVisit]
+        /// Arrival of the earliest stay held back as a possible layover; its samples must stay in
+        /// the next run's window.
+        let heldBackSince: Date?
+    }
+
     static func detect(
         _ samples: [EvidenceSample],
         resolve: Resolver,
         config: VisitDetectionConfig = .default,
         calendar: Calendar = .current
     ) -> [DetectedVisit] {
+        analyze(samples, resolve: resolve, config: config, calendar: calendar).visits
+    }
+
+    static func analyze(
+        _ samples: [EvidenceSample],
+        resolve: Resolver,
+        config: VisitDetectionConfig = .default,
+        calendar: Calendar = .current
+    ) -> Analysis {
         let track = prepare(samples, config: config)
         let keys: [PlaceKey?] = track.samples.indices.map { i in
             track.isAirborne(i) ? nil : resolve(track.samples[i].latitude, track.samples[i].longitude)
         }
         var visits: [DetectedVisit] = []
+        var heldBackSince: Date?
         for level in PlaceLevel.allCases {
             for run in presenceRuns(track: track, keys: keys, level: level) {
-                if let visit = classify(run: run, level: level, track: track, keys: keys,
-                                        resolve: resolve, config: config, calendar: calendar) {
+                if let visit = classify(run: run, level: level, track: track, keys: keys, resolve: resolve,
+                                        config: config, calendar: calendar, heldBackSince: &heldBackSince) {
                     visits.append(visit)
                 }
             }
         }
-        return visits.sorted { ($0.arrivedAt, $0.level.rawValue) < ($1.arrivedAt, $1.level.rawValue) }
+        let sorted = visits.sorted { ($0.arrivedAt, $0.level.rawValue) < ($1.arrivedAt, $1.level.rawValue) }
+        return Analysis(visits: sorted, heldBackSince: heldBackSince)
     }
 
     static func spansLocalMidnight(_ start: Date, _ end: Date, calendar: Calendar) -> Bool {
@@ -244,7 +262,8 @@ enum VisitDetector {
         keys: [PlaceKey?],
         resolve: Resolver,
         config: VisitDetectionConfig,
-        calendar: Calendar
+        calendar: Calendar,
+        heldBackSince: inout Date?
     ) -> DetectedVisit? {
         // Anti-phantom rule: a single fly-by sample records nothing.
         guard run.count >= config.minSamples, let key = levelKey(keys[run.lowerBound], level) else { return nil }
@@ -261,6 +280,7 @@ enum VisitDetector {
             GeoMath.distanceMeters(runSamples[0], $0) <= config.stayRadiusMeters
         }
         if arrivedByAir, isOpen, stillAtArrivalPoint, span <= config.maxLayover {
+            heldBackSince = min(heldBackSince ?? arrivedAt, arrivedAt)
             return nil
         }
         let isLayover = arrivedByAir && track.isFastLeg(after: run.upperBound) && span <= config.maxLayover

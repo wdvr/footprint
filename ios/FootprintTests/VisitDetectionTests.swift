@@ -154,7 +154,9 @@ final class VisitDetectionTests: XCTestCase {
     func testOpenStayAfterLandingIsHeldBackUntilItCannotBeALayover() {
         let inbound = flightLeg(from: 0, lon: 1, fixes: 6)
         let atGate: [EvidenceSample] = (0...6).map { sample(10 + Double($0) * 5, 10, airport) }
-        XCTAssertEqual(detect(inbound + atGate), [], "an outbound flight could still make this a layover")
+        let pending = VisitDetector.analyze(inbound + atGate, resolve: world, calendar: utc)
+        XCTAssertEqual(pending.visits, [], "an outbound flight could still make this a layover")
+        XCTAssertEqual(pending.heldBackSince, atGate[0].timestamp)
 
         let overnight: [EvidenceSample] = (0...13).map { sample(10 + Double($0) * 60, 10, airport) }
         let visits = detect(inbound + overnight)

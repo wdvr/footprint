@@ -28,6 +28,7 @@ final class VisitPipeline {
     static let sampleRetention: TimeInterval = 395 * 86_400
     static let distanceDefaultsKey = "visitPipeline.distanceMeters"
     static let distanceCountedThroughKey = "visitPipeline.distanceCountedThrough"
+    static let heldBackSinceKey = "visitPipeline.heldBackSince"
     static let lastRunDefaultsKey = "visitPipeline.lastRunAt"
 
     private(set) var container: ModelContainer?
@@ -83,14 +84,17 @@ final class VisitPipeline {
         var newPlaces: [NewPlace] = []
 
         if let oldestPending = pending.first?.timestamp {
-            let windowStart = oldestPending.addingTimeInterval(-Self.lookback)
+            // A stay held back as a possible layover stays in the window however late the next fix is.
+            let heldBack = defaults.object(forKey: Self.heldBackSinceKey) as? Date ?? .distantFuture
+            let windowStart = min(oldestPending.addingTimeInterval(-Self.lookback), heldBack)
             let window = (try? context.fetch(FetchDescriptor<LocationSample>(
                 predicate: #Predicate { $0.timestamp >= windowStart },
                 sortBy: [SortDescriptor(\.timestamp)]
             ))) ?? []
             let evidence = window.map(\.evidence)
-            let detected = VisitDetector.detect(evidence, resolve: resolve, config: config, calendar: calendar)
-            newPlaces = upsert(detected, windowStart: windowStart, in: context, now: now)
+            let analysis = VisitDetector.analyze(evidence, resolve: resolve, config: config, calendar: calendar)
+            defaults.set(analysis.heldBackSince, forKey: Self.heldBackSinceKey)
+            newPlaces = upsert(analysis.visits, windowStart: windowStart, in: context, now: now)
 
             accumulateDistance(window: window, now: now)
             for sample in pending {

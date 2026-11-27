@@ -151,6 +151,24 @@ final class VisitPipelineTests: XCTestCase {
         XCTAssertEqual(pipeline.status().distanceKm, 3, accuracy: 0.01)
     }
 
+    func testStayHeldBackAfterLandingSurvivesALongGap() throws {
+        // Arrive by air (900 km/h legs), wait at the gate, then nothing for two days.
+        let inbound = (0..<6).map {
+            EvidenceSample(timestamp: t0.addingTimeInterval(Double($0) * 60), latitude: 37,
+                           longitude: -125 + Double($0) * 15_000 * degreesPerMeter, horizontalAccuracy: 20)
+        }
+        let gateStart = t0.addingTimeInterval(10 * 60)
+        let atGate = stay(startingAt: gateStart, minutes: 30)
+        XCTAssertEqual(pipeline.record(inbound + atGate, now: gateStart.addingTimeInterval(1800)), [])
+
+        let twoDaysLater = gateStart.addingTimeInterval(2 * 86_400)
+        let later = [EvidenceSample(timestamp: twoDaysLater, latitude: 37, longitude: -122, horizontalAccuracy: 20)]
+        let newPlaces = pipeline.record(later, now: twoDaysLater)
+
+        XCTAssertTrue(newPlaces.contains(VisitPipeline.NewPlace(countryCode: "US", subdivisionCode: nil)))
+        XCTAssertNil(defaults.object(forKey: VisitPipeline.heldBackSinceKey))
+    }
+
     func testStatusReportsCounts() {
         pipeline.record(stay(startingAt: t0), now: t0.addingTimeInterval(3600))
         let status = pipeline.status()
