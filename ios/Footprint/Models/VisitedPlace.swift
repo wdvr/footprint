@@ -23,6 +23,7 @@ final class VisitedPlace {
         case japanesePrefecture = "japanese_prefecture"
         case southKoreanProvince = "south_korean_province"
         case norwegianCounty = "norwegian_county"
+        case usCounty = "us_county"
 
         var displayName: String {
             switch self {
@@ -44,6 +45,7 @@ final class VisitedPlace {
             case .japanesePrefecture: return "Japanese Prefecture"
             case .southKoreanProvince: return "South Korean Province"
             case .norwegianCounty: return "Norwegian County"
+            case .usCounty: return "US County"
             }
         }
     }

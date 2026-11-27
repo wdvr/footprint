@@ -3,7 +3,7 @@ import Foundation
 import SwiftData
 
 /// Glue between the pure detector and SwiftData (§3.2): stores samples, derives `Visit` rows,
-/// and upserts `VisitedPlace` (country / subdivision only in Phase 1).
+/// and upserts `VisitedPlace` for countries, subdivisions and US counties.
 @MainActor
 final class VisitPipeline {
     static let shared = VisitPipeline()
@@ -12,6 +12,7 @@ final class VisitPipeline {
     struct NewPlace: Hashable, Sendable {
         let countryCode: String
         let subdivisionCode: String?
+        var countyFips: String? = nil
     }
 
     struct Status: Equatable, Sendable {
@@ -30,6 +31,8 @@ final class VisitPipeline {
     static let distanceCountedThroughKey = "visitPipeline.distanceCountedThrough"
     static let heldBackSinceKey = "visitPipeline.heldBackSince"
     static let lastRunDefaultsKey = "visitPipeline.lastRunAt"
+    /// Place data version the retained samples were last re-resolved against (§5.4.2).
+    static let resolvedDataVersionKey = "visitPipeline.resolvedDataVersion"
 
     private(set) var container: ModelContainer?
     var config = VisitDetectionConfig.default
@@ -50,7 +53,10 @@ final class VisitPipeline {
         let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
         guard let match = GeoLocationMatcher.matchCoordinateNonisolated(coordinate) else { return nil }
         let subdivision = match.stateCode.map { String($0.split(separator: "-").last ?? Substring($0)) }
-        return PlaceKey(countryCode: match.countryCode, subdivisionCode: subdivision)
+        let county = match.countryCode == "US"
+            ? subdivision.flatMap { CountyMatcher.shared.county(latitude: latitude, longitude: longitude, state: $0) }
+            : nil
+        return PlaceKey(countryCode: match.countryCode, subdivisionCode: subdivision, countyFips: county)
     }
 
     // MARK: - Ingest
@@ -106,6 +112,28 @@ final class VisitPipeline {
         try? context.delete(model: LocationSample.self, where: #Predicate { $0.timestamp < retentionCutoff })
         try? context.save()
         defaults.set(now, forKey: Self.lastRunDefaultsKey)
+        return newPlaces
+    }
+
+    /// Re-derives visits from every retained sample when the place data changed (e.g. counties
+    /// arriving), so samples recorded before the update still yield the new levels. Idempotent:
+    /// re-derived visits merge into the rows they overlap.
+    @discardableResult
+    func reresolveIfNeeded(dataVersion: String, now: Date = Date()) -> [NewPlace] {
+        guard defaults.string(forKey: Self.resolvedDataVersionKey) != dataVersion else { return [] }
+        let places = reresolve(now: now)
+        defaults.set(dataVersion, forKey: Self.resolvedDataVersionKey)
+        return places
+    }
+
+    @discardableResult
+    func reresolve(now: Date = Date()) -> [NewPlace] {
+        guard let context = container?.mainContext else { return [] }
+        let samples = (try? context.fetch(FetchDescriptor<LocationSample>(sortBy: [SortDescriptor(\.timestamp)]))) ?? []
+        guard let first = samples.first?.timestamp else { return [] }
+        let analysis = VisitDetector.analyze(samples.map(\.evidence), resolve: resolve, config: config, calendar: calendar)
+        let newPlaces = upsert(analysis.visits, windowStart: first, in: context, now: now)
+        try? context.save()
         return newPlaces
     }
 
@@ -178,6 +206,7 @@ final class VisitPipeline {
         row.levelRaw == visit.level.rawValue
             && row.countryCode == visit.countryCode
             && row.subdivisionCode == visit.subdivisionCode
+            && row.countyFips == visit.countyFips
             && row.arrivedAt <= visit.departedAt
             && (row.departedAt ?? row.arrivedAt) >= visit.arrivedAt
     }
@@ -201,13 +230,22 @@ final class VisitPipeline {
             regionType = type
             regionCode = code
             regionName = state.name
+        case .county:
+            guard let fips = visit.countyFips, let county = CountyIndex.shared?.counties[fips] else { return nil }
+            regionType = .usCounty
+            regionCode = fips
+            regionName = county.name
         }
         let visitType: VisitedPlace.VisitType = visit.kind == .visited ? .visited : .transit
         let typeRaw = regionType.rawValue
         let places = (try? context.fetch(FetchDescriptor<VisitedPlace>(
             predicate: #Predicate { $0.regionType == typeRaw && $0.regionCode == regionCode }
         ))) ?? []
-        let newPlace = NewPlace(countryCode: visit.countryCode, subdivisionCode: visit.level == .subdivision ? regionCode : nil)
+        let newPlace = NewPlace(
+            countryCode: visit.countryCode,
+            subdivisionCode: visit.level == .country ? nil : visit.subdivisionCode,
+            countyFips: visit.level == .county ? regionCode : nil
+        )
 
         if let place = places.first(where: { !$0.isDeleted && $0.isVisited }) {
             var changed = false
