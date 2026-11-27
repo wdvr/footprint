@@ -1183,7 +1183,7 @@ final class PhotoImportManager: NSObject {
                                 }
                             }
 
-                            if countryCode == "US" || countryCode == "PR",
+                            if AppSettings.isCountiesEnabled, countryCode == "US" || countryCode == "PR",
                                let county = Self.county(at: cluster.representativeLocation.coordinate,
                                                         state: countryCode == "PR" ? "PR" : stateCode) {
                                 let countyKey = "\(VisitedPlace.RegionType.usCounty.rawValue):\(county.fips)"

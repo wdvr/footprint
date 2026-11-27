@@ -65,7 +65,7 @@ struct FootprintApp: App {
 
             VisitPipeline.shared.configure(container: container)
             // Counties arrived after samples were recorded: derive county visits from them once.
-            if let countyData = CountyIndex.shared?.source {
+            if AppSettings.isCountiesEnabled, let countyData = CountyIndex.shared?.source {
                 Task { @MainActor in
                     VisitPipeline.shared.reresolveIfNeeded(dataVersion: countyData)
                 }

@@ -477,6 +477,19 @@ struct SettingsView: View {
                     Text("Controls which countries show individual state/province tracking. Countries not tracked at state level will show as fully visited when marked.")
                 }
 
+                Section {
+                    Toggle("US Counties", isOn: $appSettings.countiesEnabled)
+                        .accessibilityIdentifier("countiesToggle")
+                        .onChange(of: appSettings.countiesEnabled) { _, enabled in
+                            // Fill in counties from the location history already on this iPhone.
+                            if enabled { VisitPipeline.shared.reresolve() }
+                        }
+                } header: {
+                    Text("Completionist")
+                } footer: {
+                    Text("Track all 3,222 US counties and Puerto Rico municipios. Adds a Counties screen to the US map. Re-scan your photos to fill in counties from past trips.")
+                }
+
                 // App Info Section
                 Section("About") {
                     HStack {
@@ -2105,7 +2118,7 @@ struct StateMapSheet: View {
                         onDismiss()
                     }
                 }
-                if countryCode == "US" {
+                if countryCode == "US" && AppSettings.shared.countiesEnabled {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         NavigationLink {
                             USCountiesView()
