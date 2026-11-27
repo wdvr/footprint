@@ -226,6 +226,8 @@ jobs:
         if [ -d "$XCODE_PATH" ]; then
           echo "Using Xcode: $XCODE_PATH"
           sudo xcode-select -s "$XCODE_PATH/Contents/Developer" || true
+          # sudo has no password on the runner, so pin the Xcode for later steps via env
+          echo "DEVELOPER_DIR=$XCODE_PATH/Contents/Developer" >> "$GITHUB_ENV"
           export DEVELOPER_DIR="$XCODE_PATH/Contents/Developer"
         else
           echo "WARNING: No Xcode found, using default"
@@ -259,35 +261,71 @@ jobs:
     - name: Find Available Simulator
       id: simulator
       run: |
-        # Try iPhone 17, then iPhone 16, then any available iPhone
-        for SIM in "iPhone 17" "iPhone 17 Pro" "iPhone 16" "iPhone 16 Pro" "iPhone 15" "iPhone 15 Pro"; do
-          if xcrun simctl list devices available | grep -q "$SIM"; then
-            echo "simulator=$SIM" >> $GITHUB_OUTPUT
-            echo "Found simulator: $SIM"
-            exit 0
+        echo "Runner user: $(whoami), Xcode: ${DEVELOPER_DIR:-$(xcode-select -p)}"
+        xcrun simctl list runtimes
+        # Prefer iPhone 17, then 16, then 15, then any iPhone on an iOS runtime
+        UDID=$(xcrun simctl list devices available -j | /usr/bin/python3 -c '
+        import json, sys
+        devices = json.load(sys.stdin)["devices"]
+        iphones = [d for rt, ds in devices.items() if ".iOS-" in rt for d in ds if d["name"].startswith("iPhone")]
+        for name in ["iPhone 17", "iPhone 17 Pro", "iPhone 16", "iPhone 16 Pro", "iPhone 15", "iPhone 15 Pro"]:
+            match = [d for d in iphones if d["name"] == name]
+            if match:
+                print(match[0]["udid"])
+                sys.exit()
+        if iphones:
+            print(iphones[0]["udid"])
+        ')
+        if [ -z "$UDID" ]; then
+          # Runtime installed but no device for this user: create one
+          read -r RUNTIME DEVTYPE <<< "$(xcrun simctl list -j runtimes devicetypes | /usr/bin/python3 -c '
+        import json, sys
+        data = json.load(sys.stdin)
+        runtimes = [r for r in data["runtimes"] if r.get("platform") == "iOS" and r.get("isAvailable")]
+        if runtimes:
+            runtime = runtimes[-1]
+            types = runtime.get("supportedDeviceTypes") or data["devicetypes"]
+            iphones = [t for t in types if t["name"].startswith("iPhone")]
+            if iphones:
+                print(runtime["identifier"], iphones[-1]["identifier"])
+        ')"
+          if [ -n "${RUNTIME:-}" ] && [ -n "${DEVTYPE:-}" ]; then
+            echo "No iPhone simulator found; creating one ($DEVTYPE on $RUNTIME)"
+            UDID=$(xcrun simctl create "iPhone CI" "$DEVTYPE" "$RUNTIME")
           fi
-        done
-        # Fallback to first available iPhone
-        SIM=$(xcrun simctl list devices available | grep "iPhone" | head -1 | sed 's/^[[:space:]]*//' | cut -d'(' -f1 | xargs)
-        echo "simulator=$SIM" >> $GITHUB_OUTPUT
-        echo "Using fallback simulator: $SIM"
+        fi
+        if [ -z "$UDID" ]; then
+          echo "::error::No iOS simulator runtime is visible to user $(whoami) with this Xcode. Install one as that user: xcodebuild -downloadPlatform iOS"
+          xcrun simctl list devices
+          exit 1
+        fi
+        echo "simulator_id=$UDID" >> "$GITHUB_OUTPUT"
+        xcrun simctl list devices | grep "$UDID" || true
 
     - name: Build and Test
       run: |
         cd ios
-        set -o pipefail
+        # Write the full log to a file: piping through `head` made tee die of SIGPIPE, which
+        # failed the step under pipefail regardless of the test result.
+        STATUS=0
         xcodebuild test \
           -project Footprint.xcodeproj \
           -scheme Footprint \
-          -destination "platform=iOS Simulator,name=${{ steps.simulator.outputs.simulator }}" \
+          -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.simulator_id }}" \
           -only-testing:FootprintTests \
           -resultBundlePath TestResults.xcresult \
-          2>&1 | tee build.log | head -500
+          > build.log 2>&1 || STATUS=$?
 
-        # Show summary
+        echo "=== Errors and failed tests ==="
+        grep -E "error:|Test Case .* failed" build.log | head -200 || true
         echo ""
         echo "=== Test Summary ==="
-        grep -E "(Test Suite|tests.*failures|TEST.*PASSED|TEST.*FAILED)" build.log | tail -20 || true
+        grep -E "(Test Suite .* (passed|failed)|Executed [0-9]+ test|TEST (SUCCEEDED|FAILED))" build.log | tail -20 || true
+        if [ "$STATUS" -ne 0 ]; then
+          echo "--- last 80 lines of build.log ---"
+          tail -80 build.log
+        fi
+        exit "$STATUS"
 
     - name: Upload Test Results
       uses: actions/upload-artifact@v4
