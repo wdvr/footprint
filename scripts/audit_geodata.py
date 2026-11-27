@@ -26,11 +26,8 @@ SPECIAL_FILES = {"US": "us_states.geojson", "CA": "canadian_provinces.geojson"}
 # Boundary codes the app normalizes to a different country code (normalizedCountryCode in CountryMapView.swift)
 COUNTRY_CODE_ALIASES = {"CN-TW": "TW"}
 
-# Known mismatches awaiting an owner decision; reported as warnings, not errors.
-PENDING_COUNTRIES = {
-    "ES": "ES_states.geojson has 52 provinces; GeographicData has 19 autonomous communities",
-}
-CODES_WITHOUT_GEOMETRY = {"RU": {"SEV"}}  # Sevastopol: manual entry only
+# Subdivisions intentionally listed without boundary geometry, e.g. {"RU": {"SEV"}}.
+CODES_WITHOUT_GEOMETRY: dict[str, set[str]] = {}
 # Countries with subdivisions but no bundled boundary file; any other missing file is an error.
 COUNTRIES_WITHOUT_BOUNDARY_FILE = {"AU", "BR", "DE", "MX"}
 
@@ -149,16 +146,6 @@ def audit(swift_file=SWIFT_FILE, geo_dir=GEO_DIR):
         }
         swift_only = set(swift_codes) - geo_codes
         geo_only = geo_codes - set(swift_codes)
-        if cc in PENDING_COUNTRIES:
-            if swift_only or geo_only:
-                warnings.append(
-                    f"{cc}: pending owner decision: {PENDING_COUNTRIES[cc]}"
-                )
-            else:
-                errors.append(
-                    f"{cc}: matches its boundary file; remove from PENDING_COUNTRIES"
-                )
-            continue
         exempt = CODES_WITHOUT_GEOMETRY.get(cc, set())
         if stale := sorted(exempt - swift_only):
             errors.append(f"{cc}: remove {stale} from CODES_WITHOUT_GEOMETRY")
@@ -168,7 +155,6 @@ def audit(swift_file=SWIFT_FILE, geo_dir=GEO_DIR):
             errors.append(f"{cc}: in GeographicData but not {path.name}: {missing}")
 
     exceptions = {
-        "PENDING_COUNTRIES": PENDING_COUNTRIES,
         "CODES_WITHOUT_GEOMETRY": CODES_WITHOUT_GEOMETRY,
         "COUNTRIES_WITHOUT_BOUNDARY_FILE": COUNTRIES_WITHOUT_BOUNDARY_FILE,
     }
