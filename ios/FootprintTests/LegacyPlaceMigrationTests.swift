@@ -75,6 +75,19 @@ final class LegacyPlaceMigrationTests: XCTestCase {
         XCTAssertEqual(places.first?.notes, "Prado")
     }
 
+    func testMergingWithoutNewHistoryLeavesTargetUntouched() throws {
+        let synced = Date(timeIntervalSince1970: 1_600_000_000)
+        let target = VisitedPlace(regionType: .country, regionCode: "XS", regionName: "Sevastopol",
+                                  lastModifiedAt: synced, isSynced: true)
+        context.insert(target)
+        context.insert(VisitedPlace(regionType: .russianFederalSubject, regionCode: "SEV", regionName: "Sevastopol"))
+
+        LegacyPlaceMigration.run(in: context)
+
+        XCTAssertEqual(target.lastModifiedAt, synced)
+        XCTAssertTrue(target.isSynced)
+    }
+
     func testEveryMigrationTargetExistsInGeographicData() {
         for province in LegacyPlaceMigration.spanishCommunityToProvince.values {
             XCTAssertTrue(GeographicData.states(for: "ES").contains { $0.id == province }, province)
