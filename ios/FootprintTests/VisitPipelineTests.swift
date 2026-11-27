@@ -125,6 +125,32 @@ final class VisitPipelineTests: XCTestCase {
         XCTAssertEqual(pipeline.status().distanceKm, 3, accuracy: 0.01)
     }
 
+    func testMultiDayStayStaysOneVisit() throws {
+        let hourly = stride(from: 0, through: 96, by: 1).map {
+            EvidenceSample(timestamp: t0.addingTimeInterval(Double($0) * 3600),
+                           latitude: 37 + Double($0 % 3) * 10 * degreesPerMeter, longitude: -122, horizontalAccuracy: 20)
+        }
+        for day in 0..<4 {
+            let batch = Array(hourly[(day * 24)..<((day + 1) * 24)])
+            pipeline.record(batch, now: batch.last!.timestamp)
+        }
+
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Visit>()), 2)
+        XCTAssertTrue(try places().allSatisfy { $0.visitCount == 1 })
+    }
+
+    func testLateSampleDoesNotRecountDistance() throws {
+        let drive = (0...3).map {
+            EvidenceSample(timestamp: t0.addingTimeInterval(Double($0) * 60),
+                           latitude: 37 + Double($0) * 1000 * degreesPerMeter, longitude: -122, horizontalAccuracy: 20)
+        }
+        pipeline.record(drive, now: t0.addingTimeInterval(180))
+        pipeline.record([EvidenceSample(timestamp: t0.addingTimeInterval(-600), latitude: 37, longitude: -122,
+                                        horizontalAccuracy: 20)], now: t0.addingTimeInterval(240))
+
+        XCTAssertEqual(pipeline.status().distanceKm, 3, accuracy: 0.01)
+    }
+
     func testStatusReportsCounts() {
         pipeline.record(stay(startingAt: t0), now: t0.addingTimeInterval(3600))
         let status = pipeline.status()

@@ -27,6 +27,7 @@ final class VisitPipeline {
     /// §3.1 retention: raw samples are kept for a rolling 13 months.
     static let sampleRetention: TimeInterval = 395 * 86_400
     static let distanceDefaultsKey = "visitPipeline.distanceMeters"
+    static let distanceCountedThroughKey = "visitPipeline.distanceCountedThrough"
     static let lastRunDefaultsKey = "visitPipeline.lastRunAt"
 
     private(set) var container: ModelContainer?
@@ -119,12 +120,15 @@ final class VisitPipeline {
 
     // MARK: - Private
 
-    /// Distance over newly processed legs only: the last already-processed sample anchors the track.
+    /// Distance over legs after the last counted sample only, so late-arriving samples (e.g. a
+    /// delayed `CLVisit` arrival) never re-count legs already summed.
     private func accumulateDistance(window: [LocationSample], now: Date) {
-        guard let firstPending = window.firstIndex(where: { $0.processedAt == nil }) else { return }
-        let track = window[max(0, firstPending - 1)...].map(\.evidence)
+        let countedThrough = defaults.object(forKey: Self.distanceCountedThroughKey) as? Date ?? .distantPast
+        let track = window.filter { $0.timestamp >= countedThrough }.map(\.evidence)
+        guard let last = track.last else { return }
         let meters = DistanceAccumulator.meters(track, config: config)
         defaults.set(defaults.double(forKey: Self.distanceDefaultsKey) + meters, forKey: Self.distanceDefaultsKey)
+        defaults.set(last.timestamp, forKey: Self.distanceCountedThroughKey)
     }
 
     private func upsert(
@@ -133,10 +137,10 @@ final class VisitPipeline {
         in context: ModelContext,
         now: Date
     ) -> [NewPlace] {
-        // Visits re-derived from an overlapping window extend the row they came from.
-        let horizon = windowStart.addingTimeInterval(-Self.lookback)
+        // Visits re-derived from an overlapping window extend the row they came from, however long
+        // ago that row started.
         var existing = (try? context.fetch(FetchDescriptor<Visit>(
-            predicate: #Predicate { $0.arrivedAt >= horizon || $0.departedAt == nil }
+            predicate: #Predicate { ($0.departedAt ?? $0.arrivedAt) >= windowStart }
         ))) ?? []
         var newPlaces: [NewPlace] = []
 
