@@ -39,11 +39,19 @@ enum LegacyPlaceMigration {
         var changed = false
         for place in places {
             guard let target = target(regionType: place.regionType, regionCode: place.regionCode) else { continue }
-            let alreadyThere = places.contains {
+            if let existing = places.first(where: {
                 !$0.isDeleted && $0.regionType == target.regionType.rawValue
                     && $0.regionCode == target.regionCode && $0.status == place.status
-            }
-            if !alreadyThere {
+            }) {
+                // Keep the retired record's history on the surviving one.
+                if let date = place.visitedDate, existing.visitedDate.map({ date < $0 }) ?? true {
+                    existing.visitedDate = date
+                }
+                existing.departureDate = existing.departureDate ?? place.departureDate
+                existing.notes = existing.notes ?? place.notes
+                existing.lastModifiedAt = now
+                existing.isSynced = false
+            } else {
                 context.insert(VisitedPlace(
                     regionType: target.regionType,
                     regionCode: target.regionCode,
