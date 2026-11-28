@@ -5,6 +5,9 @@ import SwiftData
 final class VisitedPlace {
     enum RegionType: String, Codable, CaseIterable {
         case country = "country"
+        /// Named region (§2.4), code = region slug ("us-bay-area"). Region visits are derived
+        /// from member visits; this type is reserved for region rows such as bucket-list entries.
+        case region = "region"
         case usState = "us_state"
         case canadianProvince = "canadian_province"
         // International regions
@@ -27,6 +30,7 @@ final class VisitedPlace {
         var displayName: String {
             switch self {
             case .country: return "Country"
+            case .region: return "Region"
             case .usState: return "US State"
             case .canadianProvince: return "Canadian Province"
             case .australianState: return "Australian State"
