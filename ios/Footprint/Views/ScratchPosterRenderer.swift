@@ -1,5 +1,7 @@
+import ImageIO
 import MapKit
 import UIKit
+import UniformTypeIdentifiers
 
 /// Draws the scratch-map poster: land under metallic foil, visited places scratched off to reveal
 /// colour, on a Robinson world map with a title cartouche and continent tallies. Vector PDF for
@@ -31,6 +33,18 @@ enum ScratchPosterRenderer {
             context.cgContext.scaleBy(x: scale, y: scale)
             draw(content, theme: theme, pageSize: page, in: context.cgContext)
         }
+    }
+
+    /// PNG with its print resolution embedded, so print apps size it to the chosen paper.
+    static func pngData(_ image: UIImage, dpi: Int) -> Data? {
+        guard let cgImage = image.cgImage else { return nil }
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil) else {
+            return nil
+        }
+        let properties = [kCGImagePropertyDPIWidth: dpi, kCGImagePropertyDPIHeight: dpi] as CFDictionary
+        CGImageDestinationAddImage(destination, cgImage, properties)
+        return CGImageDestinationFinalize(destination) ? data as Data : nil
     }
 
     // MARK: - Geometry

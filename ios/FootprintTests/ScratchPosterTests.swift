@@ -1,3 +1,4 @@
+import ImageIO
 import PDFKit
 import XCTest
 
@@ -128,6 +129,15 @@ final class ScratchPosterTests: XCTestCase {
         XCTAssertTrue(parts.foil.contains { $0.code == "US" })
         XCTAssertTrue(parts.foil.contains { $0.code == "US-TX" })
         XCTAssertEqual(parts.revealed.filter { $0.code.hasPrefix("US") }.map(\.code), ["US-CA"])
+    }
+
+    func testPNGCarriesItsPrintResolution() throws {
+        let image = ScratchPosterRenderer.renderImage(content(countries: ["FR"]), theme: .silver, size: .a3, pixelWidth: 400)
+        let data = try XCTUnwrap(ScratchPosterRenderer.pngData(image, dpi: 300))
+        let source = try XCTUnwrap(CGImageSourceCreateWithData(data as CFData, nil))
+        let properties = try XCTUnwrap(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any])
+        XCTAssertEqual(try XCTUnwrap(properties[kCGImagePropertyDPIWidth] as? Double), 300, accuracy: 0.5)
+        XCTAssertEqual(try XCTUnwrap(properties[kCGImagePropertyPixelWidth] as? Int), 400)
     }
 
     // MARK: - Helpers

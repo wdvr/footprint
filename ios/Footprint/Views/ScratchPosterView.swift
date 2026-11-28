@@ -183,8 +183,9 @@ struct ScratchPosterView: View {
             case .pdf:
                 return ScratchPosterRenderer.renderPDF(content, theme: theme, size: size)
             case .png:
-                return ScratchPosterRenderer.renderImage(content, theme: theme, size: size,
-                                                         pixelWidth: size.printImage.size.width).pngData()
+                let print = size.printImage
+                let image = ScratchPosterRenderer.renderImage(content, theme: theme, size: size, pixelWidth: print.size.width)
+                return ScratchPosterRenderer.pngData(image, dpi: print.dpi)
             }
         }.value
         do {
