@@ -861,15 +861,17 @@ def build():
             "clock.badge.checkmark",
             legacy=("all_time_zones", "platinum"),
         ),
+        # The zone tables reach UTC−10 (Hawaii) in the west, so the far side of the date line starts there.
         medal(
             "date_line_crosser",
             "Date Line Crosser",
-            "Visit both UTC+12 and UTC−11 or beyond",
+            "Visit both UTC+12 or beyond and UTC−10 or beyond",
             "timezones",
             "special",
             "dateLineCrossed",
             milestone(1),
             "arrow.left.and.right",
+            filter={"east": "12", "west": "-10"},
         ),
     ]
     # Novelty / geography (device-only: from visit and photo coordinates)
@@ -1002,9 +1004,9 @@ def build():
     assert len(ids) == len(set(ids)), "duplicate medal ids"
     for m in M:
         ts = [t["threshold"] for t in m["tiers"]]
-        assert ts == sorted(ts) and len(set(ts)) == len(
-            ts
-        ), f"{m['id']}: tiers must increase"
+        assert ts == sorted(ts) and len(set(ts)) == len(ts), (
+            f"{m['id']}: tiers must increase"
+        )
     return {
         "catalogVersion": CATALOG_VERSION,
         "tierLevels": TIER_LEVELS,

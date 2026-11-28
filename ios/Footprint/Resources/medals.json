@@ -3168,7 +3168,7 @@
   {
    "id": "date_line_crosser",
    "name": "Date Line Crosser",
-   "description": "Visit both UTC+12 and UTC−11 or beyond",
+   "description": "Visit both UTC+12 or beyond and UTC−10 or beyond",
    "family": "timezones",
    "category": "special",
    "metric": "dateLineCrossed",
@@ -3182,7 +3182,11 @@
    "platforms": [
     "ios",
     "backend"
-   ]
+   ],
+   "filter": {
+    "east": "12",
+    "west": "-10"
+   }
   },
   {
    "id": "four_hemispheres",

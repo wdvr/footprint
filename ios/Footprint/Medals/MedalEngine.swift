@@ -284,7 +284,9 @@ enum MedalEngine {
             case "timeZonesVisited":
                 return Double(zones.count)
             case "dateLineCrossed":
-                return zones.contains(where: { $0 >= 12 }) && zones.contains(where: { $0 <= -11 }) ? 1 : 0
+                let east = filter["east"].flatMap(Int.init) ?? 12
+                let west = filter["west"].flatMap(Int.init) ?? -10
+                return zones.contains(where: { $0 >= east }) && zones.contains(where: { $0 <= west }) ? 1 : 0
             case "hemispheresTouched":
                 switch filter["axis"] {
                 case "lat": return Double([northern, southern].filter { $0 }.count)
