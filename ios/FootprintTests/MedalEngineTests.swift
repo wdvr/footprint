@@ -43,7 +43,8 @@ final class MedalEngineTests: XCTestCase {
         return try JSONDecoder().decode(FixtureFile.self, from: Data(contentsOf: url))
     }
 
-    static let iso: ISO8601DateFormatter = ISO8601DateFormatter()
+    /// Computed: a stored static formatter is not concurrency-safe under Swift 6 (non-Sendable).
+    static var iso: ISO8601DateFormatter { ISO8601DateFormatter() }
 
     static func facts(_ fixture: FixtureFile) -> [MedalEngine.PlaceFact] {
         fixture.places.compactMap { place in
