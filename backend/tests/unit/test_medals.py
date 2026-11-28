@@ -144,6 +144,18 @@ class TestEvaluation:
         first = by_id(evaluate([place("FR", None)]))["first_steps"]
         assert first.awards[0].earned_at is None
 
+    def test_simple_sync_places_fall_back_to_created_at(self):
+        places = [place("FR", None, created_at="2025-02-03T04:05:06+00:00")]
+        first = by_id(evaluate(places))["first_steps"]
+        assert first.awards[0].earned_at == datetime(2025, 2, 3, 4, 5, 6, tzinfo=UTC)
+
+    def test_undated_places_do_not_stretch_the_travel_span(self):
+        places = [place("FR", None), place("DE", "2024-06-01T00:00:00Z")]
+        results = by_id(evaluate(places))
+        assert results["decade_of_footprints"].value == 0
+        assert results["regular_explorer"].value == 1
+        assert results["full_atlas"].value == 2
+
     def test_weekly_streak_crosses_year_boundary(self):
         days = ["2024-12-23", "2024-12-30", "2025-01-06", "2025-01-13"]
         places = [

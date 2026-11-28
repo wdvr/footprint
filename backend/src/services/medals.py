@@ -91,8 +91,11 @@ def place_facts(places: list[dict[str, Any]]) -> list[PlaceFact]:
     for place in places:
         if not counts_toward_medals(place):
             continue
-        date = _parse_date(place.get("visited_date")) or _parse_date(
-            place.get("marked_at")
+        # Simple sync stores no visit or mark date; created_at is when the server first saw it.
+        date = (
+            _parse_date(place.get("visited_date"))
+            or _parse_date(place.get("marked_at"))
+            or _parse_date(place.get("created_at"))
         )
         region_type = place.get("region_type", "")
         code = place.get("region_code", "")
@@ -167,6 +170,8 @@ class _State:
         elif fact.region_type == self.catalog["namedRegionRegionType"]:
             self.regions.add(fact.region_code)
         self.zones.update(fact.time_zones)
+        if not fact.dated:
+            return
         self.months.add(month_index(fact.date))
         self.weeks.add(week_index(fact.date))
         self.years.add(fact.date.astimezone(UTC).year)
@@ -221,8 +226,8 @@ class _State:
         if metric == "timeZonesVisited":
             return len(self.zones)
         if metric == "dateLineCrossed":
-            east = any(z >= 12 for z in self.zones)
-            west = any(z <= -11 for z in self.zones)
+            east = any(z >= int(f.get("east", 12)) for z in self.zones)
+            west = any(z <= int(f.get("west", -10)) for z in self.zones)
             return 1 if east and west else 0
         if metric == "newPlaceStreakMonths":
             return self.months.best
