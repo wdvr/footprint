@@ -116,8 +116,7 @@ final class MapViewTests: XCTestCase {
         // Skip if resources not available in test bundle
         try XCTSkipIf(states.isEmpty, "GeoJSON resources not available in test bundle")
 
-        // Should have 51 states (50 + DC)
-        XCTAssertEqual(states.count, 51, "Should have 51 US states including DC")
+        XCTAssertEqual(states.count, GeographicData.usStates.count, "Every US state should have a boundary")
 
         // Check some known states exist
         let stateIds = Set(states.map { $0.id })
@@ -137,8 +136,7 @@ final class MapViewTests: XCTestCase {
         // Skip if resources not available in test bundle
         try XCTSkipIf(provinces.isEmpty, "GeoJSON resources not available in test bundle")
 
-        // Should have 13 provinces/territories
-        XCTAssertEqual(provinces.count, 13, "Should have 13 Canadian provinces/territories")
+        XCTAssertEqual(provinces.count, GeographicData.canadianProvinces.count, "Every Canadian province should have a boundary")
 
         // Check some known provinces exist
         let provinceIds = Set(provinces.map { $0.id })
