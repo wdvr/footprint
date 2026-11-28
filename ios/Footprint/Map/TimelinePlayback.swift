@@ -35,9 +35,10 @@ struct TimelineStop: Identifiable, Equatable, Sendable {
     ]
 
     /// Visited countries and subdivisions (not counties, not bucket list), oldest first; undated
-    /// places use the day they were marked.
+    /// places use the day they were marked. A place recorded twice plays once, at its earliest date.
     static func stops(from places: [VisitedPlace]) -> [TimelineStop] {
-        places
+        var seen = Set<String>()
+        return places
             .filter { !$0.isDeleted && $0.isVisited && $0.regionType != VisitedPlace.RegionType.usCounty.rawValue }
             .map { place in
                 TimelineStop(
@@ -52,6 +53,7 @@ struct TimelineStop: Identifiable, Equatable, Sendable {
                 )
             }
             .sorted { ($0.date, $0.id) < ($1.date, $1.id) }
+            .filter { seen.insert($0.id).inserted }
     }
 }
 
@@ -154,11 +156,15 @@ struct TimelinePlayback: Equatable, Sendable {
 
     mutating func advance(by seconds: Double, speed: Double = 1) {
         guard !stops.isEmpty else { return }
-        position = min(endPosition, position + seconds * speed * Double(stops.count) / duration)
+        var next = position + seconds * speed * Double(stops.count) / duration
+        // Summing frame steps drifts (240 steps of 1/240 land at -2e-15, not 0), which would hold a
+        // stop back a frame and leave playback short of the end after exactly `duration` seconds.
+        if abs(next - next.rounded()) < 1e-9 { next = next.rounded() }
+        position = min(endPosition, max(-1, next))
     }
 
     mutating func seek(toProgress value: Double) {
-        guard !stops.isEmpty else { return }
+        guard !stops.isEmpty, value.isFinite else { return }
         position = min(endPosition, max(-1, min(1, value) * Double(stops.count) - 1))
     }
 
@@ -215,6 +221,70 @@ struct TimelinePlayback: Equatable, Sendable {
             guard let sub = landmark.subdivisionCode, countriesWithSubdivisions.contains(landmark.countryCode) else { return true }
             return subdivisions.contains("\(landmark.countryCode)-\(sub)")
         }
+    }
+}
+
+enum PlaybackSpeed: Double, CaseIterable, Sendable {
+    case half = 0.5
+    case normal = 1
+    case double = 2
+    case quadruple = 4
+
+    var label: String {
+        switch self {
+        case .half: return "0.5×"
+        case .normal: return "1×"
+        case .double: return "2×"
+        case .quadruple: return "4×"
+        }
+    }
+
+    var next: PlaybackSpeed {
+        let all = Self.allCases
+        return all[(all.firstIndex(of: self)! + 1) % all.count]
+    }
+}
+
+/// A place in the arrivals ticker; `age` runs 0 (just appeared) to 1 (leaving).
+struct RecentStop: Equatable, Sendable {
+    let stop: TimelineStop
+    let age: Double
+}
+
+/// A scrubber tick where the first place of `year` appears.
+struct PlaybackYearMarker: Equatable, Sendable {
+    let year: Int
+    let progress: Double
+}
+
+extension TimelinePlayback {
+    /// Countries shown so far; subdivisions do not count.
+    var countryCount: Int { visibleCountryCodes.count }
+
+    /// Places that appeared within the last `window` stops of playback, newest first.
+    func recentStops(window: Double, limit: Int = 3) -> [RecentStop] {
+        guard window > 0, limit > 0 else { return [] }
+        var recent: [RecentStop] = []
+        for index in stride(from: revealedCount - 1, through: 0, by: -1) {
+            let age = (position - Double(index)) / window
+            guard age < 1 else { break }
+            recent.append(RecentStop(stop: stops[index], age: max(0, age)))
+            if recent.count == limit { break }
+        }
+        return recent
+    }
+
+    func yearMarkers(calendar: Calendar = .current) -> [PlaybackYearMarker] {
+        var markers: [PlaybackYearMarker] = []
+        var previous: Int?
+        for (index, stop) in stops.enumerated() {
+            let year = calendar.component(.year, from: stop.date)
+            if let previous, year != previous {
+                markers.append(PlaybackYearMarker(year: year, progress: Double(index + 1) / Double(stops.count)))
+            }
+            previous = year
+        }
+        return markers
     }
 }
 

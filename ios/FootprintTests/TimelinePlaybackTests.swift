@@ -238,4 +238,130 @@ final class TimelinePlaybackTests: XCTestCase {
             XCTAssertNotNil(LandmarkAnnotationView.image(for: style), style.rawValue)
         }
     }
+
+    // MARK: - Movie overlays (from #130)
+
+    private var utc: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        return calendar
+    }
+
+    func testDuplicatePlacesPlayOnceAtTheirEarliestVisit() {
+        let places = [
+            VisitedPlace(regionType: .country, regionCode: "FR", regionName: "France", visitedDate: t0.addingTimeInterval(20 * 86_400)),
+            VisitedPlace(regionType: .country, regionCode: "BE", regionName: "Belgium", visitedDate: t0.addingTimeInterval(5 * 86_400)),
+            VisitedPlace(regionType: .country, regionCode: "FR", regionName: "France", visitedDate: t0.addingTimeInterval(2 * 86_400)),
+        ]
+        let stops = TimelineStop.stops(from: places)
+        XCTAssertEqual(stops.map(\.regionCode), ["FR", "BE"])
+        XCTAssertEqual(stops.first?.date, t0.addingTimeInterval(2 * 86_400))
+    }
+
+    func testSameDateTiesAreOrderedDeterministically() {
+        let nl = VisitedPlace(regionType: .country, regionCode: "NL", regionName: "Netherlands", visitedDate: t0)
+        let be = VisitedPlace(regionType: .country, regionCode: "BE", regionName: "Belgium", visitedDate: t0)
+        XCTAssertEqual(TimelineStop.stops(from: [nl, be]).map(\.id), TimelineStop.stops(from: [be, nl]).map(\.id))
+    }
+
+    func testSingleVisitPlaysFromAnEmptyMap() {
+        var playback = TimelinePlayback(stops: [stop("BE", day: 0)])
+        XCTAssertEqual(playback.revealedCount, 0)
+        XCTAssertNil(playback.latestStop)
+        play(&playback, seconds: playback.duration)
+        XCTAssertTrue(playback.isAtEnd)
+        XCTAssertEqual(playback.revealedCount, 1)
+    }
+
+    func testDateReadoutAdvancesMonotonically() {
+        var playback = TimelinePlayback(stops: stops(12))
+        var last = Date.distantPast
+        while !playback.isAtEnd {
+            playback.advance(by: 1.0 / 30)
+            if let date = playback.latestStop?.date {
+                XCTAssertGreaterThanOrEqual(date, last)
+                last = date
+            }
+        }
+    }
+
+    func testOutOfRangeSeekIsClamped() {
+        var playback = TimelinePlayback(stops: stops(4))
+        playback.seek(toProgress: 2)
+        XCTAssertTrue(playback.isAtEnd)
+        playback.seek(toProgress: -1)
+        XCTAssertEqual(playback.revealedCount, 0)
+        playback.seek(toProgress: 0.5)
+        playback.seek(toProgress: .nan)
+        XCTAssertEqual(playback.progress, 0.5, accuracy: 1e-9)
+    }
+
+    func testNegativeAdvanceStopsAtStart() {
+        var playback = TimelinePlayback(stops: stops(4))
+        playback.advance(by: -100)
+        XCTAssertEqual(playback.progress, 0, accuracy: 1e-9)
+        XCTAssertEqual(playback.revealedCount, 0)
+        XCTAssertTrue(playback.revealedStops.isEmpty)
+    }
+
+    func testCountryCountIgnoresSubdivisions() {
+        var playback = TimelinePlayback(stops: [
+            stop("US", day: 0),
+            stop("CA", day: 1, type: .usState, country: "US"),
+            stop("NY", day: 2, type: .usState, country: "US"),
+            stop("MX", day: 3),
+        ])
+        XCTAssertEqual(playback.countryCount, 0)
+        playback.seek(toProgress: 0.75)
+        XCTAssertEqual(playback.revealedStops.map(\.regionCode), ["US", "CA", "NY"])
+        XCTAssertEqual(playback.countryCount, 1)
+        playback.skipToEnd()
+        XCTAssertEqual(playback.countryCount, 2)
+    }
+
+    func testRecentArrivalsWindow() {
+        var playback = TimelinePlayback(stops: stops(5))
+        XCTAssertTrue(playback.recentStops(window: 2).isEmpty)
+
+        // Position 3.5: stop 3 appeared half a stop ago, stop 2 one and a half, stop 1 is gone.
+        playback.seek(toProgress: 4.5 / 5)
+        let recent = playback.recentStops(window: 2)
+        XCTAssertEqual(recent.map(\.stop.regionCode), ["C3", "C2"])
+        XCTAssertEqual(recent[0].age, 0.25, accuracy: 1e-9)
+        XCTAssertEqual(recent[1].age, 0.75, accuracy: 1e-9)
+
+        playback.skipToEnd()
+        XCTAssertEqual(playback.recentStops(window: 3).first?.age, 0)
+        XCTAssertEqual(playback.recentStops(window: 3, limit: 1).map(\.stop.regionCode), ["C4"])
+        XCTAssertTrue(playback.recentStops(window: 0).isEmpty)
+    }
+
+    func testHalfSpeedTakesTwiceAsLong() {
+        var normal = TimelinePlayback(stops: stops(10))
+        var half = normal
+        play(&normal, seconds: 2)
+        play(&half, seconds: 4, speed: PlaybackSpeed.half.rawValue)
+        XCTAssertEqual(half.progress, normal.progress, accuracy: 1e-6)
+    }
+
+    func testYearMarkersFallOnTheFirstPlaceOfEachYear() {
+        // t0 is 2020-09-13; days 0, 200, 300, 800 fall in 2020, 2021, 2021, 2022.
+        var playback = TimelinePlayback(stops: [
+            stop("BE", day: 0), stop("NL", day: 200), stop("DE", day: 300), stop("FR", day: 800),
+        ])
+        let markers = playback.yearMarkers(calendar: utc)
+        XCTAssertEqual(markers.map(\.year), [2021, 2022])
+        XCTAssertEqual(markers.map(\.progress), markers.map(\.progress).sorted())
+        for marker in markers {
+            playback.seek(toProgress: marker.progress + 1e-9)
+            XCTAssertEqual(playback.latestStop.map { utc.component(.year, from: $0.date) }, marker.year)
+        }
+        XCTAssertTrue(TimelinePlayback(stops: [stop("BE", day: 0)]).yearMarkers(calendar: utc).isEmpty)
+    }
+
+    func testSpeedCyclesThroughAllOptions() {
+        XCTAssertEqual(PlaybackSpeed.half.next, .normal)
+        XCTAssertEqual(PlaybackSpeed.quadruple.next, .half)
+        XCTAssertEqual(PlaybackSpeed.allCases.map(\.rawValue), [0.5, 1, 2, 4])
+    }
 }
