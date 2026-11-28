@@ -99,22 +99,32 @@ final class SubdivisionCodeMigrationTests: XCTestCase {
 
     // TEMP diagnostic, remove before merge.
     func testZZDiagnostic() throws {
+        var log: [String] = []
+        func state(_ tag: String, _ x: VisitedPlace) {
+            log.append("\(tag) isDeleted=\(x.isDeleted) proto=\((x as any PersistentModel).isDeleted) synced=\(x.isSynced) ctx=\(x.modelContext != nil) code=\(x.regionCode)")
+        }
         let a = VisitedPlace(regionType: .ukCountry, regionCode: "GB-ABC", regionName: "A", isSynced: true)
         context.insert(a)
         let fetched = try context.fetch(FetchDescriptor<VisitedPlace>(predicate: #Predicate { !$0.isDeleted }))
-        print("DIAG1 fetched=\(fetched.count) same=\(fetched.first === a)")
+        log.append("A fetched=\(fetched.count) same=\(fetched.first === a)")
         a.isDeleted = true
         a.isSynced = false
-        print("DIAG2 afterSet isDeleted=\(a.isDeleted) ctx=\(a.modelContext != nil)")
+        state("B set", a)
         try context.save()
-        print("DIAG3 afterSave isDeleted=\(a.isDeleted) isSynced=\(a.isSynced) code=\(a.regionCode) ctx=\(a.modelContext != nil)")
-        print("DIAG4 all=\(try context.fetch(FetchDescriptor<VisitedPlace>()).map { "\($0.regionCode):\($0.isDeleted):\($0 === a)" })")
+        state("C saved", a)
+        log.append("D all=\(try context.fetch(FetchDescriptor<VisitedPlace>()).map { "\($0.regionCode):\($0.isDeleted):\($0 === a)" })")
 
         let b = VisitedPlace(regionType: .ukCountry, regionCode: "GB-MAN", regionName: "Manchester", isSynced: true)
         context.insert(b)
-        print("DIAG5 beforeRun isDeleted=\(b.isDeleted)")
+        state("E before", b)
         let n = SubdivisionCodeMigration.run(in: context, now: now)
-        print("DIAG6 run=\(n) isDeleted=\(b.isDeleted) isSynced=\(b.isSynced) code=\(b.regionCode) ctx=\(b.modelContext != nil) lm=\(b.lastModifiedAt.timeIntervalSince1970)")
-        print("DIAG7 all=\(try context.fetch(FetchDescriptor<VisitedPlace>()).map { "\($0.regionCode):\($0.isDeleted):\($0.isSynced):\($0 === b)" })")
+        state("F run=\(n)", b)
+        log.append("G all=\(try context.fetch(FetchDescriptor<VisitedPlace>()).map { "\($0.regionCode):\($0.isDeleted):\($0.isSynced):\($0 === b)" })")
+
+        let c = VisitedPlace(regionType: .spanishCommunity, regionCode: "AN", regionName: "Andalusia", isSynced: true)
+        context.insert(c)
+        LegacyPlaceMigration.run(in: context)
+        state("H legacy", c)
+        XCTFail("DIAG " + log.joined(separator: " | "))
     }
 }
