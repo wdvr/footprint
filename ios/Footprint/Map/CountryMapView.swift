@@ -210,6 +210,33 @@ class PhotoPinAnnotation: NSObject, MKAnnotation {
 }
 
 /// A map view that displays country boundaries with visited status highlighting
+/// A visited or passed-through gazetteer city on the map's city layer.
+struct CityMapPin: Hashable {
+    let city: GazetteerCity
+    let isTransit: Bool
+}
+
+class CityPinAnnotation: NSObject, MKAnnotation {
+    let pin: CityMapPin
+    var coordinate: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: pin.city.lat, longitude: pin.city.lon) }
+    var title: String? { pin.city.name }
+    var subtitle: String? {
+        if pin.city.isNationalCapital { return "Capital" }
+        if pin.city.isSubdivisionCapital { return "State capital" }
+        return pin.isTransit ? "Passed through" : nil
+    }
+
+    init(pin: CityMapPin) {
+        self.pin = pin
+        super.init()
+    }
+}
+
+/// City-radius shading drawn under a city pin.
+final class CityCircleOverlay: MKCircle {
+    var isTransit = false
+}
+
 struct CountryMapView: UIViewRepresentable {
     let visitedCountryCodes: Set<String>
     let bucketListCountryCodes: Set<String>
@@ -222,6 +249,7 @@ struct CountryMapView: UIViewRepresentable {
     var onPhotoPinTapped: (([String]) -> Void)?  // Called with photo asset IDs
     var showUserLocation: Bool = false
     var showPhotoPins: Bool = false
+    var cityPins: [CityMapPin] = []
 
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView()
@@ -290,6 +318,7 @@ struct CountryMapView: UIViewRepresentable {
 
         // Update photo pins
         context.coordinator.updatePhotoPins(in: mapView, show: showPhotoPins)
+        context.coordinator.updateCityLayer(in: mapView, pins: Set(cityPins))
     }
 
     func makeCoordinator() -> Coordinator {
@@ -310,6 +339,7 @@ struct CountryMapView: UIViewRepresentable {
         var onPhotoPinTapped: (([String]) -> Void)?
         weak var mapView: MKMapView?
         var photoPinsShown: Bool = false
+        var shownCityPins: Set<CityMapPin> = []
         var hasSetInitialRegion: Bool = false
 
         init(_ parent: CountryMapView) {
@@ -321,6 +351,26 @@ struct CountryMapView: UIViewRepresentable {
             self.selectedCountryCode = parent.selectedCountry
             self.onCountryTapped = parent.onCountryTapped
             super.init()
+        }
+
+        // MARK: - City Layer
+
+        func updateCityLayer(in mapView: MKMapView, pins: Set<CityMapPin>) {
+            guard pins != shownCityPins else { return }
+            shownCityPins = pins
+            mapView.removeAnnotations(mapView.annotations.filter { $0 is CityPinAnnotation })
+            mapView.removeOverlays(mapView.overlays.filter { $0 is CityCircleOverlay })
+            let sorted = pins.sorted { $0.city.id < $1.city.id }
+            let circles = sorted.map { pin in
+                let circle = CityCircleOverlay(
+                    center: CLLocationCoordinate2D(latitude: pin.city.lat, longitude: pin.city.lon),
+                    radius: pin.city.radiusMeters
+                )
+                circle.isTransit = pin.isTransit
+                return circle
+            }
+            mapView.addOverlays(circles, level: .aboveLabels)
+            mapView.addAnnotations(sorted.map(CityPinAnnotation.init))
         }
 
         // MARK: - Photo Pins
@@ -489,6 +539,15 @@ struct CountryMapView: UIViewRepresentable {
         // MARK: - MKMapViewDelegate
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let circle = overlay as? CityCircleOverlay {
+                let renderer = MKCircleRenderer(circle: circle)
+                let color: UIColor = circle.isTransit ? .systemOrange : .systemIndigo
+                renderer.fillColor = color.withAlphaComponent(0.35)
+                renderer.strokeColor = color.withAlphaComponent(0.9)
+                renderer.lineWidth = 1.5
+                return renderer
+            }
+
             if let multiPolygon = overlay as? MKMultiPolygon {
                 let renderer = MKMultiPolygonRenderer(multiPolygon: multiPolygon)
 
@@ -600,6 +659,30 @@ struct CountryMapView: UIViewRepresentable {
                 return annotationView
             }
 
+            if let cityPin = annotation as? CityPinAnnotation {
+                let identifier = "CityPinAnnotation"
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView
+                    ?? MKMarkerAnnotationView(annotation: cityPin, reuseIdentifier: identifier)
+                view.annotation = cityPin
+                view.canShowCallout = true
+                view.clusteringIdentifier = "CityPin"
+                view.markerTintColor = cityPin.pin.isTransit ? .systemOrange : .systemIndigo
+                view.glyphImage = UIImage(systemName: cityPin.pin.city.isCapital ? "star.fill" : "building.2.fill")
+                view.displayPriority = cityPin.pin.city.isCapital ? .defaultHigh : .defaultLow
+                return view
+            }
+
+            if let cluster = annotation as? MKClusterAnnotation,
+               cluster.memberAnnotations.allSatisfy({ $0 is CityPinAnnotation }) {
+                let identifier = "CityPinClusterAnnotation"
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView
+                    ?? MKMarkerAnnotationView(annotation: cluster, reuseIdentifier: identifier)
+                view.annotation = cluster
+                view.markerTintColor = .systemIndigo
+                view.glyphText = "\(cluster.memberAnnotations.count)"
+                return view
+            }
+
             // Handle cluster annotations with playful bubble style
             if let cluster = annotation as? MKClusterAnnotation {
                 let identifier = "PhotoPinClusterAnnotation"
@@ -631,6 +714,10 @@ struct CountryMapView: UIViewRepresentable {
                 DispatchQueue.main.async {
                     self.onPhotoPinTapped?(photoPin.photoAssetIDs)
                 }
+            } else if let cluster = annotation as? MKClusterAnnotation,
+                      cluster.memberAnnotations.allSatisfy({ $0 is CityPinAnnotation }) {
+                mapView.deselectAnnotation(annotation, animated: false)
+                mapView.showAnnotations(cluster.memberAnnotations, animated: true)
             } else if let cluster = annotation as? MKClusterAnnotation {
                 // Collect all photo asset IDs from the cluster
                 let allAssetIDs = cluster.memberAnnotations

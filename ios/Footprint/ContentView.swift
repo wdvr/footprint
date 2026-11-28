@@ -952,6 +952,7 @@ struct WorldMapView: View {
     @State private var showListView = false
     @State private var centerOnUserLocation = false
     @State private var showPhotoPins = false
+    @AppStorage("showCityLayer") private var showCityLayer = true
     @State private var showingPhotoGallery = false
     @State private var selectedPhotoAssetIDs: [String] = []
     @State private var showingCountryMemories = false
@@ -974,6 +975,16 @@ struct WorldMapView: View {
                 }
                 .map { $0.regionCode }
         )
+    }
+
+    /// Visited and passed-through gazetteer cities for the map's city layer.
+    private var cityMapPins: [CityMapPin] {
+        let records = visitedPlaces.map(\.cityVisitRecord)
+        let visited = CityCounting.visitedCityIDs(from: records)
+        let transit = CityCounting.transitCityIDs(from: records)
+        let gazetteer = CityGazetteer.shared
+        return visited.compactMap { gazetteer.city(id: $0) }.map { CityMapPin(city: $0, isTransit: false) }
+            + transit.compactMap { gazetteer.city(id: $0) }.map { CityMapPin(city: $0, isTransit: true) }
     }
 
     private var bucketListCountryCodes: Set<String> {
@@ -1107,7 +1118,8 @@ struct WorldMapView: View {
                             showingPhotoGallery = true
                         },
                         showUserLocation: LocationManager.shared.isTracking,
-                        showPhotoPins: showPhotoPins
+                        showPhotoPins: showPhotoPins,
+                        cityPins: showCityLayer ? cityMapPins : []
                     )
                     .ignoresSafeArea(edges: .bottom)
                     .onChange(of: selectedCountry) { _, newValue in
@@ -1232,6 +1244,15 @@ struct WorldMapView: View {
                                     .foregroundStyle(showPhotoPins ? .blue : .primary)
                             }
                             .accessibilityLabel(showPhotoPins ? "Hide photo pins" : "Show photo pins")
+
+                            Button {
+                                showCityLayer.toggle()
+                            } label: {
+                                Image(systemName: showCityLayer ? "building.2.fill" : "building.2")
+                                    .foregroundStyle(showCityLayer ? .indigo : .primary)
+                            }
+                            .accessibilityLabel(showCityLayer ? "Hide visited cities" : "Show visited cities")
+                            .accessibilityIdentifier("cityLayerToggle")
                         }
 
                         // List/Map toggle
@@ -2416,6 +2437,14 @@ struct CountryListView: View {
             }
             .navigationTitle("Countries")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    NavigationLink {
+                        CitiesView()
+                    } label: {
+                        Label("Cities", systemImage: "building.2")
+                    }
+                    .accessibilityIdentifier("citiesButton")
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack(spacing: 8) {
                         SyncIndicator()
@@ -2713,6 +2742,10 @@ struct StatsView: View {
         countriesVisitedCount + usStatesVisitedCount + canadianProvincesVisitedCount
     }
 
+    private var cityCollectionProgress: [CityCollectionProgress] {
+        CityCounting.progress(in: .shared, records: visitedPlaces.map(\.cityVisitRecord))
+    }
+
     private var totalBucketList: Int {
         countriesBucketListCount + usStatesBucketListCount + canadianProvincesBucketListCount
     }
@@ -2760,6 +2793,25 @@ struct StatsView: View {
                                 icon: "leaf.fill",
                                 color: .red
                             )
+                        }
+                        ForEach(cityCollectionProgress) { progress in
+                            NavigationLink {
+                                if progress.collection == .allCities {
+                                    CitiesView()
+                                } else {
+                                    CityCollectionView(collection: progress.collection)
+                                }
+                            } label: {
+                                StatCard(
+                                    title: progress.collection.title,
+                                    count: progress.visited,
+                                    total: progress.total,
+                                    icon: progress.collection.icon,
+                                    color: .indigo
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("statCard_\(progress.collection.rawValue)")
                         }
                     }
                     .padding(.horizontal)

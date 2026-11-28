@@ -5,6 +5,7 @@ import SwiftData
 final class VisitedPlace {
     enum RegionType: String, Codable, CaseIterable {
         case country = "country"
+        case city = "city"
         case usState = "us_state"
         case canadianProvince = "canadian_province"
         // International regions
@@ -27,6 +28,7 @@ final class VisitedPlace {
         var displayName: String {
             switch self {
             case .country: return "Country"
+            case .city: return "City"
             case .usState: return "US State"
             case .canadianProvince: return "Canadian Province"
             case .australianState: return "Australian State"
