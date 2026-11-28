@@ -217,7 +217,8 @@ final class TimelinePlaybackTests: XCTestCase {
                 CLLocationCoordinate2D(latitude: landmark.coordinate.latitude, longitude: landmark.coordinate.longitude),
                 toleranceMeters: 3_000
             )
-            XCTAssertEqual(match?.countryCode == "CN-TW" ? "TW" : match?.countryCode, landmark.countryCode, landmark.id)
+            let code: String? = match?.countryCode == "CN-TW" ? "TW" : match?.countryCode
+            XCTAssertEqual(code, landmark.countryCode, landmark.id)
         }
     }
 
