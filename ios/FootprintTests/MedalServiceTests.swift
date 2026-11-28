@@ -30,7 +30,7 @@ final class MedalServiceTests: XCTestCase {
         service.defaults = defaults
         service.photoLocations = { [] }
         service.distanceKm = { 0 }
-        service.cityMatcherOverride = CityMatcher(cities: [])
+        service.cityMatcherOverride = CityMatcher(gazetteer: CityGazetteer(cities: []))
         return service
     }
 
@@ -132,7 +132,7 @@ final class MedalServiceTests: XCTestCase {
         cleanService.defaults = UserDefaults(suiteName: cleanSuite)!
         cleanService.photoLocations = { [] }
         cleanService.distanceKm = { 0 }
-        cleanService.cityMatcherOverride = CityMatcher(cities: [])
+        cleanService.cityMatcherOverride = CityMatcher(gazetteer: CityGazetteer(cities: []))
         cleanService.evaluate(in: clean.mainContext, now: date("2026-11-28"))
         defer { UserDefaults().removePersistentDomain(forName: cleanSuite) }
 
@@ -309,10 +309,10 @@ final class MedalServiceTests: XCTestCase {
     func testBundledCatalogAndGazetteersLoad() throws {
         let catalog = try XCTUnwrap(MedalService.bundledCatalog(), "medals.json is in the app bundle")
         XCTAssertEqual(catalog.catalogVersion, try MedalEngineTests.loadCatalog().catalogVersion)
-        let cities = MedalService.bundledCities()
-        XCTAssertGreaterThan(cities.filter { $0.kind == "city" }.count, 2000)
-        XCTAssertGreaterThanOrEqual(cities.filter { $0.kind == "national" }.count, 195)
-        XCTAssertEqual(cities.filter { $0.kind == "us_state" }.count, GeographicData.usStates.count)
+        let gazetteer = try XCTUnwrap(CityGazetteer.bundled, "cities_gazetteer.json is in the app bundle")
+        XCTAssertGreaterThan(gazetteer.cities.count, 2000)
+        XCTAssertGreaterThanOrEqual(gazetteer.nationalCapitals.count, 195)
+        XCTAssertEqual(gazetteer.usStateCapitals.count, GeographicData.usStates.count)
     }
 
     func testCatalogMatchesGeographicData() throws {

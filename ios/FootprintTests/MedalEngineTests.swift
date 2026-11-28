@@ -251,11 +251,11 @@ final class MedalEngineTests: XCTestCase {
 
     func testCityMatcherAndCapitals() throws {
         let catalog = try Self.loadCatalog()
-        let matcher = CityMatcher(cities: [
-            .init(id: "gn:2988507", name: "Paris", kind: "national", latitude: 48.8534, longitude: 2.3488, radiusMeters: 15_000),
-            .init(id: "gn:2988507", name: "Paris", kind: "city", latitude: 48.8534, longitude: 2.3488, radiusMeters: 15_000),
-            .init(id: "gn:5391959", name: "San Francisco", kind: "city", latitude: 37.7749, longitude: -122.4194, radiusMeters: 10_000),
-        ])
+        let matcher = CityMatcher(gazetteer: CityGazetteer(cities: [
+            City(id: "gn:2988507", name: "Paris", countryCode: "FR", latitude: 48.8534, longitude: 2.3488, radiusMeters: 15_000,
+                 isNationalCapital: true),
+            City(id: "gn:5391959", name: "San Francisco", countryCode: "US", latitude: 37.7749, longitude: -122.4194, radiusMeters: 10_000),
+        ]))
         let coordinates = [
             MedalEngine.CoordinateFact(latitude: 48.86, longitude: 2.29, date: date("2021-01-01"), label: "Eiffel Tower"),
             MedalEngine.CoordinateFact(latitude: 48.892, longitude: 2.236, date: date("2020-01-01"), label: "La Défense"),
@@ -270,21 +270,24 @@ final class MedalEngineTests: XCTestCase {
     }
 
     func testOverlappingCityRadiiCreditOnlyTheNearestCity() {
-        let matcher = CityMatcher(cities: [
-            .init(id: "nyc", name: "New York City", kind: "city", latitude: 40.7143, longitude: -74.0060, radiusMeters: 15_000),
-            .init(id: "jc", name: "Jersey City", kind: "city", latitude: 40.7282, longitude: -74.0776, radiusMeters: 5_000),
-        ])
+        let matcher = CityMatcher(gazetteer: CityGazetteer(cities: [
+            City(id: "nyc", name: "New York City", countryCode: "US", latitude: 40.7143, longitude: -74.0060, radiusMeters: 15_000),
+            City(id: "jc", name: "Jersey City", countryCode: "US", latitude: 40.7282, longitude: -74.0776, radiusMeters: 5_000),
+        ]))
         let hits = matcher.hits([MedalEngine.CoordinateFact(latitude: 40.7280, longitude: -74.0770, date: date("2022-01-01"), label: "Photo")])
         XCTAssertEqual(hits.map(\.name), ["Jersey City"])
     }
 
     func testNeighbouringCapitalsBothCount() {
-        let matcher = CityMatcher(cities: [
-            .init(id: "rome", name: "Rome", kind: "national", latitude: 41.8919, longitude: 12.5113, radiusMeters: 15_000),
-            .init(id: "vatican", name: "Vatican City", kind: "national", latitude: 41.9024, longitude: 12.4533, radiusMeters: 1_500),
-        ])
+        let matcher = CityMatcher(gazetteer: CityGazetteer(cities: [
+            City(id: "rome", name: "Rome", countryCode: "IT", latitude: 41.8919, longitude: 12.5113, radiusMeters: 15_000,
+                 isNationalCapital: true),
+            City(id: "vatican", name: "Vatican City", countryCode: "VA", latitude: 41.9024, longitude: 12.4533, radiusMeters: 1_500,
+                 isNationalCapital: true),
+        ]))
         let hits = matcher.hits([MedalEngine.CoordinateFact(latitude: 41.9031, longitude: 12.4663, date: date("2022-01-01"), label: "Castel Sant'Angelo")])
-        XCTAssertEqual(Set(hits.map(\.name)), ["Rome", "Vatican City"])
+        XCTAssertEqual(Set(hits.filter { $0.kind == "national" }.map(\.name)), ["Rome", "Vatican City"])
+        XCTAssertEqual(hits.filter { $0.kind == "city" }.map(\.name), ["Vatican City"], "only the nearest counts as a city")
     }
 
     func testDistanceAwardsAtMeasurementDate() throws {
