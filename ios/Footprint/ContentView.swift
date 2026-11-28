@@ -2671,51 +2671,19 @@ struct StatsView: View {
     @State private var showingYearInReview = false
     @State private var showPosterGenerator = false
 
-    // Visited counts (only status = visited)
-    private var countriesVisitedCount: Int {
-        visitedPlaces.filter {
-            $0.regionType == VisitedPlace.RegionType.country.rawValue && $0.isVisited
-        }.count
+    /// Shared with the poster export so both show the same numbers.
+    private var statistics: TravelStatistics {
+        TravelStatistics(places: visitedPlaces)
     }
 
-    private var usStatesVisitedCount: Int {
-        visitedPlaces.filter {
-            $0.regionType == VisitedPlace.RegionType.usState.rawValue && $0.isVisited
-        }.count
-    }
-
-    private var canadianProvincesVisitedCount: Int {
-        visitedPlaces.filter {
-            $0.regionType == VisitedPlace.RegionType.canadianProvince.rawValue && $0.isVisited
-        }.count
-    }
-
-    // Bucket list counts
-    private var countriesBucketListCount: Int {
-        visitedPlaces.filter {
-            $0.regionType == VisitedPlace.RegionType.country.rawValue && $0.isBucketList
-        }.count
-    }
-
-    private var usStatesBucketListCount: Int {
-        visitedPlaces.filter {
-            $0.regionType == VisitedPlace.RegionType.usState.rawValue && $0.isBucketList
-        }.count
-    }
-
-    private var canadianProvincesBucketListCount: Int {
-        visitedPlaces.filter {
-            $0.regionType == VisitedPlace.RegionType.canadianProvince.rawValue && $0.isBucketList
-        }.count
-    }
-
-    private var totalVisited: Int {
-        countriesVisitedCount + usStatesVisitedCount + canadianProvincesVisitedCount
-    }
-
-    private var totalBucketList: Int {
-        countriesBucketListCount + usStatesBucketListCount + canadianProvincesBucketListCount
-    }
+    private var countriesVisitedCount: Int { statistics.countriesVisited }
+    private var usStatesVisitedCount: Int { statistics.usStatesVisited }
+    private var canadianProvincesVisitedCount: Int { statistics.canadianProvincesVisited }
+    private var countriesBucketListCount: Int { statistics.countriesBucketList }
+    private var usStatesBucketListCount: Int { statistics.usStatesBucketList }
+    private var canadianProvincesBucketListCount: Int { statistics.canadianProvincesBucketList }
+    private var totalVisited: Int { statistics.totalRegionsVisited }
+    private var totalBucketList: Int { statistics.totalBucketList }
 
     var body: some View {
         NavigationStack {

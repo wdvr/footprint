@@ -97,274 +97,6 @@ enum PosterColorScheme: String, CaseIterable, Identifiable {
     }
 }
 
-// MARK: - Poster Size
-
-enum PosterSize: String, CaseIterable, Identifiable {
-    case a3
-    case a2
-    case a1
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .a3: return "A3 (297 x 420 mm)"
-        case .a2: return "A2 (420 x 594 mm)"
-        case .a1: return "A1 (594 x 841 mm)"
-        }
-    }
-
-    /// PDF dimensions in points (72 dpi)
-    var pdfSize: CGSize {
-        switch self {
-        case .a3: return CGSize(width: 842, height: 1191)   // landscape: 1191 x 842
-        case .a2: return CGSize(width: 1191, height: 1684)
-        case .a1: return CGSize(width: 1684, height: 2384)
-        }
-    }
-
-    /// Landscape PDF size
-    var landscapeSize: CGSize {
-        CGSize(width: pdfSize.height, height: pdfSize.width)
-    }
-}
-
-// MARK: - Poster Renderer
-
-/// Renders a high-resolution world map poster as PDF with visited countries highlighted.
-/// Uses a Miller cylindrical projection for a visually balanced flat map.
-final class PosterRenderer {
-    let visitedCountryCodes: Set<String>
-    let colorScheme: PosterColorScheme
-    let posterSize: PosterSize
-    let title: String
-    let subtitle: String
-    let countriesVisited: Int
-    let continentsVisited: Int
-
-    private var boundaries: [GeoJSONParser.CountryBoundary] = []
-
-    init(
-        visitedCountryCodes: Set<String>,
-        colorScheme: PosterColorScheme,
-        posterSize: PosterSize,
-        title: String,
-        subtitle: String,
-        countriesVisited: Int,
-        continentsVisited: Int
-    ) {
-        self.visitedCountryCodes = visitedCountryCodes
-        self.colorScheme = colorScheme
-        self.posterSize = posterSize
-        self.title = title
-        self.subtitle = subtitle
-        self.countriesVisited = countriesVisited
-        self.continentsVisited = continentsVisited
-    }
-
-    /// Generate a PDF Data object containing the poster
-    func renderPDF() -> Data? {
-        boundaries = GeoJSONParser.parseCountries()
-        guard !boundaries.isEmpty else { return nil }
-
-        let pageSize = posterSize.landscapeSize
-        let format = UIGraphicsPDFRendererFormat()
-        format.documentInfo = [
-            kCGPDFContextTitle as String: title,
-            kCGPDFContextCreator as String: "Footprint Travel Tracker",
-        ]
-
-        let renderer = UIGraphicsPDFRenderer(bounds: CGRect(origin: .zero, size: pageSize), format: format)
-
-        let data = renderer.pdfData { context in
-            context.beginPage()
-            let cgContext = context.cgContext
-
-            // Background
-            cgContext.setFillColor(colorScheme.backgroundColor.cgColor)
-            cgContext.fill(CGRect(origin: .zero, size: pageSize))
-
-            // Map area: leave margins for title and footer
-            let titleHeight: CGFloat = pageSize.height * 0.08
-            let footerHeight: CGFloat = pageSize.height * 0.06
-            let sideMargin: CGFloat = pageSize.width * 0.04
-            let mapRect = CGRect(
-                x: sideMargin,
-                y: titleHeight,
-                width: pageSize.width - sideMargin * 2,
-                height: pageSize.height - titleHeight - footerHeight
-            )
-
-            // Draw the map
-            drawMap(in: cgContext, rect: mapRect)
-
-            // Draw title
-            drawTitle(in: cgContext, pageSize: pageSize, titleHeight: titleHeight)
-
-            // Draw footer
-            drawFooter(in: cgContext, pageSize: pageSize, footerHeight: footerHeight)
-        }
-
-        return data
-    }
-
-    /// Render a preview UIImage at moderate resolution
-    func renderPreviewImage(width: CGFloat = 800) -> UIImage? {
-        boundaries = GeoJSONParser.parseCountries()
-        guard !boundaries.isEmpty else { return nil }
-
-        let pageSize = posterSize.landscapeSize
-        let scale = width / pageSize.width
-        let imageSize = CGSize(width: width, height: pageSize.height * scale)
-
-        let renderer = UIGraphicsImageRenderer(size: imageSize)
-        return renderer.image { context in
-            let cgContext = context.cgContext
-
-            cgContext.scaleBy(x: scale, y: scale)
-
-            // Background
-            cgContext.setFillColor(colorScheme.backgroundColor.cgColor)
-            cgContext.fill(CGRect(origin: .zero, size: pageSize))
-
-            let titleHeight: CGFloat = pageSize.height * 0.08
-            let footerHeight: CGFloat = pageSize.height * 0.06
-            let sideMargin: CGFloat = pageSize.width * 0.04
-            let mapRect = CGRect(
-                x: sideMargin,
-                y: titleHeight,
-                width: pageSize.width - sideMargin * 2,
-                height: pageSize.height - titleHeight - footerHeight
-            )
-
-            drawMap(in: cgContext, rect: mapRect)
-            drawTitle(in: cgContext, pageSize: pageSize, titleHeight: titleHeight)
-            drawFooter(in: cgContext, pageSize: pageSize, footerHeight: footerHeight)
-        }
-    }
-
-    // MARK: - Map Drawing
-
-    private func drawMap(in context: CGContext, rect: CGRect) {
-        // Clip to map area
-        context.saveGState()
-
-        for boundary in boundaries {
-            let isVisited = visitedCountryCodes.contains(boundary.id)
-            let fillColor = isVisited ? colorScheme.visitedColor : colorScheme.landColor
-            let strokeColor = colorScheme.borderColor
-
-            for polygon in boundary.polygons {
-                let coords = polygon.coordinates
-                guard coords.count >= 3 else { continue }
-
-                context.beginPath()
-                let firstPoint = projectToRect(lat: coords[0].latitude, lon: coords[0].longitude, rect: rect)
-                context.move(to: firstPoint)
-
-                for i in 1..<coords.count {
-                    let point = projectToRect(lat: coords[i].latitude, lon: coords[i].longitude, rect: rect)
-                    // Skip points that jump across the map (antimeridian crossing)
-                    let prevPoint = projectToRect(lat: coords[i - 1].latitude, lon: coords[i - 1].longitude, rect: rect)
-                    if abs(point.x - prevPoint.x) > rect.width * 0.5 {
-                        context.move(to: point)
-                    } else {
-                        context.addLine(to: point)
-                    }
-                }
-
-                context.closePath()
-                context.setFillColor(fillColor.cgColor)
-                context.setStrokeColor(strokeColor.cgColor)
-                context.setLineWidth(0.3)
-                context.drawPath(using: .fillStroke)
-            }
-        }
-
-        context.restoreGState()
-    }
-
-    /// Miller cylindrical projection: maps lat/lon to x/y within the given rect
-    private func projectToRect(lat: Double, lon: Double, rect: CGRect) -> CGPoint {
-        // Miller cylindrical projection
-        let x = (lon + 180.0) / 360.0
-        let latRad = lat * .pi / 180.0
-        let millerY = 1.25 * log(tan(.pi / 4.0 + 0.4 * latRad))
-        // Normalize to 0..1 range (Miller y spans roughly -2.3 to 2.3)
-        let yNorm = (1.0 - millerY / 2.3) / 2.0
-
-        // Clamp to map bounds
-        let clampedX = max(0, min(1, x))
-        let clampedY = max(0, min(1, yNorm))
-
-        return CGPoint(
-            x: rect.origin.x + clampedX * rect.width,
-            y: rect.origin.y + clampedY * rect.height
-        )
-    }
-
-    // MARK: - Title Drawing
-
-    private func drawTitle(in context: CGContext, pageSize: CGSize, titleHeight: CGFloat) {
-        let titleFont = UIFont.systemFont(ofSize: titleHeight * 0.38, weight: .bold)
-        let titleAttributes: [NSAttributedString.Key: Any] = [
-            .font: titleFont,
-            .foregroundColor: colorScheme.textColor,
-        ]
-        let titleString = NSAttributedString(string: title, attributes: titleAttributes)
-        let titleSize = titleString.size()
-        let titleOrigin = CGPoint(
-            x: (pageSize.width - titleSize.width) / 2,
-            y: (titleHeight - titleSize.height) / 2
-        )
-
-        // Push/pop UIKit graphics for attributed string drawing
-        UIGraphicsPushContext(context)
-        titleString.draw(at: titleOrigin)
-        UIGraphicsPopContext()
-    }
-
-    // MARK: - Footer Drawing
-
-    private func drawFooter(in context: CGContext, pageSize: CGSize, footerHeight: CGFloat) {
-        let footerY = pageSize.height - footerHeight
-
-        let statsFont = UIFont.systemFont(ofSize: footerHeight * 0.28, weight: .medium)
-        let statsAttributes: [NSAttributedString.Key: Any] = [
-            .font: statsFont,
-            .foregroundColor: colorScheme.subtitleColor,
-        ]
-        let statsText = subtitle
-        let statsString = NSAttributedString(string: statsText, attributes: statsAttributes)
-        let statsSize = statsString.size()
-        let statsOrigin = CGPoint(
-            x: (pageSize.width - statsSize.width) / 2,
-            y: footerY + (footerHeight - statsSize.height) / 2
-        )
-
-        UIGraphicsPushContext(context)
-        statsString.draw(at: statsOrigin)
-        UIGraphicsPopContext()
-
-        // Branding in bottom-right corner
-        let brandFont = UIFont.systemFont(ofSize: footerHeight * 0.18, weight: .regular)
-        let brandAttributes: [NSAttributedString.Key: Any] = [
-            .font: brandFont,
-            .foregroundColor: colorScheme.subtitleColor.withAlphaComponent(0.5),
-        ]
-        let brandString = NSAttributedString(string: "Footprint", attributes: brandAttributes)
-        let brandSize = brandString.size()
-        let brandOrigin = CGPoint(
-            x: pageSize.width - brandSize.width - pageSize.width * 0.04,
-            y: footerY + (footerHeight - brandSize.height) / 2
-        )
-
-        UIGraphicsPushContext(context)
-        brandString.draw(at: brandOrigin)
-        UIGraphicsPopContext()
-    }
-}
-
 // MARK: - MKPolygon coordinate access extension
 
 extension MKPolygon {
@@ -378,15 +110,11 @@ extension MKPolygon {
 
 // MARK: - Poster Preview (SwiftUI)
 
-/// A SwiftUI view rendering a small preview of the poster
+/// A small on-screen render of the poster, regenerated off the main thread when inputs change.
 struct PosterPreviewView: View {
-    let visitedCountryCodes: Set<String>
+    let model: ScratchPosterModel
     let colorScheme: PosterColorScheme
     let posterSize: PosterSize
-    let title: String
-    let subtitle: String
-    let countriesVisited: Int
-    let continentsVisited: Int
 
     @State private var previewImage: UIImage?
 
@@ -398,6 +126,7 @@ struct PosterPreviewView: View {
                     .aspectRatio(contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
+                    .accessibilityLabel("Poster preview: \(model.subtitle)")
             } else {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(colorScheme.swiftUIBackground)
@@ -407,30 +136,28 @@ struct PosterPreviewView: View {
                     }
             }
         }
-        .task(id: "\(colorScheme.rawValue)-\(posterSize.rawValue)-\(visitedCountryCodes.count)-\(title)") {
-            await generatePreview()
+        .task(id: PreviewKey(model: model, scheme: colorScheme, size: posterSize)) {
+            let model = model
+            let scheme = colorScheme
+            let size = posterSize
+            let image = await Task.detached(priority: .userInitiated) {
+                ScratchPosterRenderer.previewImage(model: model, scheme: scheme, size: size, width: 1000)
+            }.value
+            guard !Task.isCancelled else { return }
+            previewImage = image
         }
     }
 
-    @MainActor
-    private func generatePreview() async {
-        // Run rendering off main actor
-        let renderer = PosterRenderer(
-            visitedCountryCodes: visitedCountryCodes,
-            colorScheme: colorScheme,
-            posterSize: posterSize,
-            title: title,
-            subtitle: subtitle,
-            countriesVisited: countriesVisited,
-            continentsVisited: continentsVisited
-        )
-        previewImage = renderer.renderPreviewImage(width: 800)
+    private struct PreviewKey: Equatable {
+        let model: ScratchPosterModel
+        let scheme: PosterColorScheme
+        let size: PosterSize
     }
 }
 
 // MARK: - Poster Generator View
 
-/// Main view for configuring and exporting a printable travel map poster
+/// Configures and exports the printable scratch-map poster as a vector PDF or a print-resolution PNG.
 struct PosterGeneratorView: View {
     let visitedPlaces: [VisitedPlace]
     @Environment(\.dismiss) private var dismiss
@@ -438,50 +165,41 @@ struct PosterGeneratorView: View {
     @State private var selectedColorScheme: PosterColorScheme = .light
     @State private var selectedSize: PosterSize = .a2
     @State private var posterTitle: String = "My Travel Map"
-    @State private var isExporting = false
-    @State private var showShareSheet = false
-    @State private var exportedPDFURL: URL?
+    @State private var exportingFormat: ExportFormat?
+    @State private var exportedFile: ExportedFile?
     @State private var showError = false
     @State private var errorMessage = ""
 
-    private var visitedCountryCodes: Set<String> {
+    enum ExportFormat: String {
+        case pdf, png
+    }
+
+    private struct ExportedFile: Identifiable {
+        let url: URL
+        var id: URL { url }
+    }
+
+    /// Countries the user tracks at state/province level, as configured in Settings.
+    private var trackedCountries: Set<String> {
         Set(
-            visitedPlaces
-                .filter {
-                    $0.regionType == VisitedPlace.RegionType.country.rawValue
-                        && !$0.isDeleted
-                        && $0.isVisited
-                }
-                .map { $0.regionCode }
+            AppSettings.supportedStateCountries
+                .map(\.code)
+                .filter { AppSettings.shared.shouldTrackStates(for: $0) }
         )
     }
 
-    private var countriesVisited: Int {
-        visitedCountryCodes.count
-    }
-
-    private var continentsVisited: Int {
-        let stats = LocalContinentStats.calculateStats(visitedCountries: Array(visitedCountryCodes))
-        return stats.filter { $0.visited > 0 }.count
-    }
-
-    private var subtitle: String {
-        "\(countriesVisited) countries visited across \(continentsVisited) continents"
+    private var model: ScratchPosterModel {
+        ScratchPosterModel(places: visitedPlaces, trackedCountries: trackedCountries, title: posterTitle)
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Preview
                     PosterPreviewView(
-                        visitedCountryCodes: visitedCountryCodes,
+                        model: model,
                         colorScheme: selectedColorScheme,
-                        posterSize: selectedSize,
-                        title: posterTitle,
-                        subtitle: subtitle,
-                        countriesVisited: countriesVisited,
-                        continentsVisited: continentsVisited
+                        posterSize: selectedSize
                     )
                     .padding(.horizontal)
 
@@ -527,39 +245,29 @@ struct PosterGeneratorView: View {
                             }
                         }
                         .pickerStyle(.segmented)
+
+                        Text(sizeDescription)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                     .padding(.horizontal)
 
-                    // Export button
-                    Button {
-                        Task {
-                            await exportPDF()
-                        }
-                    } label: {
-                        HStack {
-                            if isExporting {
-                                ProgressView()
-                                    .tint(.white)
-                            } else {
-                                Image(systemName: "arrow.down.doc.fill")
-                            }
-                            Text("Export PDF")
-                        }
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color(selectedColorScheme.visitedColor))
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                    VStack(spacing: 12) {
+                        exportButton(
+                            .pdf, title: "Export PDF", systemImage: "arrow.down.doc.fill",
+                            accessibility: "Export poster as PDF", filled: true
+                        )
+                        exportButton(
+                            .png, title: "Export PNG", systemImage: "photo.fill",
+                            accessibility: "Export poster as high-resolution PNG", filled: false
+                        )
                     }
-                    .disabled(isExporting)
-                    .accessibilityLabel(isExporting ? "Generating poster" : "Export poster as PDF")
                     .padding(.horizontal)
                     .padding(.bottom, 20)
                 }
                 .padding(.top, 16)
             }
-            .navigationTitle("Travel Map Poster")
+            .navigationTitle("Scratch Map Poster")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -568,10 +276,8 @@ struct PosterGeneratorView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showShareSheet) {
-                if let url = exportedPDFURL {
-                    ActivityViewController(activityItems: [url])
-                }
+            .sheet(item: $exportedFile) { file in
+                ActivityViewController(activityItems: [file.url])
             }
             .alert("Export Error", isPresented: $showError) {
                 Button("OK") {}
@@ -581,45 +287,73 @@ struct PosterGeneratorView: View {
         }
     }
 
+    private var sizeDescription: String {
+        let pixels = selectedSize.pngPixelSize
+        return "PDF is vector. PNG is \(Int(pixels.width)) × \(Int(pixels.height)) px at \(Int(selectedSize.pngDPI)) dpi."
+    }
+
+    private func exportButton(
+        _ format: ExportFormat, title: String, systemImage: String, accessibility: String, filled: Bool
+    ) -> some View {
+        let tint = Color(red: 0.20, green: 0.78, blue: 0.35)
+        return Button {
+            Task { await export(format) }
+        } label: {
+            HStack {
+                if exportingFormat == format {
+                    ProgressView()
+                        .tint(filled ? .white : tint)
+                } else {
+                    Image(systemName: systemImage)
+                }
+                Text(title)
+            }
+            .font(.headline)
+            .foregroundStyle(filled ? .white : tint)
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(filled ? tint : tint.opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+        }
+        .disabled(exportingFormat != nil)
+        .accessibilityLabel(exportingFormat == format ? "Generating poster" : accessibility)
+    }
+
     @MainActor
-    private func exportPDF() async {
-        isExporting = true
-        await Task.yield()
+    private func export(_ format: ExportFormat) async {
+        exportingFormat = format
+        defer { exportingFormat = nil }
 
-        let renderer = PosterRenderer(
-            visitedCountryCodes: visitedCountryCodes,
-            colorScheme: selectedColorScheme,
-            posterSize: selectedSize,
-            title: posterTitle,
-            subtitle: subtitle,
-            countriesVisited: countriesVisited,
-            continentsVisited: continentsVisited
-        )
+        let model = model
+        let scheme = selectedColorScheme
+        let size = selectedSize
+        let data = await Task.detached(priority: .userInitiated) { () -> Data? in
+            switch format {
+            case .pdf: return ScratchPosterRenderer.pdfData(model: model, scheme: scheme, size: size)
+            case .png: return ScratchPosterRenderer.pngData(model: model, scheme: scheme, size: size)
+            }
+        }.value
 
-        guard let pdfData = renderer.renderPDF() else {
+        guard let data else {
             errorMessage = "Failed to generate the poster. Please try again."
             showError = true
-            isExporting = false
             return
         }
 
-        // Write to temporary file for sharing
-        let tempDir = FileManager.default.temporaryDirectory
-        let sanitizedTitle = posterTitle.replacingOccurrences(of: " ", with: "_")
+        let sanitizedTitle = posterTitle
+            .replacingOccurrences(of: " ", with: "_")
             .replacingOccurrences(of: "/", with: "-")
-        let fileName = "\(sanitizedTitle)_\(selectedSize.rawValue.uppercased()).pdf"
-        let fileURL = tempDir.appendingPathComponent(fileName)
+        let baseName = sanitizedTitle.isEmpty ? "Footprint_Poster" : sanitizedTitle
+        let fileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(baseName)_\(size.rawValue.uppercased()).\(format.rawValue)")
 
         do {
-            try pdfData.write(to: fileURL)
-            exportedPDFURL = fileURL
-            showShareSheet = true
+            try data.write(to: fileURL)
+            exportedFile = ExportedFile(url: fileURL)
         } catch {
-            errorMessage = "Failed to save PDF: \(error.localizedDescription)"
+            errorMessage = "Failed to save the poster: \(error.localizedDescription)"
             showError = true
         }
-
-        isExporting = false
     }
 }
 
