@@ -724,8 +724,14 @@ class DynamoDBService:
         token_hash: str,
         expires_at: int,
         previous_hash: str | None = None,
-    ) -> dict[str, Any]:
-        """Store a new refresh token session; `expires_at` is a unix timestamp."""
+        only_if_new: bool = False,
+    ) -> dict[str, Any] | None:
+        """
+        Store a new refresh token session; `expires_at` is a unix timestamp.
+
+        With `only_if_new`, nothing is written (None) if the session key already
+        exists, including a revocation tombstone.
+        """
         now = datetime.now(UTC).isoformat()
         item = {
             "pk": self._get_user_pk(user_id),
@@ -739,7 +745,13 @@ class DynamoDBService:
             "updated_at": now,
             "ttl": expires_at,
         }
-        table.put_item(Item=item)
+        if not only_if_new:
+            table.put_item(Item=item)
+            return item
+        try:
+            table.put_item(Item=item, ConditionExpression="attribute_not_exists(pk)")
+        except table.meta.client.exceptions.ConditionalCheckFailedException:
+            return None
         return item
 
     def get_refresh_session(
@@ -772,7 +784,7 @@ class DynamoDBService:
         Any other (reused) token means the session leaked: it is revoked.
         """
         session = self.get_refresh_session(user_id, session_id)
-        if not session:
+        if not session or session.get("entity_type") != "refresh_session":
             return False
 
         current_hash = session.get("token_hash")
@@ -815,6 +827,24 @@ class DynamoDBService:
             Key={
                 "pk": self._get_user_pk(user_id),
                 "sk": self._get_refresh_session_sk(session_id),
+            }
+        )
+
+    def revoke_legacy_refresh_session(
+        self, user_id: str, session_id: str, ttl: int
+    ) -> None:
+        """
+        Revoke a migrated legacy session, leaving a tombstone until `ttl` so a
+        migration still in flight for the same token cannot create it afterwards.
+        """
+        table.put_item(
+            Item={
+                "pk": self._get_user_pk(user_id),
+                "sk": self._get_refresh_session_sk(session_id),
+                "entity_type": "refresh_session_revoked",
+                "user_id": user_id,
+                "session_id": session_id,
+                "ttl": ttl,
             }
         )
 

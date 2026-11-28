@@ -500,6 +500,30 @@ class TestRefreshSessionLifecycle:
 
         assert auth.refresh_tokens(migrated.refresh_token) is None
 
+    def test_logout_during_legacy_migration_wins(self, auth, db_service, monkeypatch):
+        legacy = auth.create_refresh_token("user-1")
+        consume = db_service.consume_legacy_refresh_token
+
+        def consume_then_logout(*args):
+            consumed = consume(*args)
+            auth.revoke_refresh_token(legacy)  # lands between the two writes
+            return consumed
+
+        monkeypatch.setattr(
+            db_service, "consume_legacy_refresh_token", consume_then_logout
+        )
+
+        assert auth.refresh_tokens(legacy) is None
+        monkeypatch.undo()
+        assert auth.refresh_tokens(legacy) is None
+
+    def test_legacy_logout_before_migration_blocks_it(self, auth):
+        legacy = auth.create_refresh_token("user-1")
+
+        auth.revoke_refresh_token(legacy)
+
+        assert auth.refresh_tokens(legacy) is None
+
     def test_expired_refresh_token_rejected(self, auth):
         expired = auth.create_refresh_token(
             "user-1", "sid-x", datetime.now(UTC) - timedelta(minutes=1)

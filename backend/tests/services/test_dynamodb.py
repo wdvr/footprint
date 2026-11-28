@@ -409,6 +409,21 @@ class TestRefreshSessions:
 
         assert db_service.get_refresh_session("user-1", "sid-1") is None
 
+    def test_revoked_legacy_session_blocks_late_creation(self, db_service):
+        db_service.revoke_legacy_refresh_session("user-1", "legacy-1", 2000000000)
+
+        assert (
+            db_service.create_refresh_session(
+                "user-1", "legacy-1", "hash-a", 2000000000, only_if_new=True
+            )
+            is None
+        )
+        assert not db_service.rotate_refresh_session(
+            "user-1", "legacy-1", "hash-a", "hash-b", 2000000000
+        )
+        session = db_service.get_refresh_session("user-1", "legacy-1")
+        assert session["entity_type"] == "refresh_session_revoked"
+
     def test_consume_legacy_refresh_token_once(self, db_service):
         assert db_service.consume_legacy_refresh_token("user-1", "jti-1", 2000000000)
         assert not db_service.consume_legacy_refresh_token(

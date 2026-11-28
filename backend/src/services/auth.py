@@ -396,9 +396,20 @@ class AuthService:
             if db_service.consume_legacy_refresh_token(
                 user_id, jti, int(payload["exp"])
             ):
-                return self.create_tokens(
-                    user_id, session_id, previous_hash=self.hash_token(refresh_token)
-                )
+                # Only if absent: a logout with this token that landed after the
+                # consume leaves a tombstone, and must win.
+                expire = self._refresh_expiry()
+                migrated_token = self.create_refresh_token(user_id, session_id, expire)
+                if not db_service.create_refresh_session(
+                    user_id,
+                    session_id,
+                    self.hash_token(migrated_token),
+                    int(expire.timestamp()),
+                    previous_hash=self.hash_token(refresh_token),
+                    only_if_new=True,
+                ):
+                    return None
+                return self._token_response(user_id, migrated_token)
 
         expire = self._refresh_expiry()
         new_refresh_token = self.create_refresh_token(user_id, session_id, expire)
@@ -424,11 +435,13 @@ class AuthService:
         payload = self._decode_refresh_token(refresh_token, verify_exp=False)
         if not payload:
             return
-        session_id = payload.get("sid") or (
-            f"legacy-{payload['jti']}" if payload.get("jti") else None
-        )
-        if session_id:
-            db_service.delete_refresh_session(payload["sub"], session_id)
+        if payload.get("sid"):
+            db_service.delete_refresh_session(payload["sub"], payload["sid"])
+        elif payload.get("jti"):
+            # A pre-session token: its migration may be in flight right now.
+            db_service.revoke_legacy_refresh_session(
+                payload["sub"], f"legacy-{payload['jti']}", int(payload["exp"])
+            )
 
 
 # Singleton instance
