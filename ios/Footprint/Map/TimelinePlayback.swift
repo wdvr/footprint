@@ -156,7 +156,11 @@ struct TimelinePlayback: Equatable, Sendable {
 
     mutating func advance(by seconds: Double, speed: Double = 1) {
         guard !stops.isEmpty else { return }
-        position = min(endPosition, max(-1, position + seconds * speed * Double(stops.count) / duration))
+        var next = position + seconds * speed * Double(stops.count) / duration
+        // Summing frame steps drifts (240 steps of 1/240 land at -2e-15, not 0), which would hold a
+        // stop back a frame and leave playback short of the end after exactly `duration` seconds.
+        if abs(next - next.rounded()) < 1e-9 { next = next.rounded() }
+        position = min(endPosition, max(-1, next))
     }
 
     mutating func seek(toProgress value: Double) {
