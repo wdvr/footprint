@@ -105,6 +105,9 @@ jobs:
             - 'scripts/audit_regions.py'
             - 'scripts/test_audit_regions.py'
             - 'data/regions/**'
+            - 'scripts/build_medals_catalog.py'
+            - 'ios/Footprint/Resources/medals.json'
+            - 'backend/src/data/medals.json'
             - '.github/workflows/ci.yml'
 
   backend-test:
@@ -162,6 +165,9 @@ jobs:
 
     - name: Audit named regions
       run: python3 scripts/audit_regions.py
+
+    - name: Medals catalog parity (iOS and backend copies match the generator)
+      run: python3 scripts/build_medals_catalog.py --check
 
     - name: Test the audit
       run: |

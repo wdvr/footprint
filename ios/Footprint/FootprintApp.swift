@@ -46,6 +46,7 @@ struct FootprintApp: App {
             VisitedPlace.self,
             LocationSample.self,
             Visit.self,
+            EarnedMedal.self,
         ])
 
         let modelConfiguration = ModelConfiguration(
@@ -271,6 +272,7 @@ struct RootView: View {
                 OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
             } else if authManager.isAuthenticated || isUITesting {
                 ContentView()
+                    .medalAwards()
                     .task {
                         // Skip network operations in UI testing
                         if !isUITesting {

@@ -697,6 +697,11 @@ struct SettingsView: View {
         // Clear all photo import state (processed IDs, scan progress, photo locations)
         PhotoImportManager.shared.clearAllPersistentState()
 
+        // Earned medals carry visit dates and places; the next account must not see them
+        MedalService.shared.reset(in: modelContext)
+        // Recorded stays and distance feed medals too
+        VisitPipeline.shared.eraseAll()
+
         // Clear sync state so next login does a full sync
         SyncManager.shared.forceResetSyncState()
 

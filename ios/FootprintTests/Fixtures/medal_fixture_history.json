@@ -1,0 +1,617 @@
+{
+ "description": "Shared medals v2 fixture history (spec §6.4). Both the iOS and backend suites replay it and must produce `expected` exactly. Time-zone and device-only medals are excluded because their evidence differs per platform.",
+ "places": [
+  {
+   "region_type": "country",
+   "region_code": "NL",
+   "region_name": "Netherlands",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2019-01-15T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "country",
+   "region_code": "BE",
+   "region_name": "Belgium",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2019-02-10T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "country",
+   "region_code": "DE",
+   "region_name": "Germany",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2019-03-05T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "country",
+   "region_code": "FR",
+   "region_name": "France",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2019-04-20T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "country",
+   "region_code": "US",
+   "region_name": "United States",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2019-07-01T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "country",
+   "region_code": "CA",
+   "region_name": "Canada",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-06-01T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "country",
+   "region_code": "JP",
+   "region_name": "Japan",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2021-11-03T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "country",
+   "region_code": "GB",
+   "region_name": "United Kingdom",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2022-05-05T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "country",
+   "region_code": "ES",
+   "region_name": "Spain",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2022-08-08T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "country",
+   "region_code": "IT",
+   "region_name": "Italy",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2023-01-02T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "country",
+   "region_code": "CH",
+   "region_name": "Switzerland",
+   "status": "visited",
+   "visit_type": "transit",
+   "is_deleted": false,
+   "visited_date": "2023-02-02T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "country",
+   "region_code": "PT",
+   "region_name": "Portugal",
+   "status": "bucket_list",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": null,
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "country",
+   "region_code": "AT",
+   "region_name": "Austria",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": true,
+   "visited_date": "2018-01-01T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "country",
+   "region_code": "MX",
+   "region_name": "Mexico",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": null,
+   "marked_at": "2024-03-03T08:00:00Z"
+  },
+  {
+   "region_type": "us_state",
+   "region_code": "CA",
+   "region_name": "California",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2019-07-01T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "us_state",
+   "region_code": "NV",
+   "region_name": "Nevada",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2019-07-03T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "us_state",
+   "region_code": "AZ",
+   "region_name": "Arizona",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2019-07-05T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "us_state",
+   "region_code": "UT",
+   "region_name": "Utah",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2019-07-07T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "us_state",
+   "region_code": "CO",
+   "region_name": "Colorado",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2019-07-09T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "us_state",
+   "region_code": "NM",
+   "region_name": "New Mexico",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2019-07-16T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "us_state",
+   "region_code": "TX",
+   "region_name": "Texas",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2019-07-23T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "us_state",
+   "region_code": "NY",
+   "region_name": "New York",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-01-10T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "us_state",
+   "region_code": "MA",
+   "region_name": "Massachusetts",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-01-12T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "us_state",
+   "region_code": "VT",
+   "region_name": "Vermont",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-01-14T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "us_state",
+   "region_code": "NH",
+   "region_name": "New Hampshire",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2021-05-05T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "us_state",
+   "region_code": "ME",
+   "region_name": "Maine",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2021-05-06T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "canadian_province",
+   "region_code": "BC",
+   "region_name": "British Columbia",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-06-01T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "canadian_province",
+   "region_code": "AB",
+   "region_name": "Alberta",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-06-02T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "canadian_province",
+   "region_code": "SK",
+   "region_name": "Saskatchewan",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-06-03T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "canadian_province",
+   "region_code": "MB",
+   "region_name": "Manitoba",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-06-04T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "canadian_province",
+   "region_code": "ON",
+   "region_name": "Ontario",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-06-05T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "canadian_province",
+   "region_code": "QC",
+   "region_name": "Quebec",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-06-06T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "canadian_province",
+   "region_code": "NB",
+   "region_name": "New Brunswick",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-06-07T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "canadian_province",
+   "region_code": "NS",
+   "region_name": "Nova Scotia",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-06-08T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "canadian_province",
+   "region_code": "PE",
+   "region_name": "Prince Edward Island",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-06-09T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "canadian_province",
+   "region_code": "NL",
+   "region_name": "Newfoundland and Labrador",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-06-10T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "canadian_province",
+   "region_code": "YT",
+   "region_name": "Yukon",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-06-11T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "canadian_province",
+   "region_code": "NT",
+   "region_name": "Northwest Territories",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-06-12T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "canadian_province",
+   "region_code": "NU",
+   "region_name": "Nunavut",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-06-13T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "us_county",
+   "region_code": "06075",
+   "region_name": "San Francisco County",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2019-07-02T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  },
+  {
+   "region_type": "us_county",
+   "region_code": "11001",
+   "region_name": "District of Columbia",
+   "status": "visited",
+   "visit_type": "visited",
+   "is_deleted": false,
+   "visited_date": "2020-01-11T12:00:00Z",
+   "marked_at": "2024-11-01T08:00:00Z"
+  }
+ ],
+ "expected": {
+  "first_steps": [
+   {
+    "level": "platinum",
+    "earnedAt": "2019-01-15T12:00:00Z",
+    "trigger": "Netherlands"
+   }
+  ],
+  "explorer_10": [
+   {
+    "level": "bronze",
+    "earnedAt": "2019-07-01T12:00:00Z",
+    "trigger": "United States"
+   },
+   {
+    "level": "silver",
+    "earnedAt": "2023-01-02T12:00:00Z",
+    "trigger": "Italy"
+   }
+  ],
+  "globetrotter_25": [],
+  "world_traveler_50": [],
+  "elite_traveler_100": [],
+  "world_champion_150": [],
+  "full_atlas": [],
+  "state_starter": [
+   {
+    "level": "platinum",
+    "earnedAt": "2019-07-09T12:00:00Z",
+    "trigger": "Colorado"
+   }
+  ],
+  "us_starter": [
+   {
+    "level": "platinum",
+    "earnedAt": "2020-01-14T12:00:00Z",
+    "trigger": "Vermont"
+   }
+  ],
+  "road_tripper": [],
+  "us_half": [],
+  "coast_to_coast": [],
+  "us_complete": [],
+  "fifty_plus_one": [],
+  "canada_explorer": [
+   {
+    "level": "platinum",
+    "earnedAt": "2020-06-05T12:00:00Z",
+    "trigger": "Ontario"
+   }
+  ],
+  "regionalist": [
+   {
+    "level": "bronze",
+    "earnedAt": "2021-05-06T12:00:00Z",
+    "trigger": "Maine"
+   }
+  ],
+  "county_seat": [],
+  "county_hopper": [],
+  "century_counties": [],
+  "county_connoisseur": [],
+  "shire_reeve": [],
+  "county_royalty": [],
+  "metro_pass": [],
+  "region_hopper": [],
+  "europe_explorer": [],
+  "asia_adventurer": [],
+  "africa_safari": [],
+  "americas_explorer": [],
+  "oceania_hopper": [],
+  "all_continents": [
+   {
+    "level": "bronze",
+    "earnedAt": "2021-11-03T12:00:00Z",
+    "trigger": "Japan"
+   }
+  ],
+  "complete_counties_ak": [],
+  "complete_counties_al": [],
+  "complete_counties_ar": [],
+  "complete_counties_az": [],
+  "complete_counties_ca": [],
+  "complete_counties_co": [],
+  "complete_counties_ct": [],
+  "complete_counties_dc": [
+   {
+    "level": "platinum",
+    "earnedAt": "2020-01-11T12:00:00Z",
+    "trigger": "District of Columbia"
+   }
+  ],
+  "complete_counties_de": [],
+  "complete_counties_fl": [],
+  "complete_counties_ga": [],
+  "complete_counties_hi": [],
+  "complete_counties_ia": [],
+  "complete_counties_id": [],
+  "complete_counties_il": [],
+  "complete_counties_in": [],
+  "complete_counties_ks": [],
+  "complete_counties_ky": [],
+  "complete_counties_la": [],
+  "complete_counties_ma": [],
+  "complete_counties_md": [],
+  "complete_counties_me": [],
+  "complete_counties_mi": [],
+  "complete_counties_mn": [],
+  "complete_counties_mo": [],
+  "complete_counties_ms": [],
+  "complete_counties_mt": [],
+  "complete_counties_nc": [],
+  "complete_counties_nd": [],
+  "complete_counties_ne": [],
+  "complete_counties_nh": [],
+  "complete_counties_nj": [],
+  "complete_counties_nm": [],
+  "complete_counties_nv": [],
+  "complete_counties_ny": [],
+  "complete_counties_oh": [],
+  "complete_counties_ok": [],
+  "complete_counties_or": [],
+  "complete_counties_pa": [],
+  "complete_counties_ri": [],
+  "complete_counties_sc": [],
+  "complete_counties_sd": [],
+  "complete_counties_tn": [],
+  "complete_counties_tx": [],
+  "complete_counties_ut": [],
+  "complete_counties_va": [],
+  "complete_counties_vt": [],
+  "complete_counties_wa": [],
+  "complete_counties_wi": [],
+  "complete_counties_wv": [],
+  "complete_counties_wy": [],
+  "lower_48": [],
+  "canada_complete": [
+   {
+    "level": "platinum",
+    "earnedAt": "2020-06-13T12:00:00Z",
+    "trigger": "Nunavut"
+   }
+  ],
+  "hexagone": [],
+  "land_of_the_rising_sun": [],
+  "home_turf": [
+   {
+    "level": "platinum",
+    "earnedAt": "2020-06-13T12:00:00Z",
+    "trigger": "Nunavut"
+   }
+  ],
+  "full_atlas_africa": [],
+  "full_atlas_asia": [],
+  "full_atlas_europe": [],
+  "full_atlas_north_america": [],
+  "full_atlas_oceania": [],
+  "full_atlas_south_america": [],
+  "monthly_explorer": [
+   {
+    "level": "bronze",
+    "earnedAt": "2019-03-05T12:00:00Z",
+    "trigger": "Germany"
+   }
+  ],
+  "weekly_wanderer": [
+   {
+    "level": "bronze",
+    "earnedAt": "2019-07-23T12:00:00Z",
+    "trigger": "Texas"
+   }
+  ],
+  "regular_explorer": [
+   {
+    "level": "bronze",
+    "earnedAt": "2020-01-10T12:00:00Z",
+    "trigger": "New York"
+   },
+   {
+    "level": "silver",
+    "earnedAt": "2021-05-05T12:00:00Z",
+    "trigger": "New Hampshire"
+   },
+   {
+    "level": "gold",
+    "earnedAt": "2023-01-02T12:00:00Z",
+    "trigger": "Italy"
+   }
+  ],
+  "decade_of_footprints": [
+   {
+    "level": "bronze",
+    "earnedAt": "2024-03-03T08:00:00Z",
+    "trigger": "Mexico"
+   }
+  ],
+  "island_nations": [],
+  "landlocked": []
+ },
+ "excludedFamilies": [
+  "timezones"
+ ]
+}
