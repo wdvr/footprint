@@ -56,26 +56,42 @@ enum VisitLogBackfill {
         }
 
         var earliestDetected: [VisitLog.PlaceID: Date] = [:]
-        var fullyDetected: Set<VisitLog.PlaceID> = []
+        var earliestFull: [VisitLog.PlaceID: Date] = [:]
+        var layoverArrivals: [VisitLog.PlaceID: Set<Date>] = [:]
         var mirrors: [VisitLog.PlaceID: [Visit]] = [:]
         for visit in visits {
             let id = visit.logEntry.placeID
             switch visit.evidence {
             case .detected:
                 earliestDetected[id] = min(earliestDetected[id] ?? visit.arrivedAt, visit.arrivedAt)
-                if visit.kind == .visited { fullyDetected.insert(id) }
+                if visit.kind == .visited {
+                    earliestFull[id] = min(earliestFull[id] ?? visit.arrivedAt, visit.arrivedAt)
+                } else {
+                    layoverArrivals[id, default: []].insert(visit.arrivedAt)
+                }
             case .grandfathered:
                 mirrors[id, default: []].append(visit)
             }
         }
 
-        // Evidence explains a place when it accounts for both its date (detected at or before it)
-        // and its status (a visited place needs a full detected visit, not only a layover).
+        // A visited place dated to a layover's arrival got that date from the layover (the
+        // pipeline keeps a transit place's date when a later stay upgrades it, and older builds
+        // let a layover date any visited place).
+        func isLayoverDated(_ place: VisitedPlace, _ id: VisitLog.PlaceID) -> Bool {
+            guard !place.isTransit, let date = place.visitedDate else { return false }
+            return layoverArrivals[id]?.contains(date) ?? false
+        }
+
+        // Evidence explains a place when it accounts for both its date and its status: a transit
+        // place needs any detection at or before its date; a visited place needs a full detected
+        // visit, at or before its date unless that date came from a layover.
         func explained(_ place: VisitedPlace, _ id: VisitLog.PlaceID) -> Bool {
-            guard let detected = earliestDetected[id], detected <= (place.visitedDate ?? .distantFuture) else {
-                return false
+            let date = place.visitedDate ?? .distantFuture
+            if place.isTransit {
+                return earliestDetected[id].map { $0 <= date } ?? false
             }
-            return place.isTransit || fullyDetected.contains(id)
+            guard let full = earliestFull[id] else { return false }
+            return full <= date || isLayoverDated(place, id)
         }
 
         var result = Result()
@@ -86,7 +102,7 @@ enum VisitLogBackfill {
                 context.delete(row)
                 result.removed += 1
             }
-            if let row = keep.first, let place, mirror(place, into: row) {
+            if let row = keep.first, let place, mirror(place, into: row, isDateKnown: !isLayoverDated(place, id)) {
                 result.updated += 1
             }
         }
@@ -98,7 +114,7 @@ enum VisitLogBackfill {
                 centroidLatitude: 0, centroidLongitude: 0, sampleCount: 0, source: .manual
             ))
             row.evidenceRaw = VisitEvidenceKind.grandfathered.rawValue
-            mirror(place, into: row)
+            mirror(place, into: row, isDateKnown: !isLayoverDated(place, id))
             context.insert(row)
             result.inserted += 1
         }
@@ -110,12 +126,13 @@ enum VisitLogBackfill {
 
     /// Copies the place's history onto its grandfathered row; returns whether anything changed.
     /// Visited unless the user marked the place as transit: missing dwell evidence never demotes it.
+    /// A layover's date is not a known date for a full visit, so it never feeds first visits.
     @MainActor
     @discardableResult
-    private static func mirror(_ place: VisitedPlace, into row: Visit) -> Bool {
+    private static func mirror(_ place: VisitedPlace, into row: Visit, isDateKnown dateKnown: Bool) -> Bool {
         let arrivedAt = place.visitedDate ?? place.markedAt
         let kind: DetectedVisitKind = place.isTransit ? .transit : .visited
-        let isDateKnown = place.visitedDate != nil
+        let isDateKnown = place.visitedDate != nil && dateKnown
         guard row.arrivedAt != arrivedAt || row.departedAt != place.departureDate
                 || row.kind != kind || row.isDateKnown != isDateKnown
         else { return false }

@@ -162,7 +162,7 @@ final class VisitLogBackfillTests: XCTestCase {
     }
 
     func testLayoverDoesNotReplaceAVisitedPlaceInTheLog() throws {
-        // The pipeline dates an undated visited place from a layover without demoting it.
+        // Older builds dated an undated visited place from a layover without demoting it.
         place(.country, "QA", visitedDate: t0)
         context.insert(Visit(DetectedVisit(
             level: .country, countryCode: "QA", subdivisionCode: nil, kind: .transit,
@@ -203,6 +203,56 @@ final class VisitLogBackfillTests: XCTestCase {
         XCTAssertEqual(VisitLogBackfill.run(in: context), .init())
         let firstVisits = VisitLog.firstVisits(pipeline.logEntries())
         XCTAssertEqual(firstVisits.map(\.value), [later])
+    }
+
+    func testEarlierLayoverDoesNotExplainALaterVisitDate() throws {
+        let marked = t0.addingTimeInterval(10 * 86400)
+        place(.country, "QA", visitedDate: marked)
+        context.insert(detected(.transit, at: t0))
+        context.insert(detected(.visited, at: t0.addingTimeInterval(20 * 86400)))
+        try context.save()
+        XCTAssertEqual(VisitLogBackfill.run(in: context), .init(inserted: 1))
+        XCTAssertEqual(VisitLog.firstVisits(pipeline.logEntries()).map(\.value), [marked])
+    }
+
+    func testLayoverDateIsNotAKnownFullVisitDate() throws {
+        // Older builds let a layover date a visited place; the log must not credit a visit then.
+        place(.country, "QA", visitedDate: t0)
+        context.insert(detected(.transit, at: t0))
+        try context.save()
+        XCTAssertEqual(VisitLogBackfill.run(in: context), .init(inserted: 1))
+        let mirror = try XCTUnwrap(try visits().first { $0.evidence == .grandfathered })
+        XCTAssertEqual(mirror.kind, .visited)
+        XCTAssertFalse(mirror.isDateKnown)
+        XCTAssertEqual(VisitLog.firstVisits(pipeline.logEntries()), [:])
+    }
+
+    func testLayoverNeverDatesAnUndatedVisitedPlace() throws {
+        pipeline.config.passThroughCountsAsVisit = false
+        place(.country, "US")
+        try context.save()
+        pipeline.record(stay(startingAt: t0, minutes: 9), now: t0.addingTimeInterval(3600))
+
+        let country = try XCTUnwrap(try context.fetch(FetchDescriptor<VisitedPlace>()).first { $0.regionType == "country" })
+        XCTAssertTrue(country.isFullVisit)
+        XCTAssertNil(country.visitedDate)
+        VisitLogBackfill.run(in: context)
+        let firstVisits = VisitLog.firstVisits(pipeline.logEntries())
+        XCTAssertNil(firstVisits[VisitLog.PlaceID(level: .country, countryCode: "US", subdivisionCode: nil)])
+    }
+
+    func testLayoverDoesNotBackdateAVisitedPlace() throws {
+        pipeline.config.passThroughCountsAsVisit = false
+        let marked = t0.addingTimeInterval(30 * 86400)
+        place(.country, "US", visitedDate: marked)
+        try context.save()
+        pipeline.record(stay(startingAt: t0, minutes: 9), now: t0.addingTimeInterval(3600))
+
+        let country = try XCTUnwrap(try context.fetch(FetchDescriptor<VisitedPlace>()).first { $0.regionType == "country" })
+        XCTAssertEqual(country.visitedDate, marked)
+        VisitLogBackfill.run(in: context)
+        let firstVisits = VisitLog.firstVisits(pipeline.logEntries())
+        XCTAssertEqual(firstVisits[VisitLog.PlaceID(level: .country, countryCode: "US", subdivisionCode: nil)], marked)
     }
 
     func testHistoryOlderThanTheEvidenceIsStillMirrored() throws {

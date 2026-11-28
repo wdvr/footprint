@@ -222,7 +222,8 @@ final class VisitPipeline {
                 place.visitCount += 1
                 changed = true
             }
-            if place.visitedDate.map({ visit.arrivedAt < $0 }) ?? true {
+            // A layover never dates a place the user counts as a full visit (§2.5).
+            if visitType == .visited || place.isTransit, place.visitedDate.map({ visit.arrivedAt < $0 }) ?? true {
                 place.visitedDate = visit.arrivedAt
                 changed = true
             }
