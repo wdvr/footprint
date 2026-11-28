@@ -135,6 +135,27 @@ final class CityVisitPipelineTests: XCTestCase {
         XCTAssertEqual(try cityPlaces().first?.visitCount, 1)
     }
 
+    func testRemovedVisitIsNotRestoredOnTopOfALaterTransit() throws {
+        pipeline.record(stay(startingAt: t0), now: t0.addingTimeInterval(3600))
+        let removedAt = t0.addingTimeInterval(2 * 3600)
+        for place in try cityPlaces() {
+            place.isDeleted = true
+            place.lastModifiedAt = removedAt
+        }
+        // A pass-through 20 h later, then more samples: both windows still hold the removed visit.
+        let transitAt = t0.addingTimeInterval(20 * 3600)
+        pipeline.record(stay(startingAt: transitAt, minutes: 12), now: transitAt.addingTimeInterval(3600))
+        let later = transitAt.addingTimeInterval(2 * 3600)
+        pipeline.record(stay(startingAt: later, minutes: 3).map {
+            EvidenceSample(timestamp: $0.timestamp, latitude: 38, longitude: -122, horizontalAccuracy: 20)
+        }, now: later.addingTimeInterval(3600))
+
+        let place = try XCTUnwrap(try cityPlaces().first)
+        XCTAssertFalse(place.isDeleted)
+        XCTAssertTrue(place.isTransit)
+        XCTAssertEqual(place.visitedDate, transitAt)
+    }
+
     func testBucketListCityBecomesVisited() throws {
         context.insert(VisitedPlace(regionType: .city, regionCode: "gn:5391959", regionName: "San Francisco", status: .bucketList))
         pipeline.record(stay(startingAt: t0), now: t0.addingTimeInterval(3600))

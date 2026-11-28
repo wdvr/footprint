@@ -64,6 +64,7 @@ enum CityVisitRecorder {
         for visit in detected {
             guard let city = gazetteer.city(id: visit.cityId) else { continue }
             if let row = existing.first(where: { overlaps($0, visit) }) {
+                let previousArrival = row.arrivedAt
                 row.arrivedAt = min(row.arrivedAt, visit.arrivedAt)
                 row.departedAt = max(row.departedAt ?? visit.departedAt, visit.departedAt)
                 row.sampleCount = max(row.sampleCount, visit.sampleCount)
@@ -73,10 +74,11 @@ enum CityVisitRecorder {
                 if upgraded {
                     row.kindRaw = DetectedVisitKind.visited.rawValue
                 }
-                // Late evidence can move the arrival earlier; the place's first-visit date follows.
-                // An upgraded row is a confirmed visit not counted yet (transit never counts).
-                if upsertPlace(city, arrivedAt: row.arrivedAt, kind: row.kind, isNewVisit: upgraded,
-                               mayCreate: upgraded, in: context, now: now) {
+                // An upgraded row is a confirmed visit not counted yet (transit never counts). Late
+                // evidence that moved the arrival earlier only backdates; re-deriving an unchanged
+                // row (e.g. one from before the user removed the city) never touches the place.
+                if upgraded || row.arrivedAt < previousArrival,
+                   upsertPlace(city, arrivedAt: row.arrivedAt, kind: row.kind, isNewVisit: upgraded, in: context, now: now) {
                     newCities.append(city.id)
                 }
             } else {
@@ -91,8 +93,7 @@ enum CityVisitRecorder {
                 context.insert(row)
                 try? context.save()
                 existing.append(row)
-                if upsertPlace(city, arrivedAt: visit.arrivedAt, kind: visit.kind, isNewVisit: true,
-                               mayCreate: true, in: context, now: now) {
+                if upsertPlace(city, arrivedAt: visit.arrivedAt, kind: visit.kind, isNewVisit: true, in: context, now: now) {
                     newCities.append(city.id)
                 }
             }
@@ -109,13 +110,13 @@ enum CityVisitRecorder {
     /// Same rules as the boundary levels: a bucket-list city becomes visited; a city the user removed
     /// comes back only for a visit that started after the removal. Transit never counts towards a
     /// city's confirmed history: the first full visit resets a transit-only place's count and date.
-    /// True if newly marked visited.
+    /// `isNewVisit` false = evidence of an already-recorded visit: it may only backdate a place of
+    /// the same kind. True if newly marked visited.
     private static func upsertPlace(
         _ city: City,
         arrivedAt: Date,
         kind: DetectedVisitKind,
         isNewVisit: Bool,
-        mayCreate: Bool,
         in context: ModelContext,
         now: Date
     ) -> Bool {
@@ -129,6 +130,7 @@ enum CityVisitRecorder {
         if let place = places.first(where: { !$0.isDeleted && $0.isVisited }) {
             var changed = false
             if visitType == .visited, place.isTransit {
+                guard isNewVisit else { return false }
                 place.visitType = visitType.rawValue
                 place.visitCount = 1
                 place.visitedDate = arrivedAt
@@ -149,7 +151,7 @@ enum CityVisitRecorder {
             }
             return false
         }
-        guard mayCreate else { return false }
+        guard isNewVisit else { return false }
 
         let reusable = places.first { !$0.isDeleted && $0.isBucketList }
             ?? places.first { $0.isDeleted && isNewVisit && arrivedAt > $0.lastModifiedAt }
