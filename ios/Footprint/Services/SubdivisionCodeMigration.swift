@@ -76,6 +76,9 @@ enum SubdivisionCodeMigration {
         }
         if migrated > 0 {
             try? context.save()
+            // `isDeleted` shares its name with `PersistentModel.isDeleted`: after a save, rows already
+            // in memory read it as false until fetched again, so refresh the removed rows.
+            _ = try? context.fetch(FetchDescriptor<VisitedPlace>(predicate: #Predicate { $0.isDeleted }))
         }
         return migrated
     }
