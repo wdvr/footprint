@@ -156,7 +156,7 @@ struct TimelinePlayback: Equatable, Sendable {
 
     mutating func advance(by seconds: Double, speed: Double = 1) {
         guard !stops.isEmpty else { return }
-        position = min(endPosition, position + seconds * speed * Double(stops.count) / duration)
+        position = min(endPosition, max(-1, position + seconds * speed * Double(stops.count) / duration))
     }
 
     mutating func seek(toProgress value: Double) {

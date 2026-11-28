@@ -296,6 +296,14 @@ final class TimelinePlaybackTests: XCTestCase {
         XCTAssertEqual(playback.progress, 0.5, accuracy: 1e-9)
     }
 
+    func testNegativeAdvanceStopsAtStart() {
+        var playback = TimelinePlayback(stops: stops(4))
+        playback.advance(by: -100)
+        XCTAssertEqual(playback.progress, 0, accuracy: 1e-9)
+        XCTAssertEqual(playback.revealedCount, 0)
+        XCTAssertTrue(playback.revealedStops.isEmpty)
+    }
+
     func testCountryCountIgnoresSubdivisions() {
         var playback = TimelinePlayback(stops: [
             stop("US", day: 0),

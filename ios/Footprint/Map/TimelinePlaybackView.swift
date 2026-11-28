@@ -285,12 +285,13 @@ struct TimelinePlaybackView: View {
         isPlaying = true
         playTask?.cancel()
         playTask = Task { @MainActor in
-            var last = Date()
+            let clock = ContinuousClock()
+            var last = clock.now
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(33))
                 guard !Task.isCancelled else { break }
-                let now = Date()
-                playback.advance(by: now.timeIntervalSince(last), speed: playbackSpeed.rawValue)
+                let now = clock.now
+                playback.advance(by: (now - last) / .seconds(1), speed: playbackSpeed.rawValue)
                 last = now
                 if playback.isAtEnd {
                     isPlaying = false
