@@ -1,158 +1,133 @@
 import MapKit
 import SwiftUI
 
-extension PlaybackEvent {
-    /// Parent country of each subdivision region type, for flags.
-    static let regionTypeToCountry: [String: String] = [
-        VisitedPlace.RegionType.usState.rawValue: "US",
-        VisitedPlace.RegionType.canadianProvince.rawValue: "CA",
-        VisitedPlace.RegionType.belgianProvince.rawValue: "BE",
-        VisitedPlace.RegionType.dutchProvince.rawValue: "NL",
-        VisitedPlace.RegionType.frenchRegion.rawValue: "FR",
-        VisitedPlace.RegionType.spanishCommunity.rawValue: "ES",
-        VisitedPlace.RegionType.italianRegion.rawValue: "IT",
-        VisitedPlace.RegionType.germanState.rawValue: "DE",
-        VisitedPlace.RegionType.ukCountry.rawValue: "GB",
-        VisitedPlace.RegionType.russianFederalSubject.rawValue: "RU",
-        VisitedPlace.RegionType.argentineProvince.rawValue: "AR",
-        VisitedPlace.RegionType.australianState.rawValue: "AU",
-        VisitedPlace.RegionType.mexicanState.rawValue: "MX",
-        VisitedPlace.RegionType.brazilianState.rawValue: "BR",
-        VisitedPlace.RegionType.japanesePrefecture.rawValue: "JP",
-        VisitedPlace.RegionType.southKoreanProvince.rawValue: "KR",
-        VisitedPlace.RegionType.norwegianCounty.rawValue: "NO",
-    ]
-
-    /// Visited places as playback events. Opt-in layers (counties) and region types this view
-    /// doesn't know are skipped, so they never leak into the movie.
-    static func events(from places: [VisitedPlace]) -> [PlaybackEvent] {
-        places.compactMap { place in
-            guard !place.isDeleted, place.isVisited,
-                let type = VisitedPlace.RegionType(rawValue: place.regionType), type != .usCounty
-            else { return nil }
-            let isCountry = place.regionType == VisitedPlace.RegionType.country.rawValue
-            return PlaybackEvent(
-                date: place.visitedDate ?? place.markedAt,
-                regionType: place.regionType,
-                regionCode: place.regionCode,
-                regionName: place.regionName,
-                countryCode: isCountry ? place.regionCode : (regionTypeToCountry[place.regionType] ?? place.regionCode),
-                isCountry: isCountry
-            )
-        }
-    }
-
-    var flagEmoji: String {
-        var scalars = String.UnicodeScalarView()
-        scalars.append(contentsOf: countryCode.uppercased().unicodeScalars.compactMap { UnicodeScalar(127397 + $0.value) })
-        return String(scalars)
-    }
-}
-
-/// Full-screen movie of the user's travel history: places fill in on the map as they were visited.
+/// Movie-style playback of the travel history: a journey line flies from place to place in the
+/// order they were first visited, filling the map in and standing landmarks up as it goes.
 struct TimelinePlaybackView: View {
     let visitedPlaces: [VisitedPlace]
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var timeline: TimelinePlaybackTimeline?
-    @State private var progress: Double = 0
+    @State private var playback: TimelinePlayback
     @State private var isPlaying = false
-    @State private var speed: PlaybackSpeed = .normal
-    @State private var isScrubbing = false
+    @State private var playbackSpeed: PlaybackSpeed = .normal
     @State private var resumeAfterScrub = false
+    @State private var selectedCountry: String? = nil
+    @State private var centerOnUserLocation = false
+    @State private var playTask: Task<Void, Never>?
 
-    /// How long (playback seconds at 1×) a newly visited place stays in the arrivals ticker.
-    private let arrivalWindow: TimeInterval = 2.5
+    /// How many stops of playback a new place stays in the arrivals ticker.
+    private let arrivalWindow = 2.0
+
+    init(visitedPlaces: [VisitedPlace]) {
+        self.visitedPlaces = visitedPlaces
+        _playback = State(initialValue: TimelinePlayback(stops: TimelineStop.stops(from: visitedPlaces)))
+    }
+
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.setLocalizedDateFormatFromTemplate("MMMM yyyy")
+        return f
+    }()
+
+    private var currentDateLabel: String {
+        playback.latestStop.map { Self.dateFormatter.string(from: $0.date) } ?? ""
+    }
+
+    private var yearRange: (Int, Int) {
+        guard let first = playback.stops.first, let last = playback.stops.last else { return (0, 0) }
+        let cal = Calendar.current
+        return (cal.component(.year, from: first.date), cal.component(.year, from: last.date))
+    }
+
+    private var visibleStateCodes: Set<String> {
+        playback.visibleStateCodes(
+            tracksStates: { AppSettings.shared.shouldTrackStates(for: $0) },
+            subdivisions: { GeographicData.states(for: $0).map(\.id) }
+        )
+    }
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            CountryMapView(
+                visitedCountryCodes: playback.visibleCountryCodes,
+                bucketListCountryCodes: [],
+                visitedStateCodes: visibleStateCodes,
+                bucketListStateCodes: [],
+                selectedCountry: $selectedCountry,
+                centerOnUserLocation: $centerOnUserLocation,
+                journeyPath: playback.journeyPath,
+                landmarks: playback.visibleLandmarks()
+            )
+            .ignoresSafeArea()
 
-            if let timeline {
-                PlaybackMapLayer(timeline: timeline, revealedCount: timeline.revealedCount(at: progress))
-                    .equatable()
-                    .ignoresSafeArea()
-
-                VStack(spacing: 0) {
-                    header(timeline)
-                    Spacer()
-                    arrivals(timeline)
-                    controls(timeline)
+            VStack(spacing: 0) {
+                topBar
+                Spacer()
+                if playback.stops.isEmpty {
+                    emptyState
+                } else {
+                    arrivals
+                    controls
                 }
-            } else {
-                emptyState
             }
         }
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
         .onAppear {
-            guard timeline == nil else { return }
-            timeline = TimelinePlaybackTimeline(events: PlaybackEvent.events(from: visitedPlaces))
-            if reduceMotion {
-                progress = 1
-            } else if timeline != nil {
-                isPlaying = true
-            }
+            if reduceMotion { playback.skipToEnd() }
         }
-        .onDisappear { isPlaying = false }
-        .task(id: isPlaying) {
-            guard isPlaying else { return }
-            let clock = ContinuousClock()
-            var last = clock.now
-            while !Task.isCancelled, isPlaying, let timeline {
-                try? await Task.sleep(for: .milliseconds(16))
-                let now = clock.now
-                let seconds = (now - last) / .seconds(1)
-                last = now
-                guard !isScrubbing else { continue }
-                progress = timeline.advanced(from: progress, elapsed: seconds, speed: speed)
-                if progress >= 1 { isPlaying = false }
+        .task {
+            let centers = RegionCenters.centers(for: playback.stops)
+            for index in playback.stops.indices {
+                playback.stops[index].coordinate = centers[playback.stops[index].id]
             }
+            if !reduceMotion, !isPlaying, playback.revealedCount == 0 { startPlayback() }
         }
+        .onDisappear { pausePlayback() }
     }
 
-    // MARK: - Header
+    // MARK: - Overlays
 
-    private func header(_ timeline: TimelinePlaybackTimeline) -> some View {
-        let date = timeline.date(at: progress)
-        let countries = timeline.countryCount(at: progress)
-        let places = timeline.revealedCount(at: progress)
-        return VStack(spacing: 6) {
+    private var topBar: some View {
+        VStack(spacing: 6) {
             HStack {
                 Button {
-                    isPlaying = false
+                    pausePlayback()
                     dismiss()
                 } label: {
-                    Image(systemName: "xmark")
-                        .font(.headline)
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
                         .foregroundStyle(.white)
-                        .frame(width: 36, height: 36)
-                        .background(.ultraThinMaterial, in: Circle())
+                        .shadow(radius: 4)
                 }
                 .accessibilityLabel("Close playback")
                 Spacer()
             }
 
-            Text(date, format: .dateTime.month(.wide).year())
-                .font(.system(size: 40, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(.white)
-                .contentTransition(.numericText())
-                .shadow(color: .black.opacity(0.6), radius: 6)
-                .accessibilityLabel(Text(date, format: .dateTime.month(.wide).year()))
+            if !currentDateLabel.isEmpty {
+                Text(currentDateLabel)
+                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.6), radius: 6)
+                    .contentTransition(.numericText())
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: currentDateLabel)
 
-            HStack(spacing: 16) {
-                counter(value: countries, label: countries == 1 ? "country" : "countries")
-                counter(value: places, label: places == 1 ? "place" : "places")
+                let countries = playback.countryCount
+                let places = playback.revealedCount
+                HStack(spacing: 16) {
+                    counter(value: countries, label: countries == 1 ? "country" : "countries")
+                    counter(value: places, label: places == 1 ? "place" : "places")
+                }
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal)
         .padding(.top, 8)
         .padding(.bottom, 24)
         .background(
-            LinearGradient(colors: [.black.opacity(0.65), .clear], startPoint: .top, endPoint: .bottom)
+            LinearGradient(colors: [.black.opacity(0.55), .clear], startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
         )
     }
@@ -167,18 +142,29 @@ struct TimelinePlaybackView: View {
                 .font(.subheadline)
         }
         .foregroundStyle(.white.opacity(0.9))
+        .shadow(color: .black.opacity(0.5), radius: 4)
         .accessibilityElement(children: .combine)
     }
 
-    // MARK: - Arrivals
+    private var emptyState: some View {
+        Text("Mark places as visited to play back your journey.")
+            .font(.headline)
+            .foregroundStyle(.white)
+            .multilineTextAlignment(.center)
+            .padding(20)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .padding(.bottom, 60)
+    }
 
-    private func arrivals(_ timeline: TimelinePlaybackTimeline) -> some View {
-        let recent = timeline.recentEvents(at: progress, window: arrivalWindow)
+    /// The last few places to appear, fading out as playback moves on.
+    private var arrivals: some View {
+        let recent = playback.recentStops(window: arrivalWindow)
         return VStack(spacing: 8) {
-            ForEach(recent.reversed(), id: \.event.id) { item in
+            ForEach(recent.reversed(), id: \.stop.id) { item in
                 HStack(spacing: 8) {
-                    Text(item.event.flagEmoji).font(.title2)
-                    Text(item.event.regionName)
+                    Text(flagEmoji(for: item.stop.countryCode)).font(.title2)
+                    Text(item.stop.regionName)
                         .font(.headline)
                         .foregroundStyle(.white)
                         .lineLimit(1)
@@ -187,167 +173,226 @@ struct TimelinePlaybackView: View {
                 .padding(.vertical, 8)
                 .background(.ultraThinMaterial, in: Capsule())
                 .opacity(1 - item.age * item.age)
-                .scaleEffect(CGFloat(item.age < 0.08 && !reduceMotion ? 0.92 + item.age : 1))
                 .transition(.opacity)
             }
         }
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: recent.map(\.event.id))
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: recent.map(\.stop.id))
         .padding(.bottom, 12)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("Recently visited: \(recent.map(\.event.regionName).joined(separator: ", "))"))
+        .accessibilityLabel(Text("Recently visited: \(recent.map(\.stop.regionName).joined(separator: ", "))"))
         .accessibilityHidden(recent.isEmpty)
     }
 
-    // MARK: - Controls
-
-    private func controls(_ timeline: TimelinePlaybackTimeline) -> some View {
-        VStack(spacing: 10) {
-            scrubber(timeline)
-
-            HStack {
-                Text(timeline.startDate, format: .dateTime.year())
-                Spacer()
-                Text(timeline.endDate, format: .dateTime.year())
-            }
-            .font(.caption.monospacedDigit())
-            .foregroundStyle(.white.opacity(0.7))
-
-            HStack(spacing: 36) {
-                Button {
-                    progress = 0
-                } label: {
-                    Image(systemName: "backward.end.fill").font(.title2)
+    private var controls: some View {
+        VStack(spacing: 12) {
+            VStack(spacing: 4) {
+                Slider(
+                    value: Binding(
+                        get: { playback.progress },
+                        set: { playback.seek(toProgress: $0) }
+                    )
+                ) { editing in
+                    if editing {
+                        resumeAfterScrub = isPlaying
+                        pausePlayback()
+                    } else if resumeAfterScrub, !playback.isAtEnd {
+                        startPlayback()
+                    }
                 }
-                .accessibilityLabel("Restart")
+                .tint(.white)
+                .background(alignment: .leading) {
+                    GeometryReader { proxy in
+                        ForEach(playback.yearMarkers(), id: \.year) { marker in
+                            Capsule()
+                                .fill(.white.opacity(0.45))
+                                .frame(width: 2, height: 10)
+                                .position(x: proxy.size.width * marker.progress, y: proxy.size.height / 2)
+                        }
+                    }
+                    .allowsHitTesting(false)
+                }
+                .accessibilityLabel("Timeline position")
+                .accessibilityValue(currentDateLabel)
+
+                let (startYear, endYear) = yearRange
+                if startYear != endYear {
+                    HStack {
+                        Text(String(startYear))
+                        Spacer()
+                        Text(String(endYear))
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.7))
+                }
+            }
+
+            HStack(spacing: 24) {
+                Button {
+                    pausePlayback()
+                    playback.rewind()
+                } label: {
+                    Image(systemName: "backward.end.fill")
+                        .font(.title3)
+                        .foregroundStyle(.white)
+                }
+                .accessibilityLabel("Rewind to start")
 
                 Button {
-                    togglePlayback()
+                    isPlaying ? pausePlayback() : startPlayback()
                 } label: {
                     Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 56))
-                        .contentTransition(.symbolEffect(.replace))
+                        .font(.largeTitle)
+                        .foregroundStyle(.white)
                 }
                 .accessibilityLabel(isPlaying ? "Pause" : "Play")
 
-                Button {
-                    speed = speed.next
+                Menu {
+                    ForEach(PlaybackSpeed.allCases, id: \.self) { speed in
+                        Button {
+                            playbackSpeed = speed
+                        } label: {
+                            if playbackSpeed == speed {
+                                Label(speed.label, systemImage: "checkmark")
+                            } else {
+                                Text(speed.label)
+                            }
+                        }
+                    }
                 } label: {
-                    Text(speed.label)
-                        .font(.headline.monospacedDigit())
-                        .frame(minWidth: 48)
-                        .padding(.vertical, 6)
-                        .background(.white.opacity(0.2), in: Capsule())
+                    Text(playbackSpeed.label)
+                        .monospacedDigit()
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(.white.opacity(0.2))
+                        .clipShape(Capsule())
                 }
                 .accessibilityLabel("Playback speed")
-                .accessibilityValue(speed.label)
+                .accessibilityValue(playbackSpeed.label)
             }
-            .foregroundStyle(.white)
         }
         .padding(.horizontal, 20)
-        .padding(.top, 28)
-        .padding(.bottom, 12)
-        .background(
-            LinearGradient(colors: [.clear, .black.opacity(0.7)], startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
-        )
+        .padding(.vertical, 16)
+        .background(LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .top, endPoint: .bottom))
     }
 
-    private func scrubber(_ timeline: TimelinePlaybackTimeline) -> some View {
-        Slider(value: $progress, in: 0...1) { editing in
-            isScrubbing = editing
-            if editing {
-                resumeAfterScrub = isPlaying
-            } else if resumeAfterScrub, progress < 1 {
-                isPlaying = true
-            }
-        }
-        .tint(.white)
-        .background(alignment: .leading) {
-            GeometryReader { proxy in
-                ForEach(timeline.yearMarkers(), id: \.year) { marker in
-                    Capsule()
-                        .fill(.white.opacity(0.45))
-                        .frame(width: 2, height: 10)
-                        .position(x: proxy.size.width * marker.progress, y: proxy.size.height / 2)
+    // MARK: - Playback
+
+    private func startPlayback() {
+        guard !playback.stops.isEmpty else { return }
+        if playback.isAtEnd { playback.rewind() }
+        isPlaying = true
+        playTask?.cancel()
+        playTask = Task { @MainActor in
+            var last = Date()
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(33))
+                guard !Task.isCancelled else { break }
+                let now = Date()
+                playback.advance(by: now.timeIntervalSince(last), speed: playbackSpeed.rawValue)
+                last = now
+                if playback.isAtEnd {
+                    isPlaying = false
+                    break
                 }
             }
-            .allowsHitTesting(false)
-        }
-        .accessibilityLabel("Timeline")
-        .accessibilityValue(Text(timeline.date(at: progress), format: .dateTime.month(.wide).year()))
-    }
-
-    private func togglePlayback() {
-        if isPlaying {
-            isPlaying = false
-        } else {
-            if progress >= 1 { progress = 0 }
-            isPlaying = true
         }
     }
 
-    // MARK: - Empty state
+    private func pausePlayback() {
+        isPlaying = false
+        playTask?.cancel()
+        playTask = nil
+    }
 
-    private var emptyState: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "film")
-                .font(.system(size: 48))
-            Text("No visits to play yet")
-                .font(.title3.weight(.semibold))
-            Text("Mark places you've visited and they'll appear here in the order you went.")
-                .font(.subheadline)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.white.opacity(0.7))
-            Button("Close") { dismiss() }
-                .buttonStyle(.borderedProminent)
-                .padding(.top, 8)
-        }
-        .foregroundStyle(.white)
-        .padding(32)
+    private func flagEmoji(for countryCode: String) -> String {
+        countryCode.uppercased().unicodeScalars
+            .compactMap { UnicodeScalar(127_397 + $0.value) }
+            .map(String.init)
+            .joined()
     }
 }
 
-/// The map, re-rendered only when a place is revealed or hidden: `CountryMapView` rebuilds all
-/// overlays on every update, so it must not follow the per-frame playback clock.
-private struct PlaybackMapLayer: View, Equatable {
-    let timeline: TimelinePlaybackTimeline
-    let revealedCount: Int
-
-    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.revealedCount == rhs.revealedCount && lhs.timeline.events == rhs.timeline.events
-    }
-
-    var body: some View {
-        let revealed = timeline.events.prefix(revealedCount)
-        let countries = Set(revealed.filter(\.isCountry).map(\.regionCode))
-        CountryMapView(
-            visitedCountryCodes: countries,
-            bucketListCountryCodes: [],
-            visitedStateCodes: Self.stateCodes(revealed: revealed, countries: countries),
-            bucketListStateCodes: [],
-            selectedCountry: .constant(nil),
-            centerOnUserLocation: .constant(false)
-        )
-    }
-
-    /// Same fill rules as the main map: US/CA subdivisions individually, and every subdivision
-    /// of a country tracked at country level.
-    private static func stateCodes(revealed: ArraySlice<PlaybackEvent>, countries: Set<String>) -> Set<String> {
-        var codes = Set<String>()
-        for event in revealed {
-            if event.regionType == VisitedPlace.RegionType.usState.rawValue {
-                codes.insert("US-\(event.regionCode)")
-            } else if event.regionType == VisitedPlace.RegionType.canadianProvince.rawValue {
-                codes.insert("CA-\(event.regionCode)")
+/// Representative points for timeline stops: a point inside each region's largest landmass, so a
+/// country's overseas islands do not drag its point out to sea. Subdivisions without a bundled
+/// boundary file (e.g. German states) use the subdivision points in `world_states.json`.
+enum RegionCenters {
+    static func centers(for stops: [TimelineStop]) -> [String: GeoPoint] {
+        var countries: [String: GeoPoint] = [:]
+        for boundary in GeoJSONParser.parseCountries() {
+            let code = boundary.id == "CN-TW" ? "TW" : boundary.id
+            if let point = center(of: boundary.polygons) { countries[code] = point }
+        }
+        var subdivisions: [String: GeoPoint] = [:]
+        let listed = worldStatePoints()
+        for country in Set(stops.filter { !$0.isCountry }.map(\.countryCode)) {
+            for boundary in GeoJSONParser.parseStates(forCountry: country) {
+                if let point = center(of: boundary.polygons) {
+                    subdivisions["\(country)-\(SubdivisionCode.short(boundary.id))"] = point
+                }
+            }
+            for state in GeographicData.states(for: country) where subdivisions["\(country)-\(state.id)"] == nil {
+                let name = listedNames["\(country)-\(state.id)"] ?? state.name
+                subdivisions["\(country)-\(state.id)"] = listed[country]?[normalized(name)]
             }
         }
-        let settings = AppSettings.shared
-        for country in countries where !settings.shouldTrackStates(for: country) {
-            for state in GeographicData.states(for: country) {
-                codes.insert("\(country)-\(state.id)")
-            }
+        var result: [String: GeoPoint] = [:]
+        for stop in stops {
+            result[stop.id] = stop.isCountry
+                ? countries[stop.regionCode]
+                : subdivisions["\(stop.countryCode)-\(stop.regionCode)"] ?? countries[stop.countryCode]
         }
-        return codes
+        return result
+    }
+
+    static func center(of polygons: [MKPolygon]) -> GeoPoint? {
+        func area(_ polygon: MKPolygon) -> Double { polygon.boundingMapRect.width * polygon.boundingMapRect.height }
+        guard let largest = polygons.max(by: { area($0) < area($1) }) else { return nil }
+        let ring = UnsafeBufferPointer(start: largest.points(), count: largest.pointCount).map {
+            GeoPoint(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude)
+        }
+        return GeoPoint.interiorPoint(of: ring)
+    }
+
+    /// Subdivisions named differently in `world_states.json`.
+    private static let listedNames = [
+        "DE-HE": "Hessen",
+        "MX-COA": "Coahuila de Zaragoza",
+        "MX-MEX": "Estado de México",
+        "MX-MIC": "Michoacán de Ocampo",
+        "MX-VER": "Veracruz de Ignacio de la Llave",
+    ]
+
+    private struct ListedState: Decodable {
+        let name: String
+        let lat: String
+        let lng: String
+    }
+
+    /// Country code -> normalized subdivision name -> point.
+    private static func worldStatePoints() -> [String: [String: GeoPoint]] {
+        guard let url = Bundle.main.url(forResource: "world_states", withExtension: "json", subdirectory: "GeoData")
+                ?? Bundle.main.url(forResource: "world_states", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let decoded = try? JSONDecoder().decode([String: [ListedState]].self, from: data)
+        else { return [:] }
+        return decoded.mapValues { states in
+            var points: [String: GeoPoint] = [:]
+            for state in states {
+                if let lat = Double(state.lat), let lng = Double(state.lng) {
+                    points[normalized(state.name)] = GeoPoint(latitude: lat, longitude: lng)
+                }
+            }
+            return points
+        }
+    }
+
+    private static func normalized(_ name: String) -> String {
+        name.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: nil)
+            .replacingOccurrences(of: " state", with: "")
+            .replacingOccurrences(of: " province", with: "")
+            .trimmingCharacters(in: .whitespaces)
     }
 }
 

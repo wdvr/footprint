@@ -222,6 +222,10 @@ struct CountryMapView: UIViewRepresentable {
     var onPhotoPinTapped: (([String]) -> Void)?  // Called with photo asset IDs
     var showUserLocation: Bool = false
     var showPhotoPins: Bool = false
+    /// Timeline playback: the journey line drawn so far (its last point is the moving tip).
+    var journeyPath: [GeoPoint] = []
+    /// Timeline playback: landmarks to stand on the map.
+    var landmarks: [Landmark] = []
 
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView()
@@ -256,6 +260,17 @@ struct CountryMapView: UIViewRepresentable {
                                       animated: false)
         }
 
+        // Re-render the boundary overlays only when their colors can have changed: playback
+        // updates this view every frame.
+        let coordinator = context.coordinator
+        let colorsChanged = coordinator.visitedCountryCodes != visitedCountryCodes
+            || coordinator.bucketListCountryCodes != bucketListCountryCodes
+            || coordinator.visitedStateCodes != visitedStateCodes
+            || coordinator.bucketListStateCodes != bucketListStateCodes
+            || coordinator.countryCoveragePercentages != countryCoveragePercentages
+            || coordinator.selectedCountryCode != selectedCountry
+            || !coordinator.hasRenderedColors
+
         // Update visited countries and states when they change
         context.coordinator.visitedCountryCodes = visitedCountryCodes
         context.coordinator.bucketListCountryCodes = bucketListCountryCodes
@@ -280,13 +295,14 @@ struct CountryMapView: UIViewRepresentable {
             }
         }
 
-        // Update selected country if changed externally
-        if context.coordinator.selectedCountryCode != selectedCountry {
-            context.coordinator.selectedCountryCode = selectedCountry
-            context.coordinator.updateOverlayColors(in: mapView)
-        } else {
+        context.coordinator.selectedCountryCode = selectedCountry
+        if colorsChanged {
+            context.coordinator.hasRenderedColors = true
             context.coordinator.updateOverlayColors(in: mapView)
         }
+
+        context.coordinator.updateJourney(journeyPath, in: mapView)
+        context.coordinator.updateLandmarks(landmarks, in: mapView)
 
         // Update photo pins
         context.coordinator.updatePhotoPins(in: mapView, show: showPhotoPins)
@@ -311,6 +327,11 @@ struct CountryMapView: UIViewRepresentable {
         weak var mapView: MKMapView?
         var photoPinsShown: Bool = false
         var hasSetInitialRegion: Bool = false
+        var hasRenderedColors = false
+        private var journeyLine: MKGeodesicPolyline?
+        private var journeyHead: JourneyHeadAnnotation?
+        private var shownJourney: [GeoPoint] = []
+        private var landmarkAnnotations: [String: LandmarkAnnotation] = [:]
 
         init(_ parent: CountryMapView) {
             self.parent = parent
@@ -486,9 +507,57 @@ struct CountryMapView: UIViewRepresentable {
             }
         }
 
+        // MARK: - Timeline playback
+
+        func updateJourney(_ path: [GeoPoint], in mapView: MKMapView) {
+            guard path != shownJourney else { return }
+            shownJourney = path
+            if let journeyLine { mapView.removeOverlay(journeyLine) }
+            journeyLine = nil
+            let coordinates = path.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+            if coordinates.count >= 2 {
+                let line = MKGeodesicPolyline(coordinates: coordinates, count: coordinates.count)
+                mapView.addOverlay(line, level: .aboveLabels)
+                journeyLine = line
+            }
+            if let tip = coordinates.last {
+                if let journeyHead {
+                    journeyHead.coordinate = tip
+                } else {
+                    let head = JourneyHeadAnnotation(tip)
+                    mapView.addAnnotation(head)
+                    journeyHead = head
+                }
+            } else if let journeyHead {
+                mapView.removeAnnotation(journeyHead)
+                self.journeyHead = nil
+            }
+        }
+
+        func updateLandmarks(_ landmarks: [Landmark], in mapView: MKMapView) {
+            let wanted = Set(landmarks.map(\.id))
+            let stale = landmarkAnnotations.filter { !wanted.contains($0.key) }
+            if !stale.isEmpty {
+                mapView.removeAnnotations(Array(stale.values))
+                stale.keys.forEach { landmarkAnnotations[$0] = nil }
+            }
+            let added = landmarks.filter { landmarkAnnotations[$0.id] == nil }.map(LandmarkAnnotation.init)
+            guard !added.isEmpty else { return }
+            added.forEach { landmarkAnnotations[$0.landmark.id] = $0 }
+            mapView.addAnnotations(added)
+        }
+
         // MARK: - MKMapViewDelegate
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let line = overlay as? MKGeodesicPolyline {
+                let renderer = MKGradientPolylineRenderer(polyline: line)
+                renderer.setColors([.systemPink, .systemOrange, .systemYellow], locations: [0, 0.6, 1])
+                renderer.lineWidth = 4
+                renderer.lineCap = .round
+                renderer.lineJoin = .round
+                return renderer
+            }
             if let multiPolygon = overlay as? MKMultiPolygon {
                 let renderer = MKMultiPolygonRenderer(multiPolygon: multiPolygon)
 
@@ -582,6 +651,31 @@ struct CountryMapView: UIViewRepresentable {
                 return nil
             }
 
+            if annotation is LandmarkAnnotation {
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: LandmarkAnnotationView.reuseIdentifier)
+                    ?? LandmarkAnnotationView(annotation: annotation, reuseIdentifier: LandmarkAnnotationView.reuseIdentifier)
+                view.annotation = annotation
+                return view
+            }
+
+            if annotation is JourneyHeadAnnotation {
+                let identifier = "JourneyHead"
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
+                    ?? MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+                view.annotation = annotation
+                view.frame = CGRect(x: 0, y: 0, width: 16, height: 16)
+                view.backgroundColor = .white
+                view.layer.cornerRadius = 8
+                view.layer.borderColor = UIColor.systemPink.cgColor
+                view.layer.borderWidth = 4
+                view.layer.shadowColor = UIColor.systemPink.cgColor
+                view.layer.shadowOpacity = 0.8
+                view.layer.shadowRadius = 6
+                view.layer.shadowOffset = .zero
+                view.displayPriority = .required
+                return view
+            }
+
             // Handle photo pin annotations with playful bubble style
             if let photoPin = annotation as? PhotoPinAnnotation {
                 let identifier = "PhotoPinAnnotation"
@@ -622,6 +716,12 @@ struct CountryMapView: UIViewRepresentable {
             }
 
             return nil
+        }
+
+        func mapView(_ mapView: MKMapView, didAdd views: [MKAnnotationView]) {
+            for view in views {
+                (view as? LandmarkAnnotationView)?.popIn()
+            }
         }
 
         func mapView(_ mapView: MKMapView, didSelect annotation: MKAnnotation) {
