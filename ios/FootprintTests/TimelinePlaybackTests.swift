@@ -212,7 +212,8 @@ final class TimelinePlaybackTests: XCTestCase {
         XCTAssertEqual(markers.map(\.year), [2027, 2028, 2029])
         for marker in markers {
             XCTAssertEqual(utc.component(.year, from: t.date(at: marker.progress)), marker.year)
-            XCTAssertEqual(utc.component(.dayOfYear, from: t.date(at: marker.progress)), 1)
+            let date = utc.dateComponents([.month, .day], from: t.date(at: marker.progress))
+            XCTAssertEqual([date.month, date.day], [1, 1])
         }
         XCTAssertEqual(markers.map(\.progress), markers.map(\.progress).sorted())
         XCTAssertTrue(try timeline([event("BE", dayOffset: 100)]).yearMarkers(calendar: utc).isEmpty)
