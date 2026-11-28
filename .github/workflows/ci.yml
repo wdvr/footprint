@@ -108,6 +108,8 @@ jobs:
             - 'scripts/build_medals_catalog.py'
             - 'ios/Footprint/Resources/medals.json'
             - 'backend/src/data/medals.json'
+            - 'scripts/build_city_gazetteer.py'
+            - 'data/gazetteer/**'
             - '.github/workflows/ci.yml'
 
   backend-test:
@@ -173,6 +175,11 @@ jobs:
       run: |
         pip install pytest
         cd scripts && python3 -m pytest -v test_audit_geodata.py test_audit_regions.py
+
+    - name: City gazetteer is reproducible from committed sources
+      run: |
+        python3 scripts/build_city_gazetteer.py build
+        git diff --exit-code ios/Footprint/Resources/GeoData/cities_gazetteer.json
 
   infrastructure-validate:
     name: Infrastructure Validation

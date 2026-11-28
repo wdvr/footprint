@@ -8,7 +8,9 @@ Checks, exiting non-zero on any error:
 - country coverage: every country in GeographicData.swift has a boundary in
   countries.geojson;
 - subdivision codes: every feature code in a country's boundary file exists in
-  that country's GeographicData list and vice versa.
+  that country's GeographicData list and vice versa;
+- city gazetteer: unique GeoNames ids, known country and subdivision codes,
+  radii in 1.5–15 km, one national capital per country, 51 US state capitals.
 """
 
 import argparse
@@ -21,6 +23,9 @@ ROOT = Path(__file__).resolve().parent.parent
 SWIFT_FILE = ROOT / "ios/Footprint/Data/GeographicData.swift"
 GEO_DIR = ROOT / "ios/Footprint/Resources/GeoData"
 COUNTRIES_FILE = "countries.geojson"
+GAZETTEER_FILE = "cities_gazetteer.json"
+# Countries the app tracks that are not among the 195 with a national capital.
+COUNTRIES_WITHOUT_NATIONAL_CAPITAL = {"TW", "XS"}
 SPECIAL_FILES = {"US": "us_states.geojson", "CA": "canadian_provinces.geojson"}
 
 # Boundary codes the app normalizes to a different country code (normalizedCountryCode in CountryMapView.swift)
@@ -162,12 +167,53 @@ def audit(swift_file=SWIFT_FILE, geo_dir=GEO_DIR):
         if stale := sorted(set(codes) - states.keys()):
             errors.append(f"{stale} have no subdivisions; remove from {name}")
 
+    audit_gazetteer(
+        geo_dir / GAZETTEER_FILE, states, countries, boundary_countries, errors
+    )
+
     known = {geojson_file(geo_dir, cc).name for cc in states}
     for path in sorted(geo_dir.glob("*_states.geojson")):
         if path.name not in known:
             errors.append(f"{path.name}: no matching country in GeographicData")
 
     return errors, warnings
+
+
+def audit_gazetteer(path, states, countries, boundary_countries, errors):
+    if not path.exists():
+        errors.append(f"{path.name} is missing")
+        return
+    cities = json.loads(path.read_text())["cities"]
+    ids = [c["id"] for c in cities]
+    if dup := duplicates(ids):
+        errors.append(f"{path.name}: duplicate ids {dup[:5]}")
+    if bad := [i for i in ids if not re.fullmatch(r"gn:\d+", i)][:5]:
+        errors.append(f"{path.name}: ids not in gn:<GeoNames id> form: {bad}")
+    known_countries = set(countries) | boundary_countries
+    for c in cities:
+        where = f"{path.name}: {c['id']} {c['name']}"
+        for key in ("cc", "bcc"):
+            if key in c and c[key] not in known_countries:
+                errors.append(f"{where}: unknown country {c[key]}")
+        for sub in ([c["sub"]] if "sub" in c else []) + c.get("subs", []):
+            cc, _, code = sub.partition("-")
+            if code not in states.get(cc, []):
+                errors.append(f"{where}: unknown subdivision {sub}")
+        if not 1_500 <= c["r"] <= 15_000:
+            errors.append(f"{where}: radius {c['r']} m outside 1500–15000")
+    capitals = sorted(c["cc"] for c in cities if c.get("nc"))
+    expected = sorted(set(countries) - COUNTRIES_WITHOUT_NATIONAL_CAPITAL)
+    if capitals != expected:
+        errors.append(
+            f"{path.name}: national capitals must be one per country; "
+            f"missing {sorted(set(expected) - set(capitals))}, "
+            f"extra {sorted({c for c in capitals if capitals.count(c) > 1 or c not in expected})}"
+        )
+    state_capitals = sorted(c["sub"] for c in cities if c.get("sc") and c["cc"] == "US")
+    if state_capitals != sorted(f"US-{s}" for s in states.get("US", [])):
+        errors.append(
+            f"{path.name}: US state capitals must be one per state incl. DC, got {len(state_capitals)}"
+        )
 
 
 def main():

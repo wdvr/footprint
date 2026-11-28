@@ -8,6 +8,8 @@ final class VisitedPlace {
         /// Named region (§2.4), code = region slug ("us-bay-area"). Region visits are derived
         /// from member visits; this type is reserved for region rows such as bucket-list entries.
         case region = "region"
+        /// Gazetteer city; `regionCode` is its GeoNames key ("gn:5391959").
+        case city = "city"
         case usState = "us_state"
         case canadianProvince = "canadian_province"
         // International regions
@@ -32,6 +34,7 @@ final class VisitedPlace {
             switch self {
             case .country: return "Country"
             case .region: return "Region"
+            case .city: return "City"
             case .usState: return "US State"
             case .canadianProvince: return "Canadian Province"
             case .australianState: return "Australian State"
