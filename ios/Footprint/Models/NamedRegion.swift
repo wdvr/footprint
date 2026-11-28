@@ -196,9 +196,10 @@ struct NamedRegionCatalog: Sendable {
 
 #if canImport(SwiftData)
 extension RegionResolver {
-    /// Place keys of the live, visited (not bucket-list) places.
+    /// Place keys of the live, fully visited places: bucket-list and transit rows do not count
+    /// toward coverage (§2.5 transit rule).
     static func visitedKeys(from places: [VisitedPlace]) -> Set<String> {
-        visitedKeys(places.filter { !$0.isDeleted && $0.isVisited }.map { ($0.regionType, $0.regionCode) })
+        visitedKeys(places.filter { !$0.isDeleted && $0.isVisited && !$0.isTransit }.map { ($0.regionType, $0.regionCode) })
     }
 }
 #endif

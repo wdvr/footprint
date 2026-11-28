@@ -40,7 +40,7 @@ final class NamedRegionAppTests: XCTestCase {
     }
 
     @MainActor
-    func testVisitedKeysFromPlacesSkipBucketListAndDeletedRows() throws {
+    func testVisitedKeysFromPlacesSkipBucketListDeletedAndTransitRows() throws {
         let container = try ModelContainer(for: VisitedPlace.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         let context = container.mainContext
         let places = [
@@ -48,11 +48,12 @@ final class NamedRegionAppTests: XCTestCase {
             VisitedPlace(regionType: .usState, regionCode: "VT", regionName: "Vermont", status: .bucketList),
             VisitedPlace(regionType: .usState, regionCode: "ME", regionName: "Maine", isDeleted: true),
             VisitedPlace(regionType: .country, regionCode: "CH", regionName: "Switzerland", visitType: .transit),
+            VisitedPlace(regionType: .country, regionCode: "AT", regionName: "Austria"),
         ]
         for place in places { context.insert(place) }
 
         let keys = RegionResolver.visitedKeys(from: places)
-        XCTAssertEqual(keys, ["US-MA", "CH"])
+        XCTAssertEqual(keys, ["US-MA", "AT"], "transit does not count toward coverage (§2.5)")
         let newEngland = try XCTUnwrap(NamedRegionCatalog.bundled.region(id: "us-new-england"))
         XCTAssertEqual(RegionResolver.coverage(of: newEngland, visitedKeys: keys).visitedMembers, ["US-MA"])
     }
