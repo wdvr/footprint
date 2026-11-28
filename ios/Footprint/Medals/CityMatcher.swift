@@ -44,16 +44,22 @@ struct CityMatcher: Sendable {
         return result
     }
 
-    /// The nearest city of each kind whose radius contains the coordinate, so a stay in Jersey City
-    /// does not also count New York.
+    /// The nearest gazetteer city whose radius contains the coordinate, so a stay in Jersey City
+    /// does not also count New York. Capitals are kept as-is: neighbouring capitals (Rome and
+    /// Vatican City) are different countries' capitals and both count.
     func nearestCities(latitude: Double, longitude: Double) -> [City] {
         var nearest: [String: (city: City, meters: Double)] = [:]
+        var capitals: [City] = []
         for city in cities(latitude: latitude, longitude: longitude) {
+            guard city.kind == "city" else {
+                capitals.append(city)
+                continue
+            }
             let meters = Self.meters(latitude, longitude, city.latitude, city.longitude)
             if let best = nearest[city.kind], best.meters <= meters { continue }
             nearest[city.kind] = (city, meters)
         }
-        return nearest.values.map(\.city).sorted { ($0.kind, $0.id) < ($1.kind, $1.id) }
+        return (nearest.values.map(\.city) + capitals).sorted { ($0.kind, $0.id) < ($1.kind, $1.id) }
     }
 
     /// First visit to each city, from dated coordinates.

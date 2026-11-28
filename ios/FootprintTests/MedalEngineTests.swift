@@ -277,6 +277,15 @@ final class MedalEngineTests: XCTestCase {
         XCTAssertEqual(hits.map(\.name), ["Jersey City"])
     }
 
+    func testNeighbouringCapitalsBothCount() {
+        let matcher = CityMatcher(cities: [
+            .init(id: "rome", name: "Rome", kind: "national", latitude: 41.8919, longitude: 12.5113, radiusMeters: 15_000),
+            .init(id: "vatican", name: "Vatican City", kind: "national", latitude: 41.9024, longitude: 12.4533, radiusMeters: 1_500),
+        ])
+        let hits = matcher.hits([MedalEngine.CoordinateFact(latitude: 41.9031, longitude: 12.4663, date: date("2022-01-01"), label: "Castel Sant'Angelo")])
+        XCTAssertEqual(Set(hits.map(\.name)), ["Rome", "Vatican City"])
+    }
+
     func testDistanceAwardsAtMeasurementDate() throws {
         let catalog = try Self.loadCatalog()
         let results = MedalEngine.evaluate(MedalEngine.Input(distanceKm: 41_000, distanceAsOf: date("2026-11-01")), catalog: catalog)
