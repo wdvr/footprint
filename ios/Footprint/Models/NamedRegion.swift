@@ -138,8 +138,8 @@ enum RegionResolver {
         }
     }
 
-    /// Place keys of visited rows. Pass only live rows with status visited; transit counts as
-    /// presence (a member was set foot in), bucket-list rows must be filtered out by the caller.
+    /// Place keys of the given rows. Pass only live, fully visited rows: the caller filters out
+    /// bucket-list and transit rows (transit does not count toward coverage, §2.5).
     static func visitedKeys(_ rows: [(regionType: String, regionCode: String)]) -> Set<String> {
         Set(rows.compactMap { placeKey(regionType: $0.regionType, regionCode: $0.regionCode) })
     }
