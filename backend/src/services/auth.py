@@ -380,7 +380,13 @@ class AuthService:
         session_id = payload.get("sid")
         if not session_id:
             # Token issued before server-side sessions existed: migrate it into
-            # a session once so existing installs are not signed out.
+            # a session once so existing installs are not signed out. The legacy
+            # token is consumed so it cannot be exchanged again (e.g. after logout).
+            jti = payload.get("jti")
+            if not jti or not db_service.consume_legacy_refresh_token(
+                user_id, jti, int(payload["exp"])
+            ):
+                return None
             return self.create_tokens(user_id)
 
         expire = self._refresh_expiry()
@@ -402,7 +408,9 @@ class AuthService:
         payload = self._decode_refresh_token(refresh_token, verify_exp=False)
         if not payload or not payload.get("sid"):
             return
-        db_service.delete_refresh_session(payload["sub"], payload["sid"])
+        db_service.delete_refresh_session(
+            payload["sub"], payload["sid"], self.hash_token(refresh_token)
+        )
 
 
 # Singleton instance

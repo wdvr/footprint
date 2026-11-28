@@ -431,7 +431,17 @@ class TestRefreshSessionLifecycle:
         retried = auth.refresh_tokens(first.refresh_token)
 
         assert retried is not None
+        assert auth.refresh_tokens(first.refresh_token) is None
         assert auth.refresh_tokens(retried.refresh_token) is not None
+
+    def test_superseded_token_cannot_revoke_active_session(self, auth):
+        first = auth.create_tokens("user-1")
+        second = auth.refresh_tokens(first.refresh_token)
+        third = auth.refresh_tokens(second.refresh_token)
+
+        auth.revoke_refresh_token(first.refresh_token)
+
+        assert auth.refresh_tokens(third.refresh_token) is not None
 
     def test_revoked_session_cannot_refresh(self, auth):
         tokens = auth.create_tokens("user-1")
@@ -454,6 +464,15 @@ class TestRefreshSessionLifecycle:
             migrated.refresh_token, auth.JWT_SECRET, algorithms=[auth.JWT_ALGORITHM]
         )
         assert db_service.get_refresh_session("user-1", payload["sid"]) is not None
+
+    def test_legacy_token_cannot_be_reused_after_migration_and_logout(self, auth):
+        legacy = auth.create_refresh_token("user-1")
+        migrated = auth.refresh_tokens(legacy)
+
+        auth.revoke_refresh_token(migrated.refresh_token)
+
+        assert auth.refresh_tokens(migrated.refresh_token) is None
+        assert auth.refresh_tokens(legacy) is None
 
     def test_expired_refresh_token_rejected(self, auth):
         expired = auth.create_refresh_token(

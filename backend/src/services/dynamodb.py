@@ -772,7 +772,8 @@ class DynamoDBService:
         if presented_hash == current_hash:
             previous_hash = current_hash
         elif presented_hash == session.get("previous_hash"):
-            previous_hash = presented_hash
+            # One-time grace for a lost response: the previous token is consumed.
+            previous_hash = None
         else:
             return False
 
@@ -800,14 +801,45 @@ class DynamoDBService:
             return False
         return True
 
-    def delete_refresh_session(self, user_id: str, session_id: str) -> None:
-        """Revoke a refresh token session."""
-        table.delete_item(
-            Key={
+    def delete_refresh_session(
+        self, user_id: str, session_id: str, token_hash: str | None = None
+    ) -> bool:
+        """
+        Revoke a refresh token session.
+
+        With `token_hash`, only delete if it is the session's current or previous
+        token, so a superseded token cannot sign out the active session.
+        """
+        kwargs: dict[str, Any] = {
+            "Key": {
                 "pk": self._get_user_pk(user_id),
                 "sk": self._get_refresh_session_sk(session_id),
             }
-        )
+        }
+        if token_hash is not None:
+            kwargs["ConditionExpression"] = "token_hash = :h OR previous_hash = :h"
+            kwargs["ExpressionAttributeValues"] = {":h": token_hash}
+        try:
+            table.delete_item(**kwargs)
+        except table.meta.client.exceptions.ConditionalCheckFailedException:
+            return False
+        return True
+
+    def consume_legacy_refresh_token(self, user_id: str, jti: str, ttl: int) -> bool:
+        """Record a pre-session refresh token as used; False if already used."""
+        try:
+            table.put_item(
+                Item={
+                    "pk": self._get_user_pk(user_id),
+                    "sk": f"LEGACY_REFRESH#{jti}",
+                    "entity_type": "legacy_refresh_consumed",
+                    "ttl": ttl,
+                },
+                ConditionExpression="attribute_not_exists(pk)",
+            )
+        except table.meta.client.exceptions.ConditionalCheckFailedException:
+            return False
+        return True
 
 
 # Singleton instance

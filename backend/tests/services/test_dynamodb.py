@@ -366,7 +366,12 @@ class TestRefreshSessions:
 
         session = db_service.get_refresh_session("user-1", "sid-1")
         assert session["token_hash"] == "hash-c"
-        assert session["previous_hash"] == "hash-a"
+        assert session.get("previous_hash") is None
+
+        # The grace token is single-use.
+        assert not db_service.rotate_refresh_session(
+            "user-1", "sid-1", "hash-a", "hash-d", 2000000000
+        )
 
     def test_rotate_rejects_older_hash(self, db_service):
         db_service.create_refresh_session("user-1", "sid-1", "hash-a", 2000000000)
@@ -392,3 +397,24 @@ class TestRefreshSessions:
         db_service.delete_refresh_session("user-1", "sid-1")
 
         assert db_service.get_refresh_session("user-1", "sid-1") is None
+
+    def test_delete_refresh_session_requires_live_hash(self, db_service):
+        db_service.create_refresh_session("user-1", "sid-1", "hash-a", 2000000000)
+        db_service.rotate_refresh_session(
+            "user-1", "sid-1", "hash-a", "hash-b", 2000000000
+        )
+        db_service.rotate_refresh_session(
+            "user-1", "sid-1", "hash-b", "hash-c", 2000000000
+        )
+
+        assert not db_service.delete_refresh_session("user-1", "sid-1", "hash-a")
+        assert db_service.get_refresh_session("user-1", "sid-1") is not None
+
+        assert db_service.delete_refresh_session("user-1", "sid-1", "hash-c")
+        assert db_service.get_refresh_session("user-1", "sid-1") is None
+
+    def test_consume_legacy_refresh_token_once(self, db_service):
+        assert db_service.consume_legacy_refresh_token("user-1", "jti-1", 2000000000)
+        assert not db_service.consume_legacy_refresh_token(
+            "user-1", "jti-1", 2000000000
+        )
