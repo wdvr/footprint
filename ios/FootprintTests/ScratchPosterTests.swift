@@ -84,6 +84,16 @@ final class ScratchPosterTests: XCTestCase {
         XCTAssertEqual(content.visitedCountryCodes, ["GL"])
         XCTAssertEqual(content.countryCount, 0)
         XCTAssertEqual(content.worldPercent, 0)
+
+        let listed = ScratchPosterContent.make(title: "Listed", places: ["XS", "TW", "UA"].map {
+            VisitedPlace(regionType: .country, regionCode: $0, regionName: $0)
+        })
+        XCTAssertEqual(listed.countryCount, 1)
+    }
+
+    func testWorldProgressDenominatorMatchesTheContinentLists() {
+        let all = LocalContinentStats.continentData.reduce(Set<String>()) { $0.union($1.codes) }
+        XCTAssertEqual(all.subtracting(ScratchPosterContent.uncountedTerritories).count, ScratchPosterContent.worldCountryCount)
     }
 
     func testAntarcticaCountsAsAContinent() {

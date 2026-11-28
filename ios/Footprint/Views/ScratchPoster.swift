@@ -186,6 +186,8 @@ struct ScratchPosterContent: Sendable, Equatable {
     }
 
     static let worldCountryCount = 195
+    /// In the continent lists (197 entries) but outside the 195 counted for world progress.
+    static let uncountedTerritories: Set<String> = ["TW", "XS"]
 
     var worldPercent: Int { Int((Double(countryCount) / Double(Self.worldCountryCount) * 100).rounded()) }
 
@@ -208,7 +210,8 @@ struct ScratchPosterContent: Sendable, Equatable {
         }
         var continents = LocalContinentStats.calculateStats(visitedCountries: Array(countries))
             .map { Continent(name: $0.name, visited: $0.visited, total: $0.total) }
-        let countryCount = min(worldCountryCount, continents.reduce(0) { $0 + $1.visited })
+        let countryCount = countries.subtracting(uncountedTerritories)
+            .filter { code in LocalContinentStats.continentData.contains { $0.codes.contains(code) } }.count
         if countries.contains("AQ") { continents.append(Continent(name: "Antarctica", visited: 1, total: 1)) }
         return ScratchPosterContent(title: title, visitedCountryCodes: countries, visitedStateCodes: states,
                                     continents: continents, date: date,
