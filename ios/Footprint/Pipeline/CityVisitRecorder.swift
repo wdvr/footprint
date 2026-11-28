@@ -69,11 +69,15 @@ enum CityVisitRecorder {
                 row.sampleCount = max(row.sampleCount, visit.sampleCount)
                 row.centroidLat = visit.centroidLatitude
                 row.centroidLon = visit.centroidLongitude
-                if visit.kind == .visited, row.kind == .transit {
+                let upgraded = visit.kind == .visited && row.kind == .transit
+                if upgraded {
                     row.kindRaw = DetectedVisitKind.visited.rawValue
-                    if upsertPlace(city, visit: visit, isNewVisit: false, in: context, now: now) {
-                        newCities.append(city.id)
-                    }
+                }
+                // Late evidence can move the arrival earlier; the place's first-visit date follows.
+                // An upgraded row is a confirmed visit not counted yet (transit never counts).
+                if upsertPlace(city, arrivedAt: row.arrivedAt, kind: row.kind, isNewVisit: upgraded,
+                               mayCreate: upgraded, in: context, now: now) {
+                    newCities.append(city.id)
                 }
             } else {
                 let row = Visit(DetectedVisit(
@@ -87,7 +91,8 @@ enum CityVisitRecorder {
                 context.insert(row)
                 try? context.save()
                 existing.append(row)
-                if upsertPlace(city, visit: visit, isNewVisit: true, in: context, now: now) {
+                if upsertPlace(city, arrivedAt: visit.arrivedAt, kind: visit.kind, isNewVisit: true,
+                               mayCreate: true, in: context, now: now) {
                     newCities.append(city.id)
                 }
             }
@@ -102,15 +107,19 @@ enum CityVisitRecorder {
     }
 
     /// Same rules as the boundary levels: a bucket-list city becomes visited; a city the user removed
-    /// comes back only for a visit that started after the removal. True if newly marked visited.
+    /// comes back only for a visit that started after the removal. Transit never counts towards a
+    /// city's confirmed history: the first full visit resets a transit-only place's count and date.
+    /// True if newly marked visited.
     private static func upsertPlace(
         _ city: City,
-        visit: DetectedCityVisit,
+        arrivedAt: Date,
+        kind: DetectedVisitKind,
         isNewVisit: Bool,
+        mayCreate: Bool,
         in context: ModelContext,
         now: Date
     ) -> Bool {
-        let visitType: VisitedPlace.VisitType = visit.kind == .visited ? .visited : .transit
+        let visitType: VisitedPlace.VisitType = kind == .visited ? .visited : .transit
         let typeRaw = VisitedPlace.RegionType.city.rawValue
         let code = city.id
         let places = (try? context.fetch(FetchDescriptor<VisitedPlace>(
@@ -119,17 +128,20 @@ enum CityVisitRecorder {
 
         if let place = places.first(where: { !$0.isDeleted && $0.isVisited }) {
             var changed = false
-            if isNewVisit {
-                place.visitCount += 1
-                changed = true
-            }
-            if place.visitedDate.map({ visit.arrivedAt < $0 }) ?? true {
-                place.visitedDate = visit.arrivedAt
-                changed = true
-            }
             if visitType == .visited, place.isTransit {
                 place.visitType = visitType.rawValue
+                place.visitCount = 1
+                place.visitedDate = arrivedAt
                 changed = true
+            } else if visitType == .visited || place.isTransit {
+                if isNewVisit {
+                    place.visitCount += 1
+                    changed = true
+                }
+                if place.visitedDate.map({ arrivedAt < $0 }) ?? true {
+                    place.visitedDate = arrivedAt
+                    changed = true
+                }
             }
             if changed {
                 place.lastModifiedAt = now
@@ -137,14 +149,15 @@ enum CityVisitRecorder {
             }
             return false
         }
+        guard mayCreate else { return false }
 
         let reusable = places.first { !$0.isDeleted && $0.isBucketList }
-            ?? places.first { $0.isDeleted && isNewVisit && visit.arrivedAt > $0.lastModifiedAt }
+            ?? places.first { $0.isDeleted && isNewVisit && arrivedAt > $0.lastModifiedAt }
         if let place = reusable {
             place.status = VisitedPlace.PlaceStatus.visited.rawValue
             place.visitType = visitType.rawValue
             place.isDeleted = false
-            place.visitedDate = visit.arrivedAt
+            place.visitedDate = arrivedAt
             place.visitCount = 1
             place.lastModifiedAt = now
             place.isSynced = false
@@ -158,7 +171,7 @@ enum CityVisitRecorder {
             regionCode: code,
             regionName: city.name,
             visitType: visitType,
-            visitedDate: visit.arrivedAt,
+            visitedDate: arrivedAt,
             markedAt: now,
             lastModifiedAt: now
         ))

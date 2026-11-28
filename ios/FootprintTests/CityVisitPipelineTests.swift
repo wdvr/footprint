@@ -100,6 +100,41 @@ final class CityVisitPipelineTests: XCTestCase {
         XCTAssertEqual(try cityPlaces().first?.visitedDate, t0)
     }
 
+    func testTransitBeforeTheFirstFullVisitIsNotConfirmedHistory() throws {
+        pipeline.record(stay(startingAt: t0, minutes: 12), now: t0.addingTimeInterval(3600))
+        XCTAssertEqual(try cityPlaces().map(\.isTransit), [true])
+
+        let later = t0.addingTimeInterval(3 * 86_400)
+        pipeline.record(stay(startingAt: later), now: later.addingTimeInterval(3600))
+        let place = try XCTUnwrap(try cityPlaces().first)
+        XCTAssertTrue(place.isFullVisit)
+        XCTAssertEqual(place.visitCount, 1)
+        XCTAssertEqual(place.visitedDate, later)
+    }
+
+    func testTransitAfterAFullVisitChangesNothingUntilItIsConfirmed() throws {
+        pipeline.record(stay(startingAt: t0), now: t0.addingTimeInterval(3600))
+        let later = t0.addingTimeInterval(3 * 86_400)
+        let samples = stay(startingAt: later, minutes: 30)
+        pipeline.record(Array(samples.prefix(13)), now: later.addingTimeInterval(13 * 60))
+        XCTAssertEqual(try cityPlaces().map(\.visitCount), [1])
+
+        pipeline.record(Array(samples.dropFirst(13)), now: later.addingTimeInterval(31 * 60))
+        XCTAssertEqual(try cityPlaces().map(\.visitCount), [2])
+        XCTAssertEqual(try cityPlaces().first?.visitedDate, t0)
+    }
+
+    func testLateEarlierEvidenceBackdatesTheCity() throws {
+        let samples = stay(startingAt: t0, minutes: 40)
+        pipeline.record(Array(samples.dropFirst(10)), now: t0.addingTimeInterval(41 * 60))
+        XCTAssertEqual(try cityPlaces().first?.visitedDate, t0.addingTimeInterval(10 * 60))
+
+        pipeline.record(Array(samples.prefix(10)), now: t0.addingTimeInterval(42 * 60))
+        XCTAssertEqual(try cityVisits().map(\.arrivedAt), [t0])
+        XCTAssertEqual(try cityPlaces().first?.visitedDate, t0)
+        XCTAssertEqual(try cityPlaces().first?.visitCount, 1)
+    }
+
     func testBucketListCityBecomesVisited() throws {
         context.insert(VisitedPlace(regionType: .city, regionCode: "gn:5391959", regionName: "San Francisco", status: .bucketList))
         pipeline.record(stay(startingAt: t0), now: t0.addingTimeInterval(3600))
