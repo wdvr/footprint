@@ -193,7 +193,9 @@ struct TimelinePlaybackView: View {
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: recent.map(\.event.id))
         .padding(.bottom, 12)
-        .accessibilityHidden(true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Recently visited: \(recent.map(\.event.regionName).joined(separator: ", "))"))
+        .accessibilityHidden(recent.isEmpty)
     }
 
     // MARK: - Controls
