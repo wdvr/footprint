@@ -19,14 +19,15 @@ enum SubdivisionCode {
 enum SubdivisionCodeMigration {
     @discardableResult
     static func run(in context: ModelContext, now: Date = Date()) -> Int {
-        guard let all = try? context.fetch(FetchDescriptor<VisitedPlace>()) else { return 0 }
-        let places = all.filter { !$0.isDeleted }
+        guard let places = try? context.fetch(FetchDescriptor<VisitedPlace>(predicate: #Predicate { !$0.isDeleted })),
+              let removed = try? context.fetch(FetchDescriptor<VisitedPlace>(predicate: #Predicate { $0.isDeleted }))
+        else { return 0 }
         var live: [String: VisitedPlace] = [:]
         for place in places {
             live["\(place.regionType):\(place.regionCode)"] = place
         }
         var removedAt: [String: Date] = [:]
-        for place in all where place.isDeleted {
+        for place in removed {
             let key = "\(place.regionType):\(place.regionCode)"
             removedAt[key] = max(removedAt[key] ?? .distantPast, place.lastModifiedAt)
         }
