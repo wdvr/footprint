@@ -44,11 +44,23 @@ struct CityMatcher: Sendable {
         return result
     }
 
+    /// The nearest city of each kind whose radius contains the coordinate, so a stay in Jersey City
+    /// does not also count New York.
+    func nearestCities(latitude: Double, longitude: Double) -> [City] {
+        var nearest: [String: (city: City, meters: Double)] = [:]
+        for city in cities(latitude: latitude, longitude: longitude) {
+            let meters = Self.meters(latitude, longitude, city.latitude, city.longitude)
+            if let best = nearest[city.kind], best.meters <= meters { continue }
+            nearest[city.kind] = (city, meters)
+        }
+        return nearest.values.map(\.city).sorted { ($0.kind, $0.id) < ($1.kind, $1.id) }
+    }
+
     /// First visit to each city, from dated coordinates.
     func hits(_ coordinates: [MedalEngine.CoordinateFact]) -> [MedalEngine.CityHit] {
         var first: [String: MedalEngine.CityHit] = [:]
         for coordinate in coordinates {
-            for city in cities(latitude: coordinate.latitude, longitude: coordinate.longitude) {
+            for city in nearestCities(latitude: coordinate.latitude, longitude: coordinate.longitude) {
                 let key = "\(city.kind):\(city.id)"
                 if let existing = first[key], existing.date <= coordinate.date { continue }
                 first[key] = MedalEngine.CityHit(id: city.id, kind: city.kind, name: city.name, date: coordinate.date)

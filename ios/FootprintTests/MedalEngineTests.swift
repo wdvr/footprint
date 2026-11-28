@@ -214,15 +214,18 @@ final class MedalEngineTests: XCTestCase {
     func testTimeZonesAndDateLine() throws {
         let catalog = try Self.loadCatalog()
         let facts = [
-            MedalEngine.PlaceFact(regionType: "country", regionCode: "FJ", name: "Fiji", date: date("2019-01-01"), timeZones: [12]),
-            MedalEngine.PlaceFact(regionType: "country", regionCode: "WS", name: "Samoa", date: date("2019-02-01"), timeZones: [13]),
-            MedalEngine.PlaceFact(regionType: "us_state", regionCode: "HI", name: "Hawaii", date: date("2019-03-01"), timeZones: [-10]),
+            MedalEngine.PlaceFact(regionType: "country", regionCode: "JP", name: "Japan", date: date("2019-01-01"), timeZones: [9]),
+            MedalEngine.PlaceFact(regionType: "us_state", regionCode: "AK", name: "Alaska", date: date("2019-02-01"), timeZones: [-9]),
         ]
         let results = MedalEngine.evaluate(MedalEngine.Input(places: facts), catalog: catalog)
-        XCTAssertFalse(result("date_line_crosser", results).isEarned, "UTC−10 is not west of the date line")
-        let withAmericanSamoa = facts + [MedalEngine.PlaceFact(regionType: "country", regionCode: "AS", name: "American Samoa", date: date("2019-04-01"), timeZones: [-11])]
-        let crossed = result("date_line_crosser", MedalEngine.evaluate(MedalEngine.Input(places: withAmericanSamoa), catalog: catalog))
+        XCTAssertFalse(result("date_line_crosser", results).isEarned, "UTC+9 and UTC−9 are not on the date line")
+        let crossing = facts + [
+            MedalEngine.PlaceFact(regionType: "country", regionCode: "FJ", name: "Fiji", date: date("2019-03-01"), timeZones: [12]),
+            MedalEngine.PlaceFact(regionType: "us_state", regionCode: "HI", name: "Hawaii", date: date("2019-04-01"), timeZones: [-10]),
+        ]
+        let crossed = result("date_line_crosser", MedalEngine.evaluate(MedalEngine.Input(places: crossing), catalog: catalog))
         XCTAssertEqual(crossed.awards.first?.earnedAt, date("2019-04-01"))
+        XCTAssertEqual(crossed.awards.first?.trigger, "Hawaii")
     }
 
     func testCoordinateMedalsFromVisitsAndPhotos() throws {
@@ -263,6 +266,15 @@ final class MedalEngineTests: XCTestCase {
         let results = MedalEngine.evaluate(MedalEngine.Input(cities: hits), catalog: catalog)
         XCTAssertEqual(result("capital_gains", results).value, 1)
         XCTAssertEqual(result("city_slicker", results).value, 1)
+    }
+
+    func testOverlappingCityRadiiCreditOnlyTheNearestCity() {
+        let matcher = CityMatcher(cities: [
+            .init(id: "nyc", name: "New York City", kind: "city", latitude: 40.7143, longitude: -74.0060, radiusMeters: 15_000),
+            .init(id: "jc", name: "Jersey City", kind: "city", latitude: 40.7282, longitude: -74.0776, radiusMeters: 5_000),
+        ])
+        let hits = matcher.hits([MedalEngine.CoordinateFact(latitude: 40.7280, longitude: -74.0770, date: date("2022-01-01"), label: "Photo")])
+        XCTAssertEqual(hits.map(\.name), ["Jersey City"])
     }
 
     func testDistanceAwardsAtMeasurementDate() throws {
