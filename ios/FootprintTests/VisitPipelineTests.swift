@@ -28,10 +28,10 @@ final class VisitPipelineTests: XCTestCase {
 
     private var context: ModelContext { container.mainContext }
 
-    private func stay(startingAt start: Date, minutes: Int = 12) -> [EvidenceSample] {
+    private func stay(startingAt start: Date, minutes: Int = 12, latitude: Double = 37) -> [EvidenceSample] {
         (0...minutes).map {
             EvidenceSample(timestamp: start.addingTimeInterval(Double($0) * 60),
-                           latitude: 37 + Double($0 % 3) * 10 * degreesPerMeter, longitude: -122, horizontalAccuracy: 20)
+                           latitude: latitude + Double($0 % 3) * 10 * degreesPerMeter, longitude: -122, horizontalAccuracy: 20)
         }
     }
 
@@ -199,7 +199,8 @@ final class VisitPipelineTests: XCTestCase {
     func testReresolveBackfillsCountiesOnceAndIsIdempotent() throws {
         useCounty(nil)
         pipeline.record(stay(startingAt: t0), now: t0.addingTimeInterval(3600))
-        pipeline.record(stay(startingAt: t0.addingTimeInterval(86_400)), now: t0.addingTimeInterval(90_000))
+        // Somewhere else the next day: a return to the same spot with no fixes in between is one stay.
+        pipeline.record(stay(startingAt: t0.addingTimeInterval(86_400), latitude: 37.5), now: t0.addingTimeInterval(90_000))
         XCTAssertFalse(try places().contains { $0.regionType == VisitedPlace.RegionType.usCounty.rawValue })
 
         useCounty("06075")
