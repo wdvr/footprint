@@ -88,17 +88,22 @@ enum CityVisitDetector {
         let span = departedAt.timeIntervalSince(arrivedAt)
         var centroid = GeoMath.centroid(runSamples[...])
 
-        let arrivedByAir = fastLegBefore[run.lowerBound]
-        let leavesByAir = run.upperBound + 1 < fastLegBefore.count && fastLegBefore[run.upperBound + 1]
+        // The ground segment between flight legs holding this run: a layover spans the whole
+        // segment even when the city match changes inside it (e.g. walking between terminals).
+        var segmentStart = run.lowerBound
+        while segmentStart > 0, !fastLegBefore[segmentStart] { segmentStart -= 1 }
+        var segmentEnd = run.upperBound
+        while segmentEnd + 1 < track.count, !fastLegBefore[segmentEnd + 1] { segmentEnd += 1 }
+        let arrivedByAir = fastLegBefore[segmentStart]
+        let leavesByAir = segmentEnd + 1 < track.count
+        let segmentSpan = track[segmentEnd].timestamp.timeIntervalSince(track[segmentStart].timestamp)
         let isOpen = run.upperBound == track.count - 1
-        let stillAtArrivalPoint = runSamples.allSatisfy {
-            GeoMath.distanceMeters(runSamples[0], $0) <= config.stayRadiusMeters
-        }
         let kind: DetectedVisitKind
-        if arrivedByAir, isOpen, stillAtArrivalPoint, span <= config.maxLayover {
-            // Possible layover; the boundary analysis keeps these samples in the next window.
+        if arrivedByAir, isOpen, segmentSpan <= config.maxLayover {
+            // Possible layover, however far the traveller walks around the airport: decided once
+            // the stay moves on, closes or outlasts `maxLayover`.
             return nil
-        } else if arrivedByAir, leavesByAir, span <= config.maxLayover {
+        } else if arrivedByAir, leavesByAir, segmentSpan <= config.maxLayover {
             guard span >= config.layoverDwell else { return nil }
             kind = .transit
         } else if let stay = StayPointClusterer.cluster(runSamples, config: config, calendar: calendar).first(where: {

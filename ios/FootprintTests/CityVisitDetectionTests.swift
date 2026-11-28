@@ -126,6 +126,19 @@ final class CityVisitDetectionTests: XCTestCase {
         XCTAssertEqual(detect(samples).filter { $0.cityId == "gn:1" }, [])
     }
 
+    func testLayoverMovingBetweenCityMatchesIsNotAVisit() {
+        // Land, wait 25 min at Metro, move to a gate in Suburb's radius for 25 min, fly out.
+        let gates = stay(from: 120, minutes: 25) + stay(from: 150, minutes: 25, lon: -10 + 5_500 * degreesPerMeter)
+        let samples = stay(minutes: 3, lon: -30) + gates + stay(from: 300, minutes: 3, lon: -30)
+        XCTAssertEqual(detect(samples).filter { $0.cityId != "gn:3" }, [])
+    }
+
+    func testWalkingAroundAfterLandingIsStillHeldBack() {
+        // 30 minutes after landing, moving 100 m a minute: never within one stay radius.
+        let walk = (0...30).map { sample(120 + Double($0), 10, -10 + Double($0) * 100 * degreesPerMeter) }
+        XCTAssertEqual(detect(stay(minutes: 3, lon: -30) + walk).filter { $0.cityId == "gn:1" }, [])
+    }
+
     func testOpenStayAfterAFlightIsHeldBack() {
         let samples = stay(minutes: 3, lon: -30) + stay(from: 120, minutes: 30)
         XCTAssertEqual(detect(samples).filter { $0.cityId == "gn:1" }, [])
