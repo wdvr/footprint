@@ -482,7 +482,9 @@ struct SettingsView: View {
                         .accessibilityIdentifier("countiesToggle")
                         .onChange(of: appSettings.countiesEnabled) { _, enabled in
                             // Fill in counties from the location history already on this iPhone.
-                            if enabled { VisitPipeline.shared.reresolve() }
+                            if enabled, let countyData = CountyIndex.shared?.source {
+                                VisitPipeline.shared.reresolveIfNeeded(dataVersion: countyData, force: true)
+                            }
                         }
                 } header: {
                     Text("Completionist")

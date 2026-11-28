@@ -214,4 +214,16 @@ final class VisitPipelineTests: XCTestCase {
         XCTAssertEqual(try places().map { "\($0.regionType):\($0.regionCode):\($0.visitCount)" }, snapshot)
         XCTAssertEqual(try context.fetchCount(FetchDescriptor<Visit>()), 6)
     }
+
+    func testForcedReresolveRunsAgainForTheSameDataVersion() throws {
+        useCounty(nil)
+        pipeline.record(stay(startingAt: t0), now: t0.addingTimeInterval(3600))
+        XCTAssertEqual(pipeline.reresolveIfNeeded(dataVersion: "v2"), [])
+
+        // Counties switched on after the data version was already stamped.
+        useCounty("06075")
+        XCTAssertEqual(pipeline.reresolveIfNeeded(dataVersion: "v2"), [])
+        let forced = pipeline.reresolveIfNeeded(dataVersion: "v2", force: true)
+        XCTAssertEqual(forced.compactMap(\.countyFips), ["06075"])
+    }
 }

@@ -124,8 +124,8 @@ final class VisitPipeline {
     /// arriving), so samples recorded before the update still yield the new levels. Idempotent:
     /// re-derived visits merge into the rows they overlap.
     @discardableResult
-    func reresolveIfNeeded(dataVersion: String, now: Date = Date()) -> [NewPlace] {
-        guard defaults.string(forKey: Self.resolvedDataVersionKey) != dataVersion else { return [] }
+    func reresolveIfNeeded(dataVersion: String, force: Bool = false, now: Date = Date()) -> [NewPlace] {
+        guard force || defaults.string(forKey: Self.resolvedDataVersionKey) != dataVersion else { return [] }
         let places = reresolve(now: now)
         defaults.set(dataVersion, forKey: Self.resolvedDataVersionKey)
         return places
