@@ -47,46 +47,169 @@ enum APIError: LocalizedError {
 actor APIClient {
     static let shared = APIClient()
 
-    private let baseURL = "https://api.footprintmaps.com"
+    private let baseURL: String
+    private let urlSession: URLSession
+    private let sessionStore: AuthSessionStore
+    private let now: @Sendable () -> Date
 
-    private var accessToken: String?
-    private var refreshToken: String?
-    private var isRefreshing = false
+    private var session: AuthSession?
+    /// In-flight refresh shared by every caller, so concurrent requests rotate the
+    /// refresh token exactly once.
+    private var refreshTask: Task<AuthSession, Error>?
+    private var onSessionRevoked: (@Sendable () async -> Void)?
 
-    private init() {}
+    init(
+        baseURL: String = "https://api.footprintmaps.com",
+        urlSession: URLSession = .shared,
+        sessionStore: AuthSessionStore = KeychainAuthSessionStore(),
+        now: @escaping @Sendable () -> Date = { Date() }
+    ) {
+        self.baseURL = baseURL
+        self.urlSession = urlSession
+        self.sessionStore = sessionStore
+        self.now = now
+        // Load synchronously so callers (e.g. launch sync) see the stored session
+        // immediately, before AuthManager's background restore runs.
+        self.session = sessionStore.load()
+    }
 
-    // MARK: - Token Management
+    // MARK: - Session Management
 
-    func setTokens(access: String, refresh: String) {
-        self.accessToken = access
-        self.refreshToken = refresh
-        // Store in Keychain for persistence
-        KeychainHelper.save(key: "accessToken", value: access)
-        KeychainHelper.save(key: "refreshToken", value: refresh)
-        Log.api.debug("Tokens stored")
+    /// Called when the server rejects the refresh token (revoked, expired, or the
+    /// account is gone) and the stored session has been wiped.
+    func setSessionRevokedHandler(_ handler: (@Sendable () async -> Void)?) {
+        onSessionRevoked = handler
+    }
+
+    /// Synchronous Keychain check so launch can show the signed-in UI immediately.
+    nonisolated func hasStoredSession() -> Bool {
+        sessionStore.load() != nil
+    }
+
+    func setTokens(access: String, refresh: String, expiresIn: Int? = nil) {
+        storeSession(AuthSession(accessToken: access, refreshToken: refresh, expiresIn: expiresIn, now: now()))
+    }
+
+    private func storeSession(_ newSession: AuthSession) {
+        session = newSession
+        sessionStore.save(newSession)
+        Log.api.debug("Session stored")
     }
 
     func loadStoredTokens() {
-        self.accessToken = KeychainHelper.load(key: "accessToken")
-        self.refreshToken = KeychainHelper.load(key: "refreshToken")
-        
-        if accessToken != nil, refreshToken != nil {
-            Log.api.debug("Loaded stored tokens")
+        session = sessionStore.load()
+        if session != nil {
+            Log.api.debug("Loaded stored session")
         } else {
-            Log.api.debug("No stored tokens found")
+            Log.api.debug("No stored session found")
         }
     }
 
     func clearTokens() {
-        self.accessToken = nil
-        self.refreshToken = nil
-        KeychainHelper.delete(key: "accessToken")
-        KeychainHelper.delete(key: "refreshToken")
-        Log.api.debug("Tokens cleared")
+        session = nil
+        sessionStore.clear()
+        Log.api.debug("Session cleared")
     }
 
     var isAuthenticated: Bool {
-        accessToken != nil
+        session != nil
+    }
+
+    /// Current stored session, for tests and diagnostics.
+    var currentSession: AuthSession? {
+        session
+    }
+
+    /// Wipes the local session, then best-effort revokes it server-side.
+    func logout() async {
+        guard let refreshToken = session?.refreshToken else {
+            clearTokens()
+            return
+        }
+        clearTokens()
+        struct LogoutRequest: Encodable {
+            let refreshToken: String
+        }
+        do {
+            let _: EmptyResponse = try await _request(
+                "/auth/logout",
+                method: "POST",
+                body: LogoutRequest(refreshToken: refreshToken),
+                timeout: 10
+            )
+        } catch {
+            Log.api.info("Server-side logout failed (session already wiped locally): \(error)")
+        }
+    }
+
+    /// Refreshes the access token if it is expired or close to expiry.
+    func refreshIfNeeded() async {
+        guard let session, session.needsRefresh(now: now()) else { return }
+        _ = try? await refreshSession(rejecting: session.accessToken)
+    }
+
+    /// Returns an access token that is not about to expire, refreshing first if needed.
+    /// A transient refresh failure falls back to the current token while it is still valid.
+    private func validAccessToken() async throws -> String {
+        guard let session else { throw APIError.unauthorized }
+        guard session.needsRefresh(now: now()) else { return session.accessToken }
+        do {
+            return try await refreshSession(rejecting: session.accessToken).accessToken
+        } catch APIError.unauthorized {
+            throw APIError.unauthorized
+        } catch {
+            if !session.isAccessTokenExpired(now: now()) { return session.accessToken }
+            throw error
+        }
+    }
+
+    /// Exchanges the refresh token for a new session. `rejecting` is the access token
+    /// the caller found unusable; if another caller already replaced it, that newer
+    /// session is returned without another round trip.
+    private func refreshSession(rejecting staleAccessToken: String) async throws -> AuthSession {
+        if let refreshTask {
+            return try await refreshTask.value
+        }
+        guard let current = session else { throw APIError.unauthorized }
+        if current.accessToken != staleAccessToken, !current.needsRefresh(now: now()) {
+            return current
+        }
+        let task = Task { try await self.performRefresh(using: current.refreshToken) }
+        refreshTask = task
+        return try await task.value
+    }
+
+    private func performRefresh(using refreshToken: String) async throws -> AuthSession {
+        defer { refreshTask = nil }
+        struct RefreshRequest: Encodable {
+            let refreshToken: String
+        }
+        Log.api.debug("Performing token refresh...")
+        do {
+            let tokens: TokensResponse = try await _request(
+                "/auth/refresh",
+                method: "POST",
+                body: RefreshRequest(refreshToken: refreshToken)
+            )
+            // Signed out while the refresh was in flight: don't resurrect the session.
+            guard session?.refreshToken == refreshToken else { throw APIError.unauthorized }
+            let refreshed = AuthSession(
+                accessToken: tokens.accessToken,
+                refreshToken: tokens.refreshToken,
+                expiresIn: tokens.expiresIn,
+                now: now()
+            )
+            storeSession(refreshed)
+            Log.api.info("Token refresh completed successfully")
+            return refreshed
+        } catch APIError.unauthorized {
+            if session?.refreshToken == refreshToken {
+                Log.auth.info("Refresh token rejected by server - session ended")
+                clearTokens()
+                await onSessionRevoked?()
+            }
+            throw APIError.unauthorized
+        }
     }
 
     // MARK: - HTTP Methods
@@ -107,121 +230,44 @@ actor APIClient {
         timeout: TimeInterval = 60
     ) async throws -> T {
         return try await _requestWithRetry(
-            path, 
-            method: method.rawValue, 
-            body: body, 
-            authenticated: authenticated, 
+            path,
+            method: method.rawValue,
+            body: body,
+            authenticated: authenticated,
             timeout: timeout
         )
     }
 
-    /// Internal method that handles automatic token refresh on 401 responses
+    /// Sends a request, refreshing the access token up front when it is near expiry
+    /// and once more on a 401. Only a rejected refresh token ends the session;
+    /// network and server errors leave the user signed in.
     private func _requestWithRetry<T: Decodable>(
         _ path: String,
         method: String = "GET",
         body: Encodable? = nil,
         authenticated: Bool = false,
-        timeout: TimeInterval = 60,
-        isRetry: Bool = false
+        timeout: TimeInterval = 60
     ) async throws -> T {
+        guard authenticated else {
+            return try await _request(path, method: method, body: body, timeout: timeout)
+        }
+        let token = try await validAccessToken()
         do {
-            // Try the original request
-            return try await _request(path, method: method, body: body, authenticated: authenticated, timeout: timeout)
+            return try await _request(path, method: method, body: body, accessToken: token, timeout: timeout)
         } catch APIError.unauthorized {
-            // Only attempt refresh if this is not already a retry and we have a refresh token
-            guard !isRetry, authenticated, refreshToken != nil else {
-                let hasToken = refreshToken != nil
-                Log.api.debug("401 - Cannot retry: isRetry=\(isRetry), authenticated=\(authenticated), hasRefreshToken=\(hasToken)")
-                throw APIError.unauthorized
-            }
-            
             Log.api.info("401 received, attempting token refresh...")
-            
-            // If we're already refreshing, wait for completion
-            if isRefreshing {
-                Log.api.debug("Already refreshing, waiting...")
-                return try await waitForRefreshAndRetry(path, method: method, body: body, authenticated: authenticated, timeout: timeout)
-            }
-            
-            // Attempt to refresh the token
-            do {
-                try await performTokenRefresh()
-                Log.api.info("Token refresh successful, retrying original request")
-                
-                // Retry the original request with new token
-                return try await _requestWithRetry(
-                    path, 
-                    method: method, 
-                    body: body, 
-                    authenticated: authenticated, 
-                    timeout: timeout, 
-                    isRetry: true
-                )
-            } catch {
-                Log.api.error("Token refresh failed: \(error)")
-                // Clear tokens if refresh fails
-                clearTokens()
-                throw APIError.unauthorized
-            }
+            let refreshed = try await refreshSession(rejecting: token)
+            return try await _request(
+                path, method: method, body: body, accessToken: refreshed.accessToken, timeout: timeout
+            )
         }
-    }
-    
-    /// Wait for ongoing refresh operation and retry request
-    private func waitForRefreshAndRetry<T: Decodable>(
-        _ path: String,
-        method: String,
-        body: Encodable?,
-        authenticated: Bool,
-        timeout: TimeInterval
-    ) async throws -> T {
-        // Simple polling approach to wait for refresh completion
-        while isRefreshing {
-            try await Task.sleep(for: .milliseconds(50))
-        }
-        
-        // After refresh completes, retry the original request
-        return try await _request(
-            path, 
-            method: method, 
-            body: body, 
-            authenticated: authenticated, 
-            timeout: timeout
-        )
-    }
-    
-    /// Perform token refresh operation
-    private func performTokenRefresh() async throws {
-        guard !isRefreshing else { return }
-        
-        isRefreshing = true
-        defer { 
-            isRefreshing = false
-        }
-        
-        guard let refreshToken = refreshToken else {
-            Log.api.error("No refresh token available")
-            throw APIError.unauthorized
-        }
-        
-        Log.api.debug("Performing token refresh...")
-        
-        struct RefreshRequest: Encodable {
-            let refreshToken: String
-        }
-        
-        let body = RefreshRequest(refreshToken: refreshToken)
-        let response: AuthResponse = try await _request("/auth/refresh", method: "POST", body: body, authenticated: false)
-        
-        // Update stored tokens
-        setTokens(access: response.tokens.accessToken, refresh: response.tokens.refreshToken)
-        Log.api.info("Token refresh completed successfully")
     }
 
     private func _request<T: Decodable>(
         _ path: String,
         method: String = "GET",
         body: Encodable? = nil,
-        authenticated: Bool = false,
+        accessToken: String? = nil,
         timeout: TimeInterval = 60
     ) async throws -> T {
         guard let url = URL(string: "\(baseURL)\(path)") else {
@@ -233,13 +279,8 @@ actor APIClient {
         request.timeoutInterval = timeout
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        if authenticated {
-            if let token = accessToken {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                Log.api.debug("\(method) \(path) - Auth token present")
-            } else {
-                Log.api.error("\(method) \(path) - Auth token MISSING!")
-            }
+        if let accessToken {
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         }
 
         if let body = body {
@@ -248,7 +289,7 @@ actor APIClient {
             request.httpBody = try encoder.encode(body)
         }
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await urlSession.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.networkError(NSError(domain: "Invalid response", code: 0))
@@ -256,6 +297,9 @@ actor APIClient {
 
         Log.api.debug("\(method) \(path) - Response: \(httpResponse.statusCode)")
         switch httpResponse.statusCode {
+        case 204:
+            if let empty = EmptyResponse() as? T { return empty }
+            fallthrough
         case 200...299:
             let decoder = JSONDecoder()
             decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -305,7 +349,7 @@ actor APIClient {
     func authenticateWithApple(identityToken: String, authorizationCode: String) async throws -> AuthResponse {
         let body = AppleAuthRequest(identityToken: identityToken, authorizationCode: authorizationCode)
         let response: AuthResponse = try await _request("/auth/apple", method: "POST", body: body)
-        setTokens(access: response.tokens.accessToken, refresh: response.tokens.refreshToken)
+        setTokens(access: response.tokens.accessToken, refresh: response.tokens.refreshToken, expiresIn: response.tokens.expiresIn)
         return response
     }
 
@@ -316,23 +360,14 @@ actor APIClient {
     func authenticateWithGoogle(idToken: String) async throws -> AuthResponse {
         let body = GoogleAuthRequest(idToken: idToken)
         let response: AuthResponse = try await _request("/auth/google", method: "POST", body: body)
-        setTokens(access: response.tokens.accessToken, refresh: response.tokens.refreshToken)
+        setTokens(access: response.tokens.accessToken, refresh: response.tokens.refreshToken, expiresIn: response.tokens.expiresIn)
         return response
     }
 
-    func refreshAccessToken() async throws -> AuthResponse {
-        guard let token = refreshToken else {
-            throw APIError.unauthorized
-        }
-
-        struct RefreshRequest: Encodable {
-            let refreshToken: String
-        }
-
-        let body = RefreshRequest(refreshToken: token)
-        let response: AuthResponse = try await _request("/auth/refresh", method: "POST", body: body)
-        setTokens(access: response.tokens.accessToken, refresh: response.tokens.refreshToken)
-        return response
+    /// Forces a refresh. `/auth/refresh` returns a bare token pair (no user).
+    func refreshAccessToken() async throws {
+        guard let session else { throw APIError.unauthorized }
+        _ = try await refreshSession(rejecting: session.accessToken)
     }
 
     func getCurrentUser() async throws -> UserResponse {
@@ -341,6 +376,8 @@ actor APIClient {
 
     func deleteAccount() async throws {
         let _: EmptyResponse = try await request(path: "/auth/me", method: .delete, authenticated: true)
+        // The server deleted every session; drop ours too.
+        clearTokens()
     }
 
     // MARK: - Places Endpoints
@@ -458,9 +495,9 @@ private struct EmptyResponse: Decodable {}
 // MARK: - Keychain Helper
 
 enum KeychainHelper {
-    private static let service = "com.wouterdevriendt.footprint"
+    static let defaultService = "com.wouterdevriendt.footprint"
 
-    static func save(key: String, value: String) {
+    static func save(key: String, value: String, service: String = defaultService) {
         guard let data = value.data(using: .utf8) else {
             Log.keychain.error("Failed to convert value to data for key: \(key)")
             return
@@ -491,7 +528,7 @@ enum KeychainHelper {
         }
     }
 
-    static func load(key: String) -> String? {
+    static func load(key: String, service: String = defaultService) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -514,7 +551,7 @@ enum KeychainHelper {
         return nil
     }
 
-    static func delete(key: String) {
+    static func delete(key: String, service: String = defaultService) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

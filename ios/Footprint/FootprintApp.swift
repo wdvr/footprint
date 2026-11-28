@@ -256,6 +256,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
 struct RootView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @State private var authManager = AuthManager.shared
     @State private var hasRequestedNotifications = false
     @State private var hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
@@ -292,6 +293,11 @@ struct RootView: View {
             }
         }
         .environment(authManager)
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active, !isUITesting {
+                Task { await authManager.refreshSessionIfNeeded() }
+            }
+        }
     }
 
     /// Check if photo locations need to be rematched against updated geographic data

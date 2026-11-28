@@ -16,43 +16,70 @@ class AuthManager: NSObject {
     // Retain the auth session to prevent deallocation during OAuth flow
     private var currentAuthSession: ASWebAuthenticationSession?
 
-    private override init() {
+    private let api: APIClient
+
+    static let sessionExpiredMessage = "Your session has expired. Please sign in again."
+
+    init(api: APIClient = .shared, restoreSessionOnInit: Bool = true) {
+        self.api = api
         super.init()
         // Check if user previously chose offline mode
         isOfflineMode = UserDefaults.standard.bool(forKey: "offline_mode")
-        if isOfflineMode {
+        // A stored session means signed in: open straight into the app and
+        // validate/refresh in the background instead of flashing the login screen.
+        if isOfflineMode || api.hasStoredSession() {
             isAuthenticated = true
         }
-        Task {
-            await loadStoredAuth()
+        if restoreSessionOnInit {
+            Task {
+                await restoreSession()
+            }
         }
     }
 
-    private func loadStoredAuth() async {
-        Log.auth.debug("Loading stored authentication...")
-        await APIClient.shared.loadStoredTokens()
-        
-        if await APIClient.shared.isAuthenticated {
-            Log.auth.debug("Found stored tokens, attempting to validate...")
-            do {
-                user = try await APIClient.shared.getCurrentUser()
-                isAuthenticated = true
-                let displayName = user?.displayName ?? "Unknown"
-                Log.auth.info("Authentication validated successfully - User: \(displayName)")
-            } catch APIError.unauthorized {
-                Log.auth.info("Stored tokens are invalid - User needs to re-authenticate")
-                await APIClient.shared.clearTokens()
-                isAuthenticated = false
-                user = nil
-                // Don't set error here - this is normal flow for expired tokens
-            } catch {
-                Log.auth.error("Error validating stored auth: \(error)")
-                // For other errors, keep tokens but show error
-                self.error = "Unable to validate authentication: \(error.localizedDescription)"
-            }
-        } else {
-            Log.auth.debug("No stored tokens found")
+    /// Restores the Keychain session on launch. Only a rejected refresh token signs
+    /// the user out; being offline or a server error keeps them signed in.
+    func restoreSession() async {
+        await api.setSessionRevokedHandler { [weak self] in
+            await self?.handleSessionRevoked()
         }
+        await api.loadStoredTokens()
+
+        guard await api.isAuthenticated else {
+            Log.auth.debug("No stored session found")
+            if !isOfflineMode {
+                isAuthenticated = false
+            }
+            return
+        }
+
+        isAuthenticated = true
+        Log.auth.debug("Found stored session, validating in background...")
+        do {
+            user = try await api.getCurrentUser()
+            let displayName = user?.displayName ?? "Unknown"
+            Log.auth.info("Session restored - User: \(displayName)")
+        } catch APIError.unauthorized {
+            if await !api.isAuthenticated {
+                handleSessionRevoked()
+            }
+        } catch {
+            Log.auth.info("Could not validate session (offline?), staying signed in: \(error)")
+        }
+    }
+
+    /// Refreshes the access token in the background if it is expired or near expiry.
+    func refreshSessionIfNeeded() async {
+        await api.refreshIfNeeded()
+    }
+
+    /// The server rejected the refresh token and the session was wiped: show login.
+    func handleSessionRevoked() {
+        guard !isOfflineMode, isAuthenticated else { return }
+        Log.auth.info("Session revoked - user needs to sign in again")
+        isAuthenticated = false
+        user = nil
+        error = Self.sessionExpiredMessage
     }
 
     func signInWithApple() {
@@ -83,7 +110,7 @@ class AuthManager: NSObject {
             do {
                 let idToken = try await performGoogleOAuthFlow()
 
-                let response = try await APIClient.shared.authenticateWithGoogle(idToken: idToken)
+                let response = try await api.authenticateWithGoogle(idToken: idToken)
                 user = response.user
                 isAuthenticated = true
                 let displayName = user?.displayName ?? "Unknown"
@@ -234,51 +261,56 @@ class AuthManager: NSObject {
             .replacingOccurrences(of: "=", with: "")
     }
 
+    /// Signs out and wipes the Keychain session (also revoking it server-side).
     func signOut() async {
         Log.auth.info("Signing out user")
-        await APIClient.shared.clearTokens()
         isAuthenticated = false
         isOfflineMode = false
         user = nil
         error = nil
         UserDefaults.standard.removeObject(forKey: "offline_mode")
+        await api.logout()
     }
 
     /// Manual refresh method - primarily for testing
     func refreshAuth() async throws {
         Log.auth.debug("Manual token refresh requested")
-        _ = try await APIClient.shared.refreshAccessToken()
-        user = try await APIClient.shared.getCurrentUser()
+        try await api.refreshAccessToken()
+        user = try await api.getCurrentUser()
         Log.auth.debug("Manual refresh completed successfully")
     }
-    
-    /// Check if authentication is working without triggering refresh
+
+    /// Checks the session against the server (refreshing if needed). Returns false
+    /// only when there is no session or it was rejected; transient errors keep it.
     func validateAuthentication() async -> Bool {
-        guard await APIClient.shared.isAuthenticated else {
+        guard await api.isAuthenticated else {
             Log.auth.debug("No tokens available for validation")
             return false
         }
-        
+
         do {
-            user = try await APIClient.shared.getCurrentUser()
+            user = try await api.getCurrentUser()
             Log.auth.debug("Authentication validation successful")
             return true
+        } catch APIError.unauthorized {
+            Log.auth.error("Authentication rejected by server")
+            return await api.isAuthenticated
         } catch {
-            Log.auth.error("Authentication validation failed: \(error)")
-            return false
+            Log.auth.info("Authentication validation inconclusive: \(error)")
+            return true
         }
     }
-    
+
     /// Handle authentication errors from other parts of the app
     func handleAuthenticationError() {
         Log.auth.info("Authentication error reported - checking if re-auth needed")
-        
+
         Task {
             let isValid = await validateAuthentication()
             if !isValid {
                 Log.auth.error("Authentication is invalid - user needs to sign in again")
                 await signOut()
-                self.error = "Your session has expired. Please sign in again."
+                self.error = Self.sessionExpiredMessage
             }
         }
     }
@@ -331,7 +363,7 @@ extension AuthManager: ASAuthorizationControllerDelegate {
             self.error = nil
 
             do {
-                let response = try await APIClient.shared.authenticateWithApple(
+                let response = try await self.api.authenticateWithApple(
                     identityToken: identityToken,
                     authorizationCode: authCode
                 )

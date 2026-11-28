@@ -377,3 +377,164 @@ class TestAppleKeyCaching:
             assert keys1 == keys2
             # Should only have fetched once
             assert mock_instance.get.call_count == 1
+
+
+class TestRefreshSessionLifecycle:
+    """End-to-end refresh token rotation and revocation against mocked DynamoDB."""
+
+    @pytest.fixture
+    def auth(self, db_service):
+        from src.services.auth import AuthService
+
+        db_service.create_user(
+            {
+                "user_id": "user-1",
+                "auth_provider": "apple",
+                "auth_provider_id": "apple-1",
+            }
+        )
+        with patch("src.services.auth.db_service", db_service):
+            yield AuthService()
+
+    def test_create_tokens_stores_hashed_session(self, auth, db_service):
+        tokens = auth.create_tokens("user-1")
+
+        payload = jwt.decode(
+            tokens.refresh_token, auth.JWT_SECRET, algorithms=[auth.JWT_ALGORITHM]
+        )
+        session = db_service.get_refresh_session("user-1", payload["sid"])
+        assert session["token_hash"] == auth.hash_token(tokens.refresh_token)
+        assert tokens.refresh_token not in str(session)
+        assert tokens.expires_in == auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+
+    def test_refresh_rotates_token(self, auth):
+        first = auth.create_tokens("user-1")
+
+        second = auth.refresh_tokens(first.refresh_token)
+
+        assert second is not None
+        assert second.refresh_token != first.refresh_token
+        assert auth.verify_access_token(second.access_token) == "user-1"
+        assert auth.refresh_tokens(second.refresh_token) is not None
+
+    def test_refresh_rejects_token_rotated_past(self, auth):
+        first = auth.create_tokens("user-1")
+        second = auth.refresh_tokens(first.refresh_token)
+        third = auth.refresh_tokens(second.refresh_token)
+
+        assert auth.refresh_tokens(first.refresh_token) is None
+        # Reuse of a rotated-out token revokes the whole session.
+        assert auth.refresh_tokens(third.refresh_token) is None
+
+    def test_refresh_accepts_previous_token_after_lost_response(self, auth):
+        first = auth.create_tokens("user-1")
+        auth.refresh_tokens(first.refresh_token)  # response lost on the client
+
+        retried = auth.refresh_tokens(first.refresh_token)
+
+        assert retried is not None
+        assert auth.refresh_tokens(retried.refresh_token) is not None
+
+    def test_grace_token_is_single_use(self, auth):
+        first = auth.create_tokens("user-1")
+        auth.refresh_tokens(first.refresh_token)
+        retried = auth.refresh_tokens(first.refresh_token)
+
+        assert auth.refresh_tokens(first.refresh_token) is None
+        assert auth.refresh_tokens(retried.refresh_token) is None
+
+    def test_superseded_token_can_still_revoke_session(self, auth):
+        first = auth.create_tokens("user-1")
+        auth.refresh_tokens(first.refresh_token)  # lost response
+        leaked = auth.refresh_tokens(first.refresh_token)  # grace used by a copy
+
+        auth.revoke_refresh_token(first.refresh_token)
+
+        assert auth.refresh_tokens(leaked.refresh_token) is None
+
+    def test_revoked_session_cannot_refresh(self, auth):
+        tokens = auth.create_tokens("user-1")
+
+        auth.revoke_refresh_token(tokens.refresh_token)
+
+        assert auth.refresh_tokens(tokens.refresh_token) is None
+
+    def test_revoke_is_idempotent_for_unknown_tokens(self, auth):
+        auth.revoke_refresh_token("not-a-jwt")
+        auth.revoke_refresh_token(auth.create_refresh_token("user-1"))
+
+    def test_legacy_token_without_session_is_migrated(self, auth, db_service):
+        legacy = auth.create_refresh_token("user-1")
+
+        migrated = auth.refresh_tokens(legacy)
+
+        assert migrated is not None
+        payload = jwt.decode(
+            migrated.refresh_token, auth.JWT_SECRET, algorithms=[auth.JWT_ALGORITHM]
+        )
+        assert db_service.get_refresh_session("user-1", payload["sid"]) is not None
+
+    def test_legacy_token_cannot_be_reused_after_migration_and_logout(self, auth):
+        legacy = auth.create_refresh_token("user-1")
+        migrated = auth.refresh_tokens(legacy)
+
+        auth.revoke_refresh_token(migrated.refresh_token)
+
+        assert auth.refresh_tokens(migrated.refresh_token) is None
+        assert auth.refresh_tokens(legacy) is None
+
+    def test_legacy_migration_survives_lost_response(self, auth):
+        legacy = auth.create_refresh_token("user-1")
+        auth.refresh_tokens(legacy)  # response lost on the client
+
+        retried = auth.refresh_tokens(legacy)
+
+        assert retried is not None
+        assert auth.refresh_tokens(retried.refresh_token) is not None
+
+    def test_legacy_token_revokes_its_migrated_session(self, auth):
+        legacy = auth.create_refresh_token("user-1")
+        migrated = auth.refresh_tokens(legacy)
+
+        auth.revoke_refresh_token(legacy)
+
+        assert auth.refresh_tokens(migrated.refresh_token) is None
+
+    def test_logout_during_legacy_migration_wins(self, auth, db_service, monkeypatch):
+        legacy = auth.create_refresh_token("user-1")
+        consume = db_service.consume_legacy_refresh_token
+
+        def consume_then_logout(*args):
+            consumed = consume(*args)
+            auth.revoke_refresh_token(legacy)  # lands between the two writes
+            return consumed
+
+        monkeypatch.setattr(
+            db_service, "consume_legacy_refresh_token", consume_then_logout
+        )
+
+        assert auth.refresh_tokens(legacy) is None
+        monkeypatch.undo()
+        assert auth.refresh_tokens(legacy) is None
+
+    def test_legacy_logout_before_migration_blocks_it(self, auth):
+        legacy = auth.create_refresh_token("user-1")
+
+        auth.revoke_refresh_token(legacy)
+
+        assert auth.refresh_tokens(legacy) is None
+
+    def test_expired_refresh_token_rejected(self, auth):
+        expired = auth.create_refresh_token(
+            "user-1", "sid-x", datetime.now(UTC) - timedelta(minutes=1)
+        )
+
+        assert auth.refresh_tokens(expired) is None
+
+    def test_refresh_fails_after_account_deletion(self, auth, db_service):
+        tokens = auth.create_tokens("user-1")
+        from src.services.dynamodb import table
+
+        table.delete_item(Key={"pk": "USER#user-1", "sk": "PROFILE"})
+
+        assert auth.refresh_tokens(tokens.refresh_token) is None

@@ -156,6 +156,27 @@ class TestRefreshToken:
         assert "Invalid or expired refresh token" in response.json()["detail"]
 
 
+class TestLogout:
+    """Tests for POST /auth/logout endpoint."""
+
+    def test_logout_revokes_refresh_token(self, client, mock_auth_service):
+        response = client.post("/auth/logout", json={"refresh_token": "refresh-123"})
+
+        assert response.status_code == 204
+        mock_auth_service.revoke_refresh_token.assert_called_once_with("refresh-123")
+
+    def test_logout_does_not_require_access_token(self, client, mock_auth_service):
+        response = client.post("/auth/logout", json={"refresh_token": "anything"})
+
+        assert response.status_code == 204
+        mock_auth_service.verify_access_token.assert_not_called()
+
+    def test_logout_requires_refresh_token(self, client, mock_auth_service):
+        response = client.post("/auth/logout", json={})
+
+        assert response.status_code == 422
+
+
 class TestGetCurrentUser:
     """Tests for GET /auth/me endpoint."""
 
