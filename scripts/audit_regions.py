@@ -138,7 +138,8 @@ def audit(
                 f"{label}: kind {region.get('kind')!r} not in {sorted(KINDS)}"
             )
         for field in ("name", "blurb"):
-            if not str(region.get(field, "")).strip():
+            value = region.get(field)
+            if not isinstance(value, str) or not value.strip():
                 errors.append(f"{label}: empty {field}")
         members = region.get("memberKeys") or []
         if not members:

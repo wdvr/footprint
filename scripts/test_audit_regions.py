@@ -105,3 +105,11 @@ def test_duplicate_id_fails(files):
     data["regions"].append(data["regions"][0])
     files[0].write_text(json.dumps(data))
     assert any("duplicate id" in e for e in run(files))
+
+
+def test_null_or_missing_blurb_fails(files):
+    edit(files[0], "us-big-sur", lambda r: r.update(blurb=None))
+    edit(files[0], "us-cape-cod", lambda r: r.pop("blurb"))
+    errors = run(files)
+    assert any("us-big-sur: empty blurb" in e for e in errors)
+    assert any("us-cape-cod: empty blurb" in e for e in errors)
