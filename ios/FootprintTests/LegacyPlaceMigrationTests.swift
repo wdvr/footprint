@@ -1,0 +1,106 @@
+import SwiftData
+import XCTest
+@testable import Footprint
+
+@MainActor
+final class LegacyPlaceMigrationTests: XCTestCase {
+    private var container: ModelContainer!
+    private var context: ModelContext { container.mainContext }
+
+    override func setUpWithError() throws {
+        container = try ModelContainer(
+            for: Schema([VisitedPlace.self]),
+            configurations: [ModelConfiguration(isStoredInMemoryOnly: true)]
+        )
+    }
+
+    private func activePlaces() throws -> [VisitedPlace] {
+        try context.fetch(FetchDescriptor<VisitedPlace>()).filter { !$0.isDeleted }
+    }
+
+    func testSevastopolSubdivisionVisitMovesToOwnTerritory() throws {
+        let visited = Date(timeIntervalSince1970: 1_500_000_000)
+        context.insert(VisitedPlace(regionType: .russianFederalSubject, regionCode: "SEV", regionName: "Sevastopol", visitedDate: visited))
+
+        LegacyPlaceMigration.run(in: context)
+
+        let places = try activePlaces()
+        XCTAssertEqual(places.count, 1)
+        XCTAssertEqual(places.first?.regionType, VisitedPlace.RegionType.country.rawValue)
+        XCTAssertEqual(places.first?.regionCode, "XS")
+        XCTAssertEqual(places.first?.visitedDate, visited)
+    }
+
+    func testSingleProvinceCommunityMovesToProvinceCode() throws {
+        context.insert(VisitedPlace(regionType: .spanishCommunity, regionCode: "MD", regionName: "Madrid", status: .bucketList))
+
+        LegacyPlaceMigration.run(in: context)
+
+        let places = try activePlaces()
+        XCTAssertEqual(places.map(\.regionCode), ["M"])
+        XCTAssertEqual(places.first?.statusEnum, .bucketList)
+        XCTAssertTrue(GeographicData.states(for: "ES").contains { $0.id == "M" })
+    }
+
+    func testMultiProvinceCommunityIsDropped() throws {
+        let andalusia = VisitedPlace(regionType: .spanishCommunity, regionCode: "AN", regionName: "Andalusia",
+                                     isSynced: true)
+        context.insert(andalusia)
+        context.insert(VisitedPlace(regionType: .spanishCommunity, regionCode: "ES-CT", regionName: "Catalonia"))
+        context.insert(VisitedPlace(regionType: .spanishCommunity, regionCode: "CE", regionName: "Ceuta"))
+
+        LegacyPlaceMigration.run(in: context)
+
+        XCTAssertEqual(try activePlaces().map(\.regionCode), ["CE"])
+        XCTAssertTrue(andalusia.isDeleted)
+        XCTAssertFalse(andalusia.isSynced)
+    }
+
+    func testMigrationIsIdempotentAndDoesNotDuplicateExistingTarget() throws {
+        context.insert(VisitedPlace(regionType: .country, regionCode: "XS", regionName: "Sevastopol"))
+        context.insert(VisitedPlace(regionType: .russianFederalSubject, regionCode: "SEV", regionName: "Sevastopol"))
+
+        LegacyPlaceMigration.run(in: context)
+        LegacyPlaceMigration.run(in: context)
+
+        let places = try activePlaces()
+        XCTAssertEqual(places.count, 1)
+        XCTAssertEqual(places.first?.regionCode, "XS")
+    }
+
+    func testMergingIntoExistingProvinceKeepsSavedDateAndNotes() throws {
+        let visited = Date(timeIntervalSince1970: 1_400_000_000)
+        context.insert(VisitedPlace(regionType: .spanishCommunity, regionCode: "M", regionName: "Madrid"))
+        context.insert(VisitedPlace(regionType: .spanishCommunity, regionCode: "MD", regionName: "Madrid", visitedDate: visited, notes: "Prado"))
+
+        LegacyPlaceMigration.run(in: context)
+
+        let places = try activePlaces()
+        XCTAssertEqual(places.map(\.regionCode), ["M"])
+        XCTAssertEqual(places.first?.visitedDate, visited)
+        XCTAssertEqual(places.first?.notes, "Prado")
+    }
+
+    func testMergingWithoutNewHistoryLeavesTargetUntouched() throws {
+        let synced = Date(timeIntervalSince1970: 1_600_000_000)
+        let target = VisitedPlace(regionType: .country, regionCode: "XS", regionName: "Sevastopol",
+                                  lastModifiedAt: synced, isSynced: true)
+        context.insert(target)
+        context.insert(VisitedPlace(regionType: .russianFederalSubject, regionCode: "SEV", regionName: "Sevastopol"))
+
+        LegacyPlaceMigration.run(in: context)
+
+        XCTAssertEqual(target.lastModifiedAt, synced)
+        XCTAssertTrue(target.isSynced)
+    }
+
+    func testEveryMigrationTargetExistsInGeographicData() {
+        for province in LegacyPlaceMigration.spanishCommunityToProvince.values {
+            XCTAssertTrue(GeographicData.states(for: "ES").contains { $0.id == province }, province)
+        }
+        XCTAssertTrue(GeographicData.countries.contains { $0.id == "XS" })
+        for community in LegacyPlaceMigration.droppedSpanishCommunities {
+            XCTAssertFalse(GeographicData.states(for: "ES").contains { $0.id == community }, community)
+        }
+    }
+}

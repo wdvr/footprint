@@ -55,6 +55,7 @@ struct FootprintApp: App {
 
         do {
             let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            LegacyPlaceMigration.run(in: container.mainContext)
 
             // Add sample data if in sample data mode (DEBUG only)
             #if DEBUG
