@@ -54,11 +54,17 @@ struct EvidenceSample: Sendable, Equatable {
 struct PlaceKey: Hashable, Sendable {
     let countryCode: String
     let subdivisionCode: String?
+    /// US county FIPS (e.g. "06001"); nil outside the US or where no county matched.
+    var countyFips: String? = nil
 }
 
 enum PlaceLevel: String, Sendable, CaseIterable {
     case country
     case subdivision
+    case county
+
+    /// County and city evidence needs the tighter accuracy gate (§3.3).
+    var isLocal: Bool { self == .county }
 }
 
 enum DetectedVisitKind: String, Sendable {
@@ -77,6 +83,7 @@ struct DetectedVisit: Sendable, Equatable {
     let centroidLongitude: Double
     let sampleCount: Int
     let source: SampleSource
+    var countyFips: String? = nil
 }
 
 /// A run of samples within `stayRadiusMeters` of its first sample, spanning `minStayDuration`.
@@ -208,11 +215,24 @@ enum VisitDetector {
         let keys: [PlaceKey?] = track.samples.indices.map { i in
             track.isAirborne(i) ? nil : resolve(track.samples[i].latitude, track.samples[i].longitude)
         }
+        // County runs see only fixes that pass the local accuracy gate, so a coarse fix neither
+        // counts as county evidence nor splits a county stay in two.
+        let localIndices = track.samples.indices.filter {
+            track.samples[$0].horizontalAccuracy <= config.localMaxAccuracyMeters
+        }
+        let localTrack = PreparedTrack(
+            samples: localIndices.map { track.samples[$0] },
+            fastLegBefore: localIndices.enumerated().map { n, i in
+                n > 0 && track.fastLegBefore[(localIndices[n - 1] + 1)...i].contains(true)
+            }
+        )
+        let localKeys = localIndices.map { keys[$0] }
         var visits: [DetectedVisit] = []
         var heldBackSince: Date?
         for level in PlaceLevel.allCases {
-            for run in presenceRuns(track: track, keys: keys, level: level) {
-                if let visit = classify(run: run, level: level, track: track, keys: keys, resolve: resolve,
+            let (levelTrack, levelKeys) = level.isLocal ? (localTrack, localKeys) : (track, keys)
+            for run in presenceRuns(track: levelTrack, keys: levelKeys, level: level) {
+                if let visit = classify(run: run, level: level, track: levelTrack, keys: levelKeys, resolve: resolve,
                                         config: config, calendar: calendar, heldBackSince: &heldBackSince) {
                     visits.append(visit)
                 }
@@ -230,7 +250,9 @@ enum VisitDetector {
         guard let key else { return nil }
         switch level {
         case .country: return PlaceKey(countryCode: key.countryCode, subdivisionCode: nil)
-        case .subdivision: return key.subdivisionCode == nil ? nil : key
+        case .subdivision:
+            return key.subdivisionCode == nil ? nil : PlaceKey(countryCode: key.countryCode, subdivisionCode: key.subdivisionCode)
+        case .county: return key.countyFips == nil ? nil : key
         }
     }
 
@@ -305,14 +327,15 @@ enum VisitDetector {
         return DetectedVisit(
             level: level,
             countryCode: key.countryCode,
-            subdivisionCode: level == .subdivision ? key.subdivisionCode : nil,
+            subdivisionCode: level == .country ? nil : key.subdivisionCode,
             kind: kind,
             arrivedAt: arrivedAt,
             departedAt: departedAt,
             centroidLatitude: centroid.latitude,
             centroidLongitude: centroid.longitude,
             sampleCount: runSamples.count,
-            source: sources.count == 1 ? sources.first! : .gps
+            source: sources.count == 1 ? sources.first! : .gps,
+            countyFips: level == .county ? key.countyFips : nil
         )
     }
 }

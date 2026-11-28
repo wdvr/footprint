@@ -21,6 +21,19 @@ final class AppSettings {
         static let trackingGranularity = "trackingGranularity"
         static let countryTrackingMode = "countryTrackingMode"
         static let stateTrackingCountries = "stateTrackingCountries"
+        static let countiesEnabled = "countiesEnabled"
+    }
+
+    // MARK: - US Counties
+
+    /// Opt-in completionist layer: record and show US counties. Off by default.
+    var countiesEnabled: Bool = UserDefaults.standard.bool(forKey: Keys.countiesEnabled) {
+        didSet { defaults.set(countiesEnabled, forKey: Keys.countiesEnabled) }
+    }
+
+    /// `countiesEnabled` for code off the main actor (visit pipeline resolver, photo import).
+    nonisolated static var isCountiesEnabled: Bool {
+        UserDefaults.standard.bool(forKey: Keys.countiesEnabled)
     }
 
     // MARK: - Country Tracking Mode
