@@ -227,54 +227,9 @@ final class MedalService {
     private func cityMatcher() -> CityMatcher {
         if let cityMatcherOverride { return cityMatcherOverride }
         if let cityMatcherCache { return cityMatcherCache }
-        let matcher = CityMatcher(cities: Self.bundledCities())
+        let matcher = CityMatcher(gazetteer: CityGazetteer.bundled ?? CityGazetteer(cities: []))
         cityMatcherCache = matcher
         return matcher
-    }
-
-    private struct WorldCity: Decodable {
-        let name: String
-        let pop: Int
-        let lat: String
-        let lng: String
-    }
-
-    private struct CapitalsFile: Decodable {
-        struct Capital: Decodable {
-            let id: String
-            let name: String
-            let kind: String
-            let lat: Double
-            let lon: Double
-            let radiusMeters: Double
-        }
-        let capitals: [Capital]
-    }
-
-    /// Bundled gazetteers: `world_cities.json` (cities ≥250k) and `capitals.json` (GeoNames).
-    static func bundledCities(bundle: Bundle = .main) -> [CityMatcher.City] {
-        var cities: [CityMatcher.City] = []
-        if let url = bundle.url(forResource: "world_cities", withExtension: "json"),
-           let data = try? Data(contentsOf: url),
-           let byCountry = try? JSONDecoder().decode([String: [WorldCity]].self, from: data) {
-            for (country, list) in byCountry {
-                for city in list {
-                    guard let lat = Double(city.lat), let lon = Double(city.lng) else { continue }
-                    cities.append(.init(
-                        id: "\(country):\(city.name)", name: city.name, kind: "city", latitude: lat, longitude: lon,
-                        radiusMeters: min(15_000, max(1_500, 1_500 + Double(city.pop).squareRoot() * 6))
-                    ))
-                }
-            }
-        }
-        if let url = bundle.url(forResource: "capitals", withExtension: "json"),
-           let data = try? Data(contentsOf: url),
-           let file = try? JSONDecoder().decode(CapitalsFile.self, from: data) {
-            cities += file.capitals.map {
-                .init(id: $0.id, name: $0.name, kind: $0.kind, latitude: $0.lat, longitude: $0.lon, radiusMeters: $0.radiusMeters)
-            }
-        }
-        return cities
     }
 
     // MARK: - v1 badges (§4.4 step 3)

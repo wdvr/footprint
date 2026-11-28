@@ -148,3 +148,43 @@ def test_exception_for_country_without_subdivisions_fails(monkeypatch):
         "['IS'] have no subdivisions; remove from COUNTRIES_WITHOUT_BOUNDARY_FILE"
         in errors
     )
+
+
+def edit_gazetteer(geo_dir, edit):
+    path = geo_dir / "cities_gazetteer.json"
+    data = json.loads(path.read_text())
+    edit(data["cities"])
+    path.write_text(json.dumps(data))
+
+
+def test_gazetteer_unknown_subdivision_fails(geo_dir):
+    def corrupt(cities):
+        next(c for c in cities if c["id"] == "gn:5128581")["sub"] = "US-ZZ"
+
+    edit_gazetteer(geo_dir, corrupt)
+
+    errors, _ = audit(SWIFT_FILE, geo_dir)
+
+    assert (
+        "cities_gazetteer.json: gn:5128581 New York City: unknown subdivision US-ZZ"
+        in errors
+    )
+
+
+def test_gazetteer_missing_capital_fails(geo_dir):
+    def unflag_paris(cities):
+        next(c for c in cities if c["id"] == "gn:2988507").pop("nc")
+
+    edit_gazetteer(geo_dir, unflag_paris)
+
+    errors, _ = audit(SWIFT_FILE, geo_dir)
+
+    assert any("national capitals" in e and "missing ['FR']" in e for e in errors)
+
+
+def test_gazetteer_duplicate_id_fails(geo_dir):
+    edit_gazetteer(geo_dir, lambda cities: cities.append(dict(cities[0])))
+
+    errors, _ = audit(SWIFT_FILE, geo_dir)
+
+    assert any("duplicate ids" in e for e in errors)

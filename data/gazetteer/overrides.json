@@ -1,0 +1,26 @@
+{
+  "_doc": "Curated corrections applied by scripts/build_city_gazetteer.py on top of the GeoNames extract.",
+  "nationalCapitalIds": {
+    "_doc": "Countries whose capital GeoNames does not mark PPLC, or marks more than once. Value: GeoNames id. Source: GeoNames countryInfo.txt capital column.",
+    "IL": "281184",
+    "PS": "7303419"
+  },
+  "countryCodes": {
+    "_doc": "Cities whose centroid the boundary file puts in another country than the one the city belongs to.",
+    "7303419": "PS"
+  },
+  "partsOf": {
+    "_doc": "Places that are parts of another gazetteer city: not cities of their own (they would steal stays from it under nearest-centroid matching) but extra match areas of the parent. Key: parent GeoNames id.",
+    "5128581": {
+      "5110302": "Brooklyn",
+      "5125771": "Manhattan",
+      "5133273": "Queens",
+      "5110266": "The Bronx",
+      "5139568": "Staten Island"
+    }
+  },
+  "additionalSubdivisions": {
+    "_doc": "Cities spanning several of the app's subdivisions. Value: the extra subdivision keys (CC-CODE) a stay may resolve to.",
+    "2643743": ["GB-BDG", "GB-BEN", "GB-BEX", "GB-BNE", "GB-BRY", "GB-CMD", "GB-CRY", "GB-EAL", "GB-ENF", "GB-GRE", "GB-HAV", "GB-HCK", "GB-HIL", "GB-HMF", "GB-HNS", "GB-HRW", "GB-HRY", "GB-ISL", "GB-KEC", "GB-KTT", "GB-LBH", "GB-LEW", "GB-LND", "GB-MRT", "GB-NWM", "GB-RDB", "GB-RIC", "GB-STN", "GB-SWK", "GB-TWH", "GB-WFT", "GB-WND", "GB-WSM"]
+  }
+}

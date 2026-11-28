@@ -51,3 +51,9 @@ These are smaller, optimized versions suitable for bundling with the app:
 - `world_states.json` - States/provinces (437 KB)
 - `world_cities.json` - Cities with pop >= 250k (175 KB)
 - `world_landmarks.json` - UNESCO sites + national parks (348 KB)
+- `cities_gazetteer.json` - City gazetteer (spec §2.3): every national capital, every city >= 100k and every
+  US place >= 25k, with GeoNames ids (`gn:<id>`), capital flags and match radii. Built from the committed
+  sources in `data/gazetteer/` by `scripts/build_city_gazetteer.py build`; refresh the GeoNames extract with
+  `scripts/build_city_gazetteer.py extract --geonames <dir with cities500.txt>`. CI rebuilds it and fails on drift.
+
+`world_cities.json` and `world_landmarks.json` are bundled but not read by any Swift code.

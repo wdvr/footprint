@@ -39,6 +39,7 @@ final class VisitPipeline {
     var calendar = Calendar.current
     var resolve: VisitDetector.Resolver = VisitPipeline.boundaryResolver
     var defaults: UserDefaults = .standard
+    var cityLayer = CityLayer()
 
     init(container: ModelContainer? = nil) {
         self.container = container
@@ -102,6 +103,9 @@ final class VisitPipeline {
             let analysis = VisitDetector.analyze(evidence, resolve: resolve, config: config, calendar: calendar)
             defaults.set(analysis.heldBackSince, forKey: Self.heldBackSinceKey)
             newPlaces = upsert(analysis.visits, windowStart: windowStart, in: context, now: now)
+            if CityLayer.isEnabled(defaults) {
+                recordCities(evidence, windowStart: windowStart, in: context, now: now)
+            }
 
             accumulateDistance(window: window, now: now)
             for sample in pending {
