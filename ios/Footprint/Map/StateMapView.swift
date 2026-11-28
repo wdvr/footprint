@@ -252,7 +252,10 @@ struct StateMapView: UIViewRepresentable {
                 let renderer = MKMultiPolygonRenderer(multiPolygon: multiPolygon)
 
                 let stateCode = multiPolygon.title
-                let isVisited = stateCode.map { visitedStateCodes.contains($0) } ?? false
+                // Boundary IDs can be "GB-MAN" while saved places use "MAN"
+                let isVisited = stateCode.map {
+                    visitedStateCodes.contains($0) || visitedStateCodes.contains(SubdivisionCode.short($0))
+                } ?? false
                 let isSelected = stateCode == selectedStateCode
 
                 if isSelected {

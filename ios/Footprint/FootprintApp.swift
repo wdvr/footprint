@@ -64,6 +64,7 @@ struct FootprintApp: App {
             }
             #endif
 
+            SubdivisionCodeMigration.run(in: container.mainContext)
             VisitPipeline.shared.configure(container: container)
             self.sharedModelContainer = container
             self.modelContainerError = nil

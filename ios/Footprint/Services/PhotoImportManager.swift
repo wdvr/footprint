@@ -1023,13 +1023,17 @@ final class PhotoImportManager: NSObject {
         // Restore previous discoveries
         if let progress = existingProgress {
             for location in progress.discoveredLocations {
-                let key = "\(location.regionType):\(location.regionCode)"
+                // Progress saved by older builds has boundary-file codes ("GB-WRL")
+                let code = location.visitedPlaceRegionType == .country
+                    ? location.regionCode : SubdivisionCode.short(location.regionCode)
+                let key = "\(location.regionType):\(code)"
+                let previous = locationCounts[key]
                 locationCounts[key] = (
                     location.visitedPlaceRegionType,
-                    location.regionCode,
+                    code,
                     location.regionName,
-                    location.photoCount,
-                    location.earliestDate
+                    location.photoCount + (previous?.3 ?? 0),
+                    [location.earliestDate, previous?.4].compactMap { $0 }.min()
                 )
             }
         }
@@ -1144,8 +1148,8 @@ final class PhotoImportManager: NSObject {
                                 stateCode = stateNameToCode(adminArea, country: countryCode)
                             }
                         } else if let boundaryStateCode = result.stateCode {
-                            // Use state code from GeoJSON boundary matching
-                            stateCode = boundaryStateCode
+                            // Boundary files use "GB-WRL"; places are stored as "WRL"
+                            stateCode = SubdivisionCode.short(boundaryStateCode)
                         }
 
                         if let stateCode = stateCode {
