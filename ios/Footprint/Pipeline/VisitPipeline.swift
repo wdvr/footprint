@@ -103,7 +103,11 @@ final class VisitPipeline {
         }
 
         let retentionCutoff = now.addingTimeInterval(-Self.sampleRetention)
-        try? context.delete(model: LocationSample.self, where: #Predicate { $0.timestamp < retentionCutoff })
+        // Fetch-and-delete rather than a batch delete, which skips samples not yet saved to the store
+        let expired = FetchDescriptor<LocationSample>(predicate: #Predicate { $0.timestamp < retentionCutoff })
+        for sample in (try? context.fetch(expired)) ?? [] {
+            context.delete(sample)
+        }
         try? context.save()
         defaults.set(now, forKey: Self.lastRunDefaultsKey)
         return newPlaces
