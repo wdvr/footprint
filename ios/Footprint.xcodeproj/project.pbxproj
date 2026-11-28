@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C0D8A9C873FD5A1C64173918 /* capitals.json in Resources */ = {isa = PBXBuildFile; fileRef = E3C39B31CE771B7A9B8DB571 /* capitals.json */; };
+		63EA3752B57CB860C6284400 /* CityCollectionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2482CB0CE8C584B65F150489 /* CityCollectionsTests.swift */; };
+		801E01454D565C1907B971A9 /* CitiesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA9E6F35ADCAC49485999780 /* CitiesView.swift */; };
+		8C9C6EDB3CCADF88DEE62AE3 /* CityCollections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B984A56E6AC1716B0A5B7E1 /* CityCollections.swift */; };
+		F4824C300DAA2D743546B7A5 /* CityGazetteer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7324A14B482435B6714BBA1 /* CityGazetteer.swift */; };
 		0199A64A69EC8814EFD4DC56 /* GoogleService-Info.plist.template in Resources */ = {isa = PBXBuildFile; fileRef = 0E5AE1412BAE013D749B62E4 /* GoogleService-Info.plist.template */; };
 		0737BB1F9D86379154F9D0A4 /* SyncManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C78AD6C2BFDF458E421F0A /* SyncManagerTests.swift */; };
 		1422EE7E2E4EE9BC742FD37F /* CountryMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F77B77706A1622EA6FF7F3AB /* CountryMapView.swift */; };
@@ -121,6 +126,11 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		E3C39B31CE771B7A9B8DB571 /* capitals.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = capitals.json; sourceTree = "<group>"; };
+		2482CB0CE8C584B65F150489 /* CityCollectionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityCollectionsTests.swift; sourceTree = "<group>"; };
+		FA9E6F35ADCAC49485999780 /* CitiesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitiesView.swift; sourceTree = "<group>"; };
+		1B984A56E6AC1716B0A5B7E1 /* CityCollections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityCollections.swift; sourceTree = "<group>"; };
+		A7324A14B482435B6714BBA1 /* CityGazetteer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityGazetteer.swift; sourceTree = "<group>"; };
 		01AE3CDA04E51779ABA5502B /* AR_states.geojson */ = {isa = PBXFileReference; path = AR_states.geojson; sourceTree = "<group>"; };
 		03DA709513064DD651E7EFD9 /* IT_states.geojson */ = {isa = PBXFileReference; path = IT_states.geojson; sourceTree = "<group>"; };
 		073F04FBCC26BAFEE087E825 /* FR_states.geojson */ = {isa = PBXFileReference; path = FR_states.geojson; sourceTree = "<group>"; };
@@ -263,6 +273,8 @@
 		0FFA9B25ECD9344749E1AE39 /* Data */ = {
 			isa = PBXGroup;
 			children = (
+				1B984A56E6AC1716B0A5B7E1 /* CityCollections.swift */,
+				A7324A14B482435B6714BBA1 /* CityGazetteer.swift */,
 				FB79DD0340AC874AC75A998D /* GeographicData.swift */,
 			);
 			path = Data;
@@ -326,6 +338,7 @@
 		49DED6D21011481B2CCA1C44 /* GeoData */ = {
 			isa = PBXGroup;
 			children = (
+				E3C39B31CE771B7A9B8DB571 /* capitals.json */,
 				01AE3CDA04E51779ABA5502B /* AR_states.geojson */,
 				D7B6FCAE5BB2389A9B16FEC3 /* BE_states.geojson */,
 				CE68669DCCF31941AE1D989E /* canadian_provinces.geojson */,
@@ -446,6 +459,7 @@
 		DB8743D86571D9B8A313D93A /* FootprintTests */ = {
 			isa = PBXGroup;
 			children = (
+				2482CB0CE8C584B65F150489 /* CityCollectionsTests.swift */,
 				D9CDC446D55ECB906110641A /* AccountResetTests.swift */,
 				8BB3A459FA117DC6B0399CF2 /* APIClientTests.swift */,
 				1E4277758F60A4544446B42D /* FootprintTests.swift */,
@@ -480,6 +494,7 @@
 		E138436DDF7200DD00019623 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				FA9E6F35ADCAC49485999780 /* CitiesView.swift */,
 				3FCF981354B215AB7A5DA685 /* AccessibleMapSummary.swift */,
 				C6EFA2D6D4671C03DA3DDC84 /* AdvancedStatsView.swift */,
 				5E42A0201CE122DAEE8A5C44 /* CountryMemoriesView.swift */,
@@ -654,6 +669,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C0D8A9C873FD5A1C64173918 /* capitals.json in Resources */,
 				545B7B74C21E41FF626E9869 /* AR_states.geojson in Resources */,
 				E186CD7B7C8ADBA2D7B79364 /* Assets.xcassets in Resources */,
 				5FFE3C800A660A3CE6474CB1 /* BE_states.geojson in Resources */,
@@ -721,6 +737,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				63EA3752B57CB860C6284400 /* CityCollectionsTests.swift in Sources */,
 				F8F0D0F741001DB122F501F8 /* APIClientTests.swift in Sources */,
 				5F449139C76D4012C45EA352 /* AccountResetTests.swift in Sources */,
 				587DC996DD345157E8ADF8D4 /* FootprintTests.swift in Sources */,
@@ -745,6 +762,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				801E01454D565C1907B971A9 /* CitiesView.swift in Sources */,
+				8C9C6EDB3CCADF88DEE62AE3 /* CityCollections.swift in Sources */,
+				F4824C300DAA2D743546B7A5 /* CityGazetteer.swift in Sources */,
 				FCB4258CB6E5774DB64EDD3D /* APIClient.swift in Sources */,
 				65EF95ECBDDFBD2549453C51 /* AccessibilityHelpers.swift in Sources */,
 				6A74D0A7AE3BAE28A916D841 /* AccessibleMapSummary.swift in Sources */,
