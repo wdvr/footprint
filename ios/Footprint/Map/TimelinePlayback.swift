@@ -208,7 +208,8 @@ struct TimelinePlayback: Equatable, Sendable {
         let shown = revealedStops
         let countries = Set(shown.map(\.countryCode))
         let subdivisions = Set(shown.filter { !$0.isCountry }.map { "\($0.countryCode)-\($0.regionCode)" })
-        let countriesWithSubdivisions = Set(shown.filter { !$0.isCountry }.map(\.countryCode))
+        // Judged over the whole timeline, so a landmark never vanishes as later stops appear.
+        let countriesWithSubdivisions = Set(stops.filter { !$0.isCountry }.map(\.countryCode))
         return catalog.filter { landmark in
             guard countries.contains(landmark.countryCode) else { return false }
             guard let sub = landmark.subdivisionCode, countriesWithSubdivisions.contains(landmark.countryCode) else { return true }

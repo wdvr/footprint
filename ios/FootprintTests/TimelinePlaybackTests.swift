@@ -190,6 +190,19 @@ final class TimelinePlaybackTests: XCTestCase {
         XCTAssertFalse(ids.contains("liberty"))
     }
 
+    func testLandmarksNeverVanishAsLaterStopsAppear() {
+        var playback = TimelinePlayback(stops: [stop("US", day: 0), stop("FR", day: 1),
+                                                stop("CA", day: 2, type: .usState, country: "US")])
+        var shown = Set<String>()
+        for step in 0...30 {
+            playback.seek(toProgress: Double(step) / 30)
+            let now = Set(playback.visibleLandmarks().map(\.id))
+            XCTAssertTrue(now.isSuperset(of: shown), "step \(step)")
+            shown = now
+        }
+        XCTAssertEqual(shown, ["eiffel", "goldengate"])
+    }
+
     func testLandmarkCatalogIsValid() {
         let catalog = Landmark.catalog
         XCTAssertEqual(Set(catalog.map(\.id)).count, catalog.count)
