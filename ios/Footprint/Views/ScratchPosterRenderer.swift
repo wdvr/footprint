@@ -28,6 +28,8 @@ enum ScratchPosterRenderer {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         format.opaque = true
+        // Plain sRGB: what printers and print shops expect, rather than the screen's wide gamut.
+        format.preferredRange = .standard
         let pixels = CGSize(width: pixelWidth.rounded(), height: (page.height * scale).rounded())
         return UIGraphicsImageRenderer(size: pixels, format: format).image { context in
             context.cgContext.scaleBy(x: scale, y: scale)
@@ -116,7 +118,7 @@ enum ScratchPosterRenderer {
     // MARK: - Drawing
 
     private static func color(_ rgb: ScratchPosterTheme.RGB, _ alpha: CGFloat = 1) -> CGColor {
-        CGColor(red: rgb.r, green: rgb.g, blue: rgb.b, alpha: alpha)
+        CGColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: alpha)
     }
 
     private static func uiColor(_ rgb: ScratchPosterTheme.RGB, _ alpha: CGFloat = 1) -> UIColor {
@@ -174,7 +176,7 @@ enum ScratchPosterRenderer {
         ctx.saveGState()
         ctx.addPath(foilPath)
         ctx.clip()
-        let sweep = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+        let sweep = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB),
                                colors: [color(foilTones.light), color(foilTones.mid), color(foilTones.dark),
                                         color(foilTones.mid), color(foilTones.light), color(foilTones.mid)] as CFArray,
                                locations: [0, 0.22, 0.45, 0.62, 0.8, 1])!

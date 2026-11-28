@@ -162,7 +162,7 @@ final class ScratchPosterTests: XCTestCase {
         let x = Int(point.x * scale), y = Int(point.y * scale)
         var bytes = [UInt8](repeating: 0, count: 4)
         let context = try XCTUnwrap(CGContext(data: &bytes, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
-                                              space: CGColorSpaceCreateDeviceRGB(),
+                                              space: try XCTUnwrap(CGColorSpace(name: CGColorSpace.sRGB)),
                                               bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         context.draw(image, in: CGRect(x: -x, y: y - image.height + 1, width: image.width, height: image.height))
         return (Double(bytes[0]) / 255, Double(bytes[1]) / 255, Double(bytes[2]) / 255)
