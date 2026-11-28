@@ -872,6 +872,9 @@ def build():
             milestone(1),
             "arrow.left.and.right",
             filter={"east": "12", "west": "-10"},
+            # The backend credits a country with all of its zones (US → UTC−10), so only the
+            # device, which counts zones per visited state, can tell.
+            platforms=IOS,
         ),
     ]
     # Novelty / geography (device-only: from visit and photo coordinates)

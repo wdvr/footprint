@@ -3180,8 +3180,7 @@
    ],
    "icon": "arrow.left.and.right",
    "platforms": [
-    "ios",
-    "backend"
+    "ios"
    ],
    "filter": {
     "east": "12",
