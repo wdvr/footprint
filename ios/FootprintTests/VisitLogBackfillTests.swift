@@ -298,6 +298,17 @@ final class VisitLogBackfillTests: XCTestCase {
         XCTAssertEqual(try state().visitCount, 2)
     }
 
+    func testRowsOfOtherLevelsStayOutOfTheLog() throws {
+        // e.g. city evidence rows, which have no PlaceLevel.
+        let city = detected(.visited, at: t0)
+        city.levelRaw = "city"
+        city.subdivisionCode = "DA"
+        context.insert(city)
+        try context.save()
+        XCTAssertEqual(pipeline.logEntries(), [])
+        XCTAssertEqual(pipeline.travelStats(now: t0).placesVisited, 0)
+    }
+
     // MARK: - Stats from the log
 
     func testTravelStatsDeriveStreaksFromMigratedHistoryAndDistanceFromStays() throws {

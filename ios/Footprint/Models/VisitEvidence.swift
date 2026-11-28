@@ -83,6 +83,9 @@ final class Visit {
     var level: PlaceLevel { PlaceLevel(rawValue: levelRaw) ?? .country }
     var kind: DetectedVisitKind { DetectedVisitKind(rawValue: kindRaw) ?? .visited }
     var evidence: VisitEvidenceKind { VisitEvidenceKind(rawValue: evidenceRaw) ?? .detected }
+    /// Rows of a level the log has no `PlaceLevel` for (e.g. city evidence) stay out of the log
+    /// instead of being read as country rows.
+    var isLogRow: Bool { PlaceLevel(rawValue: levelRaw) != nil }
 
     var logEntry: VisitLogEntry {
         VisitLogEntry(

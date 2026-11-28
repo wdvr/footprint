@@ -59,7 +59,7 @@ enum VisitLogBackfill {
         var earliestFull: [VisitLog.PlaceID: Date] = [:]
         var layoverArrivals: [VisitLog.PlaceID: Set<Date>] = [:]
         var mirrors: [VisitLog.PlaceID: [Visit]] = [:]
-        for visit in visits {
+        for visit in visits where visit.isLogRow {
             let id = visit.logEntry.placeID
             switch visit.evidence {
             case .detected:
@@ -149,7 +149,7 @@ extension VisitPipeline {
     func logEntries() -> [VisitLogEntry] {
         guard let context = container?.mainContext else { return [] }
         let rows = (try? context.fetch(FetchDescriptor<Visit>(sortBy: [SortDescriptor(\.arrivedAt)]))) ?? []
-        return rows.map(\.logEntry)
+        return rows.filter(\.isLogRow).map(\.logEntry)
     }
 
     /// Distance along detected GPS stays only; read-only, so `status()` can call it.
@@ -160,7 +160,7 @@ extension VisitPipeline {
         let rows = (try? context.fetch(FetchDescriptor<Visit>(
             predicate: #Predicate { $0.evidenceRaw == detected && $0.sourceRaw == gps }
         ))) ?? []
-        return VisitLog.distanceMeters(rows.map(\.logEntry))
+        return VisitLog.distanceMeters(rows.filter(\.isLogRow).map(\.logEntry))
     }
 
     /// Streaks, distance and place counts derived from the log, after bringing it up to date with
