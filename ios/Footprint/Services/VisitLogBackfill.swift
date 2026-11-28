@@ -60,8 +60,11 @@ enum VisitLogBackfill {
         for visit in visits {
             let id = visit.logEntry.placeID
             switch visit.evidence {
-            case .detected:
+            // Only a full detected visit explains a visited place; a layover does not.
+            case .detected where visit.kind == .visited:
                 earliestDetected[id] = min(earliestDetected[id] ?? visit.arrivedAt, visit.arrivedAt)
+            case .detected:
+                break
             case .grandfathered:
                 mirrors[id, default: []].append(visit)
             }

@@ -161,6 +161,22 @@ final class VisitLogBackfillTests: XCTestCase {
         XCTAssertTrue(try visits().allSatisfy { $0.evidence == .detected })
     }
 
+    func testLayoverDoesNotReplaceAVisitedPlaceInTheLog() throws {
+        // The pipeline dates an undated visited place from a layover without demoting it.
+        place(.country, "QA", visitedDate: t0)
+        context.insert(Visit(DetectedVisit(
+            level: .country, countryCode: "QA", subdivisionCode: nil, kind: .transit,
+            arrivedAt: t0, departedAt: t0.addingTimeInterval(3600),
+            centroidLatitude: 25.27, centroidLongitude: 51.6, sampleCount: 20, source: .gps
+        )))
+        try context.save()
+        XCTAssertEqual(VisitLogBackfill.run(in: context), .init(inserted: 1))
+        let rows = try visits()
+        XCTAssertEqual(rows.map(\.kind).sorted { $0.rawValue < $1.rawValue }, [.transit, .visited])
+        XCTAssertEqual(rows.first { $0.evidence == .grandfathered }?.kind, .visited)
+        XCTAssertEqual(pipeline.travelStats(now: t0).placesVisited, 1)
+    }
+
     func testHistoryOlderThanTheEvidenceIsStillMirrored() throws {
         pipeline.record(stay(startingAt: t0), now: t0.addingTimeInterval(3600))
         let country = try XCTUnwrap(try context.fetch(FetchDescriptor<VisitedPlace>()).first { $0.regionType == "country" })
