@@ -175,6 +175,9 @@ struct ScratchPosterContent: Sendable, Equatable {
     var visitedStateCodes: Set<String>
     var continents: [Continent]
     var date: Date
+    /// Visited countries among the 195 counted for world progress (territories such as Greenland
+    /// are revealed on the map but not counted).
+    var countryCount = 0
 
     struct Continent: Sendable, Equatable {
         let name: String
@@ -183,8 +186,6 @@ struct ScratchPosterContent: Sendable, Equatable {
     }
 
     static let worldCountryCount = 195
-
-    var countryCount: Int { visitedCountryCodes.count }
 
     var worldPercent: Int { Int((Double(countryCount) / Double(Self.worldCountryCount) * 100).rounded()) }
 
@@ -208,6 +209,7 @@ struct ScratchPosterContent: Sendable, Equatable {
         let continents = LocalContinentStats.calculateStats(visitedCountries: Array(countries))
             .map { Continent(name: $0.name, visited: $0.visited, total: $0.total) }
         return ScratchPosterContent(title: title, visitedCountryCodes: countries, visitedStateCodes: states,
-                                    continents: continents, date: date)
+                                    continents: continents, date: date,
+                                    countryCount: min(worldCountryCount, continents.reduce(0) { $0 + $1.visited }))
     }
 }
