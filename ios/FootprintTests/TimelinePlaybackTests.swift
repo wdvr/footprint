@@ -143,6 +143,17 @@ final class TimelinePlaybackTests: XCTestCase {
         XCTAssertNotEqual(berlin, germany)
     }
 
+    func testSubdivisionsNamedDifferentlyInTheListStillGetTheirOwnPoints() {
+        let stops = [stop("DE", day: 0), stop("HE", day: 1, type: .germanState, country: "DE"),
+                     stop("MX", day: 2), stop("VER", day: 3, type: .mexicanState, country: "MX"),
+                     stop("MEX", day: 4, type: .mexicanState, country: "MX")]
+        let centers = RegionCenters.centers(for: stops)
+        XCTAssertNotEqual(centers["german_state:HE"], centers["country:DE"])
+        XCTAssertNotEqual(centers["mexican_state:VER"], centers["country:MX"])
+        XCTAssertNotEqual(centers["mexican_state:MEX"], centers["country:MX"])
+        XCTAssertNotNil(centers["german_state:HE"])
+    }
+
     // MARK: - Stops
 
     func testStopsAreVisitedPlacesInDateOrder() {

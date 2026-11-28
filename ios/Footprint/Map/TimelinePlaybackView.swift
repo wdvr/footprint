@@ -303,7 +303,8 @@ enum RegionCenters {
                 }
             }
             for state in GeographicData.states(for: country) where subdivisions["\(country)-\(state.id)"] == nil {
-                subdivisions["\(country)-\(state.id)"] = listed[country]?[normalized(state.name)]
+                let name = listedNames["\(country)-\(state.id)"] ?? state.name
+                subdivisions["\(country)-\(state.id)"] = listed[country]?[normalized(name)]
             }
         }
         var result: [String: GeoPoint] = [:]
@@ -323,6 +324,15 @@ enum RegionCenters {
         }
         return GeoPoint.interiorPoint(of: ring)
     }
+
+    /// Subdivisions named differently in `world_states.json`.
+    private static let listedNames = [
+        "DE-HE": "Hessen",
+        "MX-COA": "Coahuila de Zaragoza",
+        "MX-MEX": "Estado de México",
+        "MX-MIC": "Michoacán de Ocampo",
+        "MX-VER": "Veracruz de Ignacio de la Llave",
+    ]
 
     private struct ListedState: Decodable {
         let name: String
