@@ -14,11 +14,10 @@ struct RegionsView: View {
     private var filtered: [RegionCoverage] {
         let query = searchText.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return coverages }
-        return coverages.filter {
-            $0.region.name.localizedCaseInsensitiveContains(query)
-                || $0.region.memberKeys.contains { key in
-                    $0.region.memberName(key).localizedCaseInsensitiveContains(query)
-                }
+        return coverages.filter { coverage in
+            let region = coverage.region
+            return region.name.localizedCaseInsensitiveContains(query)
+                || region.memberKeys.contains { region.memberName($0).localizedCaseInsensitiveContains(query) }
         }
     }
 
