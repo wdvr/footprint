@@ -68,6 +68,9 @@ actor APIClient {
         self.urlSession = urlSession
         self.sessionStore = sessionStore
         self.now = now
+        // Load synchronously so callers (e.g. launch sync) see the stored session
+        // immediately, before AuthManager's background restore runs.
+        self.session = sessionStore.load()
     }
 
     // MARK: - Session Management
