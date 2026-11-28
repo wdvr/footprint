@@ -67,6 +67,13 @@ final class VisitDetectionTests: XCTestCase {
         XCTAssertEqual(stays.first?.duration, 12 * 60)
     }
 
+    func testCentroidOfAStayAcrossTheDateLineStaysOnIt() {
+        let samples = (0...12).map { sample(Double($0), -16.8, $0 % 2 == 0 ? 179.9995 : -179.9995) }
+        let centroid = GeoMath.centroid(samples[...])
+        XCTAssertEqual(abs(centroid.longitude), 180, accuracy: 0.001)
+        XCTAssertEqual(centroid.latitude, -16.8, accuracy: 1e-9)
+    }
+
     func testStayPointEndsWhenLeavingRadius() {
         let here: [EvidenceSample] = (0...6).map { sample(Double($0), 10, 10) }
         let away: [EvidenceSample] = (7...9).map { sample(Double($0), 10 + 300 * degreesPerMeter, 10) }

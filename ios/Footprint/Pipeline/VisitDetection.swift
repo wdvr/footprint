@@ -115,7 +115,11 @@ enum GeoMath {
 
     static func centroid(_ samples: ArraySlice<EvidenceSample>) -> (latitude: Double, longitude: Double) {
         let n = Double(samples.count)
-        return (samples.map(\.latitude).reduce(0, +) / n, samples.map(\.longitude).reduce(0, +) / n)
+        // Longitudes unwrap around the first fix so a cluster straddling ±180° averages beside it.
+        let reference = samples.first?.longitude ?? 0
+        let longitude = samples.map { reference + ($0.longitude - reference).remainder(dividingBy: 360) }
+            .reduce(0, +) / n
+        return (samples.map(\.latitude).reduce(0, +) / n, longitude.remainder(dividingBy: 360))
     }
 }
 

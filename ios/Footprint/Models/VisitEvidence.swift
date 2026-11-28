@@ -61,6 +61,10 @@ final class Visit {
     var countyFips: String?
     var cityId: String?
     var regionIds: [String] = []
+    /// `VisitEvidenceKind` raw value. Rows written before this field default to detected.
+    var evidenceRaw: String = VisitEvidenceKind.detected.rawValue
+    /// False for a grandfathered place saved without a visit date.
+    var isDateKnown: Bool = true
 
     init(_ detected: DetectedVisit) {
         self.arrivedAt = detected.arrivedAt
@@ -79,4 +83,16 @@ final class Visit {
     var source: SampleSource { SampleSource(rawValue: sourceRaw) ?? .gps }
     var level: PlaceLevel { PlaceLevel(rawValue: levelRaw) ?? .country }
     var kind: DetectedVisitKind { DetectedVisitKind(rawValue: kindRaw) ?? .visited }
+    var evidence: VisitEvidenceKind { VisitEvidenceKind(rawValue: evidenceRaw) ?? .detected }
+    /// Rows of a level the log has no `PlaceLevel` for (e.g. city evidence) stay out of the log
+    /// instead of being read as country rows.
+    var isLogRow: Bool { PlaceLevel(rawValue: levelRaw) != nil }
+
+    var logEntry: VisitLogEntry {
+        VisitLogEntry(
+            level: level, countryCode: countryCode ?? "", subdivisionCode: subdivisionCode, kind: kind,
+            arrivedAt: arrivedAt, departedAt: departedAt, centroidLatitude: centroidLat, centroidLongitude: centroidLon,
+            source: source, evidence: evidence, isDateKnown: isDateKnown
+        )
+    }
 }
