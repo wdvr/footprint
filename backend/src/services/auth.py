@@ -1,5 +1,6 @@
 """Authentication service for Apple and Google Sign In."""
 
+import hashlib
 import os
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -64,7 +65,9 @@ class AuthService:
     JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-in-production")
     JWT_ALGORITHM = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES = 60
-    REFRESH_TOKEN_EXPIRE_DAYS = 30
+    # Sliding window: each refresh rotates the token and restarts the clock, so a
+    # device stays signed in as long as it opens the app at least this often.
+    REFRESH_TOKEN_EXPIRE_DAYS = 90
 
     def __init__(self):
         self._apple_keys: list[dict[str, Any]] | None = None
@@ -146,28 +149,52 @@ class AuthService:
         }
         return jwt.encode(payload, self.JWT_SECRET, algorithm=self.JWT_ALGORITHM)
 
-    def create_refresh_token(self, user_id: str) -> str:
-        """Create a JWT refresh token."""
-        expire = datetime.now(UTC) + timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS)
+    def _refresh_expiry(self) -> datetime:
+        return datetime.now(UTC) + timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS)
+
+    def create_refresh_token(
+        self,
+        user_id: str,
+        session_id: str | None = None,
+        expire: datetime | None = None,
+    ) -> str:
+        """Create a JWT refresh token, bound to a server-side session when given."""
         payload = {
             "sub": user_id,
-            "exp": expire,
+            "exp": expire or self._refresh_expiry(),
             "iat": datetime.now(UTC),
             "type": "refresh",
             "jti": str(uuid.uuid4()),
         }
+        if session_id:
+            payload["sid"] = session_id
         return jwt.encode(payload, self.JWT_SECRET, algorithm=self.JWT_ALGORITHM)
 
-    def create_tokens(self, user_id: str) -> TokenResponse:
-        """Create both access and refresh tokens."""
-        access_token = self.create_access_token(user_id)
-        refresh_token = self.create_refresh_token(user_id)
+    @staticmethod
+    def hash_token(token: str) -> str:
+        """Hash a refresh token for storage; raw refresh tokens are never stored."""
+        return hashlib.sha256(token.encode()).hexdigest()
+
+    def _token_response(self, user_id: str, refresh_token: str) -> TokenResponse:
         return TokenResponse(
-            access_token=access_token,
+            access_token=self.create_access_token(user_id),
             refresh_token=refresh_token,
             token_type="bearer",
             expires_in=self.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
+
+    def create_tokens(self, user_id: str) -> TokenResponse:
+        """Start a new refresh session and return its access and refresh tokens."""
+        session_id = str(uuid.uuid4())
+        expire = self._refresh_expiry()
+        refresh_token = self.create_refresh_token(user_id, session_id, expire)
+        db_service.create_refresh_session(
+            user_id,
+            session_id,
+            self.hash_token(refresh_token),
+            int(expire.timestamp()),
+        )
+        return self._token_response(user_id, refresh_token)
 
     def verify_access_token(self, token: str) -> str | None:
         """Verify access token and return user_id."""
@@ -181,17 +208,26 @@ class AuthService:
         except JWTError:
             return None
 
-    def verify_refresh_token(self, token: str) -> str | None:
-        """Verify refresh token and return user_id."""
+    def _decode_refresh_token(
+        self, token: str, verify_exp: bool = True
+    ) -> dict[str, Any] | None:
         try:
             payload = jwt.decode(
-                token, self.JWT_SECRET, algorithms=[self.JWT_ALGORITHM]
+                token,
+                self.JWT_SECRET,
+                algorithms=[self.JWT_ALGORITHM],
+                options={"verify_exp": verify_exp},
             )
-            if payload.get("type") != "refresh":
-                return None
-            return payload.get("sub")
         except JWTError:
             return None
+        if payload.get("type") != "refresh" or not payload.get("sub"):
+            return None
+        return payload
+
+    def verify_refresh_token(self, token: str) -> str | None:
+        """Verify refresh token signature/expiry and return user_id."""
+        payload = self._decode_refresh_token(token)
+        return payload.get("sub") if payload else None
 
     async def authenticate_apple(
         self, identity_token: str, authorization_code: str | None = None
@@ -229,17 +265,7 @@ class AuthService:
             }
             user = db_service.create_user(user_data)
 
-        # Create tokens
-        access_token = self.create_access_token(user_id)
-        refresh_token = self.create_refresh_token(user_id)
-
-        tokens = TokenResponse(
-            access_token=access_token,
-            refresh_token=refresh_token,
-            expires_in=self.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        )
-
-        return user, tokens
+        return user, self.create_tokens(user_id)
 
     async def verify_google_token(self, id_token: str) -> GoogleTokenPayload | None:
         """Verify Google ID token using Google's tokeninfo endpoint."""
@@ -334,38 +360,49 @@ class AuthService:
             }
             user = db_service.create_user(user_data)
 
-        # Create tokens
-        access_token = self.create_access_token(user_id)
-        refresh_token = self.create_refresh_token(user_id)
-
-        tokens = TokenResponse(
-            access_token=access_token,
-            refresh_token=refresh_token,
-            expires_in=self.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        )
-
-        return user, tokens
+        return user, self.create_tokens(user_id)
 
     def refresh_tokens(self, refresh_token: str) -> TokenResponse | None:
-        """Refresh access token using refresh token."""
-        user_id = self.verify_refresh_token(refresh_token)
-        if not user_id:
+        """
+        Exchange a refresh token for a new access token and a rotated refresh token.
+
+        Returns None (-> 401) when the token is invalid, expired, revoked, already
+        rotated past, or the user no longer exists.
+        """
+        payload = self._decode_refresh_token(refresh_token)
+        if not payload:
+            return None
+        user_id = payload["sub"]
+
+        if not db_service.get_user(user_id):
             return None
 
-        # Verify user still exists
-        user = db_service.get_user(user_id)
-        if not user:
-            return None
+        session_id = payload.get("sid")
+        if not session_id:
+            # Token issued before server-side sessions existed: migrate it into
+            # a session once so existing installs are not signed out.
+            return self.create_tokens(user_id)
 
-        # Create new tokens
-        new_access_token = self.create_access_token(user_id)
-        new_refresh_token = self.create_refresh_token(user_id)
-
-        return TokenResponse(
-            access_token=new_access_token,
-            refresh_token=new_refresh_token,
-            expires_in=self.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        expire = self._refresh_expiry()
+        new_refresh_token = self.create_refresh_token(user_id, session_id, expire)
+        rotated = db_service.rotate_refresh_session(
+            user_id,
+            session_id,
+            self.hash_token(refresh_token),
+            self.hash_token(new_refresh_token),
+            int(expire.timestamp()),
         )
+        if not rotated:
+            return None
+
+        return self._token_response(user_id, new_refresh_token)
+
+    def revoke_refresh_token(self, refresh_token: str) -> None:
+        """Revoke the session a refresh token belongs to (sign out). Idempotent."""
+        payload = self._decode_refresh_token(refresh_token, verify_exp=False)
+        if not payload or not payload.get("sid"):
+            return
+        db_service.delete_refresh_session(payload["sub"], payload["sid"])
 
 
 # Singleton instance

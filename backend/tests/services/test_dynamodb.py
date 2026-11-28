@@ -1,75 +1,5 @@
 """Tests for DynamoDB service."""
 
-import os
-
-import boto3
-import pytest
-from moto import mock_aws
-
-
-@pytest.fixture
-def aws_credentials():
-    """Mocked AWS credentials for moto."""
-    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-    os.environ["AWS_SECURITY_TOKEN"] = "testing"
-    os.environ["AWS_SESSION_TOKEN"] = "testing"
-    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
-
-
-@pytest.fixture
-def dynamodb_table(aws_credentials):
-    """Create mocked DynamoDB table."""
-    with mock_aws():
-        dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
-        table = dynamodb.create_table(
-            TableName="footprint-table-dev",
-            KeySchema=[
-                {"AttributeName": "pk", "KeyType": "HASH"},
-                {"AttributeName": "sk", "KeyType": "RANGE"},
-            ],
-            AttributeDefinitions=[
-                {"AttributeName": "pk", "AttributeType": "S"},
-                {"AttributeName": "sk", "AttributeType": "S"},
-                {"AttributeName": "gsi1pk", "AttributeType": "S"},
-                {"AttributeName": "gsi1sk", "AttributeType": "S"},
-            ],
-            GlobalSecondaryIndexes=[
-                {
-                    "IndexName": "gsi1",
-                    "KeySchema": [
-                        {"AttributeName": "gsi1pk", "KeyType": "HASH"},
-                        {"AttributeName": "gsi1sk", "KeyType": "RANGE"},
-                    ],
-                    "Projection": {"ProjectionType": "ALL"},
-                    "ProvisionedThroughput": {
-                        "ReadCapacityUnits": 5,
-                        "WriteCapacityUnits": 5,
-                    },
-                }
-            ],
-            ProvisionedThroughput={
-                "ReadCapacityUnits": 5,
-                "WriteCapacityUnits": 5,
-            },
-        )
-        table.wait_until_exists()
-        yield table
-
-
-@pytest.fixture
-def db_service(dynamodb_table):
-    """Create DynamoDB service with mocked table."""
-    with mock_aws():
-        # Import after mocking so it uses the mocked table
-        # Need to reload the module to pick up the mocked table
-        import importlib
-
-        import src.services.dynamodb as db_module
-
-        importlib.reload(db_module)
-        yield db_module.DynamoDBService()
-
 
 class TestUserOperations:
     """Tests for user operations."""
@@ -396,3 +326,69 @@ class TestSyncOperations:
         """Test getting changes when there are none."""
         result = db_service.get_changes_since("empty-user", 0)
         assert result == []
+
+
+class TestRefreshSessions:
+    """Tests for refresh token session storage."""
+
+    def test_create_and_get_refresh_session(self, db_service):
+        db_service.create_refresh_session("user-1", "sid-1", "hash-a", 2000000000)
+
+        session = db_service.get_refresh_session("user-1", "sid-1")
+
+        assert session["token_hash"] == "hash-a"
+        assert session["sk"] == "REFRESH#sid-1"
+        assert session["ttl"] == 2000000000
+        assert "refresh_token" not in session
+
+    def test_rotate_with_current_hash(self, db_service):
+        db_service.create_refresh_session("user-1", "sid-1", "hash-a", 2000000000)
+
+        assert db_service.rotate_refresh_session(
+            "user-1", "sid-1", "hash-a", "hash-b", 2000000100
+        )
+
+        session = db_service.get_refresh_session("user-1", "sid-1")
+        assert session["token_hash"] == "hash-b"
+        assert session["previous_hash"] == "hash-a"
+        assert session["ttl"] == 2000000100
+
+    def test_rotate_with_previous_hash_after_lost_response(self, db_service):
+        db_service.create_refresh_session("user-1", "sid-1", "hash-a", 2000000000)
+        db_service.rotate_refresh_session(
+            "user-1", "sid-1", "hash-a", "hash-b", 2000000000
+        )
+
+        # Client never received hash-b and retries with hash-a.
+        assert db_service.rotate_refresh_session(
+            "user-1", "sid-1", "hash-a", "hash-c", 2000000000
+        )
+
+        session = db_service.get_refresh_session("user-1", "sid-1")
+        assert session["token_hash"] == "hash-c"
+        assert session["previous_hash"] == "hash-a"
+
+    def test_rotate_rejects_older_hash(self, db_service):
+        db_service.create_refresh_session("user-1", "sid-1", "hash-a", 2000000000)
+        db_service.rotate_refresh_session(
+            "user-1", "sid-1", "hash-a", "hash-b", 2000000000
+        )
+        db_service.rotate_refresh_session(
+            "user-1", "sid-1", "hash-b", "hash-c", 2000000000
+        )
+
+        assert not db_service.rotate_refresh_session(
+            "user-1", "sid-1", "hash-a", "hash-d", 2000000000
+        )
+
+    def test_rotate_missing_session(self, db_service):
+        assert not db_service.rotate_refresh_session(
+            "user-1", "missing", "hash-a", "hash-b", 2000000000
+        )
+
+    def test_delete_refresh_session(self, db_service):
+        db_service.create_refresh_session("user-1", "sid-1", "hash-a", 2000000000)
+
+        db_service.delete_refresh_session("user-1", "sid-1")
+
+        assert db_service.get_refresh_session("user-1", "sid-1") is None

@@ -167,6 +167,19 @@ async def refresh_token(request: RefreshTokenRequest):
     return tokens
 
 
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(request: RefreshTokenRequest):
+    """
+    Sign out this device.
+
+    Revokes the refresh token's server-side session so it can no longer be
+    exchanged for new tokens. Does not require a valid access token, so a
+    client can always sign out; unknown or already-revoked tokens are a no-op.
+    """
+    auth_service.revoke_refresh_token(request.refresh_token)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(current_user: dict = Depends(get_current_user)):
     """

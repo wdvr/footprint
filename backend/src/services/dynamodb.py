@@ -712,6 +712,103 @@ class DynamoDBService:
         )
         return response.get("Item")
 
+    # Refresh token sessions (one per signed-in device, hashed tokens only)
+    @staticmethod
+    def _get_refresh_session_sk(session_id: str) -> str:
+        return f"REFRESH#{session_id}"
+
+    def create_refresh_session(
+        self, user_id: str, session_id: str, token_hash: str, expires_at: int
+    ) -> dict[str, Any]:
+        """Store a new refresh token session; `expires_at` is a unix timestamp."""
+        now = datetime.now(UTC).isoformat()
+        item = {
+            "pk": self._get_user_pk(user_id),
+            "sk": self._get_refresh_session_sk(session_id),
+            "entity_type": "refresh_session",
+            "user_id": user_id,
+            "session_id": session_id,
+            "token_hash": token_hash,
+            "created_at": now,
+            "updated_at": now,
+            "ttl": expires_at,
+        }
+        table.put_item(Item=item)
+        return item
+
+    def get_refresh_session(
+        self, user_id: str, session_id: str
+    ) -> dict[str, Any] | None:
+        """Get a refresh token session."""
+        response = table.get_item(
+            Key={
+                "pk": self._get_user_pk(user_id),
+                "sk": self._get_refresh_session_sk(session_id),
+            }
+        )
+        return response.get("Item")
+
+    def rotate_refresh_session(
+        self,
+        user_id: str,
+        session_id: str,
+        presented_hash: str,
+        new_hash: str,
+        expires_at: int,
+    ) -> bool:
+        """
+        Atomically swap the session's current token hash for `new_hash`.
+
+        Succeeds only if `presented_hash` is still the current or previous hash,
+        so two concurrent refreshes with the same token cannot both rotate.
+        The previous hash is kept so a client that never received the last
+        rotation (lost response) can still refresh once with its older token.
+        """
+        session = self.get_refresh_session(user_id, session_id)
+        if not session:
+            return False
+
+        current_hash = session.get("token_hash")
+        if presented_hash == current_hash:
+            previous_hash = current_hash
+        elif presented_hash == session.get("previous_hash"):
+            previous_hash = presented_hash
+        else:
+            return False
+
+        try:
+            table.update_item(
+                Key={
+                    "pk": self._get_user_pk(user_id),
+                    "sk": self._get_refresh_session_sk(session_id),
+                },
+                UpdateExpression=(
+                    "SET token_hash = :new, previous_hash = :prev, "
+                    "#ttl = :ttl, updated_at = :now"
+                ),
+                ConditionExpression="token_hash = :current",
+                ExpressionAttributeNames={"#ttl": "ttl"},
+                ExpressionAttributeValues={
+                    ":new": new_hash,
+                    ":prev": previous_hash,
+                    ":ttl": expires_at,
+                    ":now": datetime.now(UTC).isoformat(),
+                    ":current": current_hash,
+                },
+            )
+        except table.meta.client.exceptions.ConditionalCheckFailedException:
+            return False
+        return True
+
+    def delete_refresh_session(self, user_id: str, session_id: str) -> None:
+        """Revoke a refresh token session."""
+        table.delete_item(
+            Key={
+                "pk": self._get_user_pk(user_id),
+                "sk": self._get_refresh_session_sk(session_id),
+            }
+        )
+
 
 # Singleton instance
 db_service = DynamoDBService()
