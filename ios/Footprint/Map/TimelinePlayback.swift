@@ -220,7 +220,6 @@ struct TimelinePlayback: Equatable, Sendable {
     }
 }
 
-/// A famous sight drawn on the playback map as a 2.5D cartoon once its place has been visited.
 enum PlaybackSpeed: Double, CaseIterable, Sendable {
     case half = 0.5
     case normal = 1
@@ -285,6 +284,7 @@ extension TimelinePlayback {
     }
 }
 
+/// A famous sight drawn on the playback map as a 2.5D cartoon once its place has been visited.
 struct Landmark: Identifiable, Hashable, Sendable {
     enum Style: String, CaseIterable, Sendable {
         case latticeTower, clockTower, statue, pyramid, dome, pagoda, sails, arena, gate, peak, wall, bridge,
