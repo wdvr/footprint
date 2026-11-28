@@ -37,8 +37,8 @@ enum ScratchPosterRenderer {
 
     struct RegionShape: Sendable {
         let code: String
-        /// Exterior and hole rings as (latitude, longitude); filled even-odd.
-        let rings: [[SIMD2<Double>]]
+        /// Each polygon's exterior ring, then its holes, as (latitude, longitude).
+        let polygons: [[[SIMD2<Double>]]]
     }
 
     private final class GeometryCache: @unchecked Sendable {
@@ -50,7 +50,7 @@ enum ScratchPosterRenderer {
             lock.lock(); defer { lock.unlock() }
             if let countries { return countries }
             let shapes = GeoJSONParser.parseCountries().map {
-                RegionShape(code: $0.id == "CN-TW" ? "TW" : $0.id, rings: $0.polygons.flatMap(ScratchPosterRenderer.rings))
+                RegionShape(code: $0.id == "CN-TW" ? "TW" : $0.id, polygons: $0.polygons.map(ScratchPosterRenderer.rings))
             }
             countries = shapes
             return shapes
@@ -60,7 +60,7 @@ enum ScratchPosterRenderer {
             lock.lock(); defer { lock.unlock() }
             if let cached = states[country] { return cached }
             let shapes = GeoJSONParser.parseStates(forCountry: country).map {
-                RegionShape(code: "\(country)-\(SubdivisionCode.short($0.id))", rings: $0.polygons.flatMap(ScratchPosterRenderer.rings))
+                RegionShape(code: "\(country)-\(SubdivisionCode.short($0.id))", polygons: $0.polygons.map(ScratchPosterRenderer.rings))
             }
             states[country] = shapes
             return shapes
@@ -80,7 +80,8 @@ enum ScratchPosterRenderer {
     }
 
     /// Foil-covered and revealed shapes: a country with visited US/Canadian states is split into
-    /// its states so only those are scratched.
+    /// its states so only those are scratched. The country itself stays in the foil underneath, so
+    /// land its state boundaries leave out (e.g. the western Aleutians) still shows.
     static func partition(_ content: ScratchPosterContent) -> (foil: [RegionShape], revealed: [RegionShape]) {
         var foil: [RegionShape] = [], revealed: [RegionShape] = []
         let byState = Set(content.visitedStateCodes.compactMap { $0.split(separator: "-").first.map(String.init) })
@@ -89,6 +90,7 @@ enum ScratchPosterRenderer {
             if states.isEmpty {
                 if content.visitedCountryCodes.contains(country.code) { revealed.append(country) } else { foil.append(country) }
             } else {
+                foil.append(country)
                 for state in states {
                     if content.visitedStateCodes.contains(state.code) { revealed.append(state) } else { foil.append(state) }
                 }
@@ -107,15 +109,30 @@ enum ScratchPosterRenderer {
         UIColor(red: rgb.r, green: rgb.g, blue: rgb.b, alpha: alpha)
     }
 
+    /// Exteriors wound one way and holes the other, so a nonzero fill unions overlapping shapes
+    /// (neighbours whose outlines overlap slightly) while keeping holes (enclaves) open.
     private static func path(_ shapes: [RegionShape], _ layout: ScratchPosterLayout) -> CGPath {
         let path = CGMutablePath()
         for shape in shapes {
-            for ring in shape.rings where ring.count > 2 {
-                path.addLines(between: ring.map { layout.point(latitude: $0.x, longitude: $0.y) })
-                path.closeSubpath()
+            for polygon in shape.polygons {
+                for (index, ring) in polygon.enumerated() where ring.count > 2 {
+                    var points = ring.map { layout.point(latitude: $0.x, longitude: $0.y) }
+                    if (signedArea(points) > 0) != (index == 0) { points.reverse() }
+                    path.addLines(between: points)
+                    path.closeSubpath()
+                }
             }
         }
         return path
+    }
+
+    private static func signedArea(_ points: [CGPoint]) -> CGFloat {
+        var area: CGFloat = 0
+        for i in points.indices {
+            let a = points[i], b = points[(i + 1) % points.count]
+            area += a.x * b.y - b.x * a.y
+        }
+        return area / 2
     }
 
     static func draw(_ content: ScratchPosterContent, theme: ScratchPosterTheme, pageSize: CGSize, in ctx: CGContext) {
@@ -138,18 +155,11 @@ enum ScratchPosterRenderer {
 
         let (foil, revealed) = partition(content)
 
-        // Revealed colour first, so foil holes (enclaves) show it.
-        for shape in revealed {
-            ctx.addPath(path([shape], layout))
-            ctx.setFillColor(color(ScratchPosterTheme.revealColor(for: shape.code)))
-            ctx.fillPath(using: .evenOdd)
-        }
-
         // The foil: a metallic sweep with fine brushed lines.
         let foilPath = path(foil, layout)
         ctx.saveGState()
         ctx.addPath(foilPath)
-        ctx.clip(using: .evenOdd)
+        ctx.clip()
         let sweep = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
                                colors: [color(foilTones.light), color(foilTones.mid), color(foilTones.dark),
                                         color(foilTones.mid), color(foilTones.light), color(foilTones.mid)] as CFArray,
@@ -172,6 +182,13 @@ enum ScratchPosterRenderer {
         ctx.setStrokeColor(color(foilTones.dark, 0.7))
         ctx.setLineWidth(unit * 0.4)
         ctx.strokePath()
+
+        // Scratched-off places on top of the foil, keeping their holes (an unvisited enclave stays foil).
+        for shape in revealed {
+            ctx.addPath(path([shape], layout))
+            ctx.setFillColor(color(ScratchPosterTheme.revealColor(for: shape.code)))
+            ctx.fillPath()
+        }
 
         // Scratched edges: white borders with flecks of foil left along them.
         for shape in revealed {

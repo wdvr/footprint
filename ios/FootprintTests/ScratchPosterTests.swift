@@ -104,6 +104,13 @@ final class ScratchPosterTests: XCTestCase {
         XCTAssertGreaterThan(distance(texas, ScratchPosterTheme.revealColor(for: "US")), 0.2)
     }
 
+    func testStatePostersKeepTheWholeCountryUnderTheFoil() {
+        let parts = ScratchPosterRenderer.partition(content(countries: ["US"], states: ["US-CA"]))
+        XCTAssertTrue(parts.foil.contains { $0.code == "US" })
+        XCTAssertTrue(parts.foil.contains { $0.code == "US-TX" })
+        XCTAssertEqual(parts.revealed.filter { $0.code.hasPrefix("US") }.map(\.code), ["US-CA"])
+    }
+
     // MARK: - Helpers
 
     private func pixel(_ content: ScratchPosterContent, at coordinate: (Double, Double)) throws -> ScratchPosterTheme.RGB {
