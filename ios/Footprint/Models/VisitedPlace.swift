@@ -102,6 +102,8 @@ final class VisitedPlace {
     var visitType: String = "visited"
     var visitedDate: Date?
     var departureDate: Date?
+    /// Number of distinct confirmed visits (§3.1); manual entries count as one.
+    var visitCount: Int = 1
     var notes: String?
     var markedAt: Date
     var syncVersion: Int

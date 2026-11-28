@@ -266,6 +266,13 @@ struct ContentView: View {
 // MARK: - Settings View
 
 struct SettingsView: View {
+    @State private var pipelineStatus = VisitPipeline.Status()
+
+    private var pipelineStatusText: String {
+        let lastRun = pipelineStatus.lastRunAt.map { $0.formatted(.relative(presentation: .named)) } ?? "never"
+        return "\(pipelineStatus.visits) visits · \(pipelineStatus.pendingSamples) pending · \(Int(pipelineStatus.distanceKm)) km · ran \(lastRun)"
+    }
+
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<VisitedPlace> { !$0.isDeleted })
     private var visitedPlaces: [VisitedPlace]
@@ -421,8 +428,18 @@ struct SettingsView: View {
                     if LocationManager.shared.authorizationStatus != .authorizedAlways {
                         Text("Requires 'Always' location permission. Go to Settings > Privacy > Location Services to enable.")
                     } else {
-                        Text("Uses significant location changes for battery efficiency.")
+                        Text("Records a visit after you stay or pass through a place. Raw location history stays on this iPhone.")
                     }
+                }
+
+                Section {
+                    LabeledContent("Visit pipeline", value: pipelineStatusText)
+                        .accessibilityIdentifier("visitPipelineStatus")
+                } header: {
+                    Text("Advanced")
+                }
+                .onAppear {
+                    pipelineStatus = VisitPipeline.shared.status()
                 }
 
                 // State/Province Tracking Section
@@ -1164,7 +1181,7 @@ struct WorldMapView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
                         if LocationManager.shared.authorizationStatus == .notDetermined {
-                            LocationManager.shared.requestPermission()
+                            LocationManager.shared.requestWhenInUsePermission()
                         } else if LocationManager.shared.isTracking {
                             // When already tracking, center on user location
                             centerOnUserLocation = true
@@ -1504,54 +1521,22 @@ struct WorldMapView: View {
         try? modelContext.save()
     }
 
+    /// The visit pipeline records places; these callbacks only announce newly recorded ones.
     private func setupLocationCallbacks() {
         LocationManager.shared.onCountryDetected = { countryCode in
-            // Check if country is not already visited
-            let isVisited = visitedPlaces.contains {
-                $0.regionType == VisitedPlace.RegionType.country.rawValue
-                    && $0.regionCode == countryCode
-                    && !$0.isDeleted
-            }
-            if !isVisited {
-                // Auto-mark country as visited
-                if let country = GeographicData.countries.first(where: { $0.id == countryCode }) {
-                    let place = VisitedPlace(
-                        regionType: .country,
-                        regionCode: country.id,
-                        regionName: country.name
-                    )
-                    modelContext.insert(place)
-                    // Notify user
-                    PushNotificationManager.shared.notifyNewLocationDetected(
-                        regionName: country.name,
-                        regionType: "country"
-                    )
-                }
-            }
+            guard let country = GeographicData.countries.first(where: { $0.id == countryCode }) else { return }
+            PushNotificationManager.shared.notifyNewLocationDetected(
+                regionName: country.name,
+                regionType: "country"
+            )
         }
 
         LocationManager.shared.onStateDetected = { countryCode, stateCode in
-            let regionType: VisitedPlace.RegionType = countryCode == "US" ? .usState : .canadianProvince
-            let isVisited = visitedPlaces.contains {
-                $0.regionType == regionType.rawValue
-                    && $0.regionCode == stateCode
-                    && !$0.isDeleted
-            }
-            if !isVisited {
-                // Auto-mark state/province as visited
-                let stateName = GeographicData.states(for: countryCode).first { $0.id == stateCode }?.name ?? stateCode
-                let place = VisitedPlace(
-                    regionType: regionType,
-                    regionCode: stateCode,
-                    regionName: stateName
-                )
-                modelContext.insert(place)
-                // Notify user
-                PushNotificationManager.shared.notifyNewLocationDetected(
-                    regionName: stateName,
-                    regionType: regionType == .usState ? "US state" : "Canadian province"
-                )
-            }
+            let stateName = GeographicData.states(for: countryCode).first { $0.id == stateCode }?.name ?? stateCode
+            PushNotificationManager.shared.notifyNewLocationDetected(
+                regionName: stateName,
+                regionType: countryCode == "US" ? "US state" : "Canadian province"
+            )
         }
     }
 }

@@ -8,6 +8,7 @@ struct OnboardingView: View {
     @State private var currentPage = 0
     @State private var showPhotoSettingsAlert = false
     @State private var showLocationSettingsAlert = false
+    @State private var automaticTrackingOptIn = false
 
     private let totalPages = 4
 
@@ -33,7 +34,7 @@ struct OnboardingView: View {
                     case 1:
                         PhotoExplanationPage()
                     case 2:
-                        LocationExplanationPage()
+                        AutomaticTrackingConsentPage(optIn: $automaticTrackingOptIn)
                     case 3:
                         ReadyPage(onGetStarted: completeOnboarding)
                     default:
@@ -129,19 +130,21 @@ struct OnboardingView: View {
                 withAnimation { currentPage += 1 }
             }
         case 2:
+            // Always authorization is requested only here, and only after an explicit opt-in (§5.1).
+            guard automaticTrackingOptIn else {
+                withAnimation { currentPage += 1 }
+                return
+            }
             let currentStatus = LocationManager.shared.authorizationStatus
             if currentStatus == .denied || currentStatus == .restricted {
                 // Already denied — show settings alert
                 showLocationSettingsAlert = true
-            } else if currentStatus == .notDetermined {
-                // First time — trigger system dialog
-                LocationManager.shared.requestPermission()
+            } else {
+                // Requests Always if needed; tracking starts once it is granted.
+                LocationManager.shared.enableBackgroundTracking()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                     withAnimation { currentPage += 1 }
                 }
-            } else {
-                // Already authorized
-                withAnimation { currentPage += 1 }
             }
         case totalPages - 1:
             completeOnboarding()
@@ -259,47 +262,59 @@ private struct PhotoExplanationPage: View {
 
 // MARK: - Location Explanation Page
 
-private struct LocationExplanationPage: View {
+/// Consent screen for automatic tracking: says exactly what is recorded and where it stays.
+private struct AutomaticTrackingConsentPage: View {
+    @Binding var optIn: Bool
+
     var body: some View {
-        VStack(spacing: 30) {
+        VStack(spacing: 24) {
             Spacer()
 
             ZStack {
                 Circle()
                     .fill(Color.green.opacity(0.1))
-                    .frame(width: 180, height: 180)
+                    .frame(width: 160, height: 160)
 
                 Image(systemName: "location.fill")
-                    .font(.system(size: 80))
+                    .font(.system(size: 70))
                     .foregroundStyle(.green)
             }
             .accessibilityHidden(true)
 
-            VStack(spacing: 16) {
-                Text("Location Tracking")
+            VStack(spacing: 12) {
+                Text("Automatic Tracking")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .accessibilityAddTraits(.isHeader)
 
-                Text("Footprint can use your location to automatically detect when you visit a new country, so you never forget to log a trip.")
+                Text("Footprint can record the countries and regions you visit, even when the app is closed.")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
+                    .padding(.horizontal, 32)
             }
 
             VStack(alignment: .leading, spacing: 12) {
-                InfoRow(icon: "flag.fill", text: "Auto-detect new countries")
-                InfoRow(icon: "bell.fill", text: "Get notified when visiting new places")
-                InfoRow(icon: "battery.100", text: "Battery-efficient background tracking")
+                InfoRow(icon: "mappin.and.ellipse", text: "Records a place after you stay or pass through it")
+                InfoRow(icon: "iphone", text: "Raw location history never leaves this iPhone")
+                InfoRow(icon: "arrow.triangle.2.circlepath", text: "Only places you visited sync to your account")
+                InfoRow(icon: "battery.100", text: "GPS turns off while you are not moving")
             }
-            .padding(.horizontal, 40)
+            .padding(.horizontal, 32)
 
-            Text("Tap Next to set up location access.")
+            Toggle("Turn on automatic tracking", isOn: $optIn)
+                .fontWeight(.semibold)
+                .padding(.horizontal, 32)
+                .accessibilityIdentifier("automaticTrackingToggle")
+
+            Text(optIn
+                 ? "Next asks for \"Always\" location access. You can turn this off in Settings at any time."
+                 : "You can still mark places by hand and import them from photos.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
 
-            Spacer()
             Spacer()
         }
     }
