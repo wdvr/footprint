@@ -58,13 +58,15 @@ final class MedalService {
         let places = (try? context.fetch(FetchDescriptor<VisitedPlace>())) ?? []
         let input = makeInput(places: places, context: context, now: now)
         let results = MedalEngine.evaluate(input, catalog: catalog)
-        self.results = results
         lastEvaluatedAt = now
 
         var rows = Dictionary(((try? context.fetch(FetchDescriptor<EarnedMedal>())) ?? []).map { ($0.medalId, $0) },
                               uniquingKeysWith: { first, _ in first })
         var changed: [EarnedMedal] = []
         let version = catalog.catalogVersion
+        // Show what the user holds, not only what today's evidence supports: kept tiers (removed
+        // places, v1 grants under v1 rules) stay earned in the cabinet.
+        defer { self.results = Self.withStoredAwards(results, rows: rows, catalog: catalog) }
 
         if isBackfillComplete {
             for result in results {
@@ -100,6 +102,35 @@ final class MedalService {
         }
         try? context.save()
         return changed
+    }
+
+    private static func withStoredAwards(
+        _ results: [MedalEngine.Result], rows: [String: EarnedMedal], catalog: MedalCatalog
+    ) -> [MedalEngine.Result] {
+        results.map { result in
+            guard let row = rows[result.id] else { return result }
+            let awards = row.tierHistory.compactMap { tier -> MedalEngine.TierAward? in
+                guard let threshold = result.definition.tiers.first(where: { $0.level == tier.level })?.threshold else { return nil }
+                return MedalEngine.TierAward(level: tier.level, threshold: threshold, earnedAt: tier.earnedAt, trigger: tier.trigger)
+            }
+            return MedalEngine.Result(definition: result.definition, value: result.value, awards: awards)
+        }
+    }
+
+    /// Forgets every medal on this device (account deletion / clear all data), so the next account
+    /// starts with a fresh backfill and never sees the previous account's history.
+    func reset(in context: ModelContext) {
+        for medal in (try? context.fetch(FetchDescriptor<EarnedMedal>())) ?? [] {
+            context.delete(medal)
+        }
+        try? context.save()
+        if let catalog {
+            defaults.removeObject(forKey: Self.backfillCompleteKey + "\(catalog.catalogVersion)")
+            defaults.removeObject(forKey: Self.backfillFamiliesKey + "\(catalog.catalogVersion)")
+        }
+        defaults.removeObject(forKey: Self.bucketLedgerKey)
+        results = []
+        lastEvaluatedAt = nil
     }
 
     /// Medals to show: device medals, minus opt-in layers the user has no data for

@@ -216,6 +216,47 @@ final class MedalServiceTests: XCTestCase {
         XCTAssertNotNil(medals()["first_steps"])
     }
 
+    func testKeptTiersStayEarnedInTheCabinet() throws {
+        let place = insert("country", "FR", "2024-05-01")
+        try context.save()
+        let service = try makeService()
+        service.evaluate(in: context, now: date("2026-11-01"))
+        place.isDeleted = true
+        try context.save()
+        service.evaluate(in: context, now: date("2026-11-02"))
+        let firstSteps = try XCTUnwrap(service.visibleResults(places: [place]).first { $0.id == "first_steps" })
+        XCTAssertTrue(firstSteps.isEarned)
+        XCTAssertEqual(firstSteps.value, 0)
+        XCTAssertEqual(firstSteps.highestAward?.earnedAt, date("2024-05-01"))
+    }
+
+    func testLegacyTierShowsAsEarnedInTheCabinet() throws {
+        for (index, code) in ["FR", "DE", "NL", "BE", "IT", "ES", "PT", "AT", "CH"].enumerated() {
+            insert("country", code, "2020-01-0\(index + 1)")
+        }
+        insert("country", "PL", "2020-02-01", visitType: .transit)
+        try context.save()
+        let service = try makeService()
+        service.evaluate(in: context, now: date("2026-11-28"))
+        let explorer = try XCTUnwrap(service.results.first { $0.id == "explorer_10" })
+        XCTAssertEqual(explorer.highestAward?.level, "silver")
+        XCTAssertNil(explorer.nextTier)
+    }
+
+    func testResetForgetsMedalsAndRestartsBackfill() throws {
+        insert("country", "FR", "2024-05-01")
+        try context.save()
+        let service = try makeService()
+        service.evaluate(in: context, now: date("2026-11-01"))
+        XCTAssertFalse(medals().isEmpty)
+
+        service.reset(in: context)
+        XCTAssertTrue(medals().isEmpty)
+        XCTAssertFalse(service.isBackfillComplete)
+        XCTAssertTrue(service.results.isEmpty)
+        XCTAssertNil(defaults.dictionary(forKey: MedalService.bucketLedgerKey))
+    }
+
     func testBucketListCompletionsCount() throws {
         let codes = ["FR", "DE", "NL", "BE", "IT"]
         let places = codes.map { insert("country", $0, nil, status: .bucketList) }
