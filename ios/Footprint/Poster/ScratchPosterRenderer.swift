@@ -6,27 +6,39 @@ import UniformTypeIdentifiers
 
 // MARK: - Geometry
 
-/// A country or subdivision outline as plain coordinates; rings are filled even-odd so
-/// interior rings (holes) and enclaves come out right.
+/// A country or subdivision outline as plain coordinates. Holes are kept apart from outer rings
+/// so paths can be wound consistently and filled non-zero: outlines that overlap neighbours
+/// (or each other) stay filled, while holes still cut out.
 struct PosterShape: Sendable {
     struct Coordinate: Sendable {
         let latitude: Double
         let longitude: Double
     }
 
+    struct Ring: Sendable {
+        let coordinates: [Coordinate]
+        let isHole: Bool
+    }
+
     let code: String
-    let rings: [[Coordinate]]
+    let rings: [Ring]
 
     init(code: String, polygons: [MKPolygon]) {
         self.code = code
-        var rings: [[Coordinate]] = []
+        func ring(_ polygon: MKPolygon, isHole: Bool) -> Ring {
+            Ring(
+                coordinates: polygon.coordinates.map { Coordinate(latitude: $0.latitude, longitude: $0.longitude) },
+                isHole: isHole
+            )
+        }
+        var rings: [Ring] = []
         for polygon in polygons {
-            rings.append(polygon.coordinates.map { Coordinate(latitude: $0.latitude, longitude: $0.longitude) })
+            rings.append(ring(polygon, isHole: false))
             for hole in polygon.interiorPolygons ?? [] {
-                rings.append(hole.coordinates.map { Coordinate(latitude: $0.latitude, longitude: $0.longitude) })
+                rings.append(ring(hole, isHole: true))
             }
         }
-        self.rings = rings.filter { $0.count >= 3 }
+        self.rings = rings.filter { $0.coordinates.count >= 3 }
     }
 }
 
@@ -234,22 +246,25 @@ enum ScratchPosterRenderer {
         return (scratched, covered)
     }
 
+    /// Outer rings are wound one way and holes the other, so the path fills correctly with
+    /// the non-zero rule even where neighbouring outlines overlap.
     private static func path(for shapes: [PosterShape], in map: CGRect) -> CGPath {
         let path = CGMutablePath()
         for shape in shapes {
             for ring in shape.rings {
-                let longitudes = ScratchPosterProjection.unwrappedLongitudes(ring.map(\.longitude))
+                let longitudes = ScratchPosterProjection.unwrappedLongitudes(ring.coordinates.map(\.longitude))
                 guard let minLon = longitudes.min(), let maxLon = longitudes.max() else { continue }
                 var offsets: [Double] = [0]
                 if maxLon > 180 { offsets.append(-360) }
                 if minLon < -180 { offsets.append(360) }
                 for offset in offsets {
-                    for (index, coordinate) in ring.enumerated() {
-                        let point = ScratchPosterProjection.point(
-                            latitude: coordinate.latitude, longitude: longitudes[index] + offset, in: map
+                    var points = ring.coordinates.indices.map { index in
+                        ScratchPosterProjection.point(
+                            latitude: ring.coordinates[index].latitude, longitude: longitudes[index] + offset, in: map
                         )
-                        if index == 0 { path.move(to: point) } else { path.addLine(to: point) }
                     }
+                    if (signedArea(points) < 0) != ring.isHole { points.reverse() }
+                    path.addLines(between: points)
                     path.closeSubpath()
                 }
             }
@@ -257,11 +272,21 @@ enum ScratchPosterRenderer {
         return path
     }
 
+    private static func signedArea(_ points: [CGPoint]) -> CGFloat {
+        guard var previous = points.last else { return 0 }
+        var area: CGFloat = 0
+        for point in points {
+            area += previous.x * point.y - point.x * previous.y
+            previous = point
+        }
+        return area / 2
+    }
+
     private static func fill(_ path: CGPath, color: UIColor, in context: CGContext) {
         guard !path.isEmpty else { return }
         context.addPath(path)
         context.setFillColor(color.cgColor)
-        context.fillPath(using: .evenOdd)
+        context.fillPath(using: .winding)
     }
 
     private static func stroke(_ path: CGPath, color: UIColor, width: CGFloat, in context: CGContext) {
@@ -303,7 +328,7 @@ enum ScratchPosterRenderer {
         guard !path.isEmpty else { return }
         context.saveGState()
         context.addPath(path)
-        context.clip(using: .evenOdd)
+        context.clip(using: .winding)
         context.setAlpha(alpha)
 
         let colors = [foil.shadow, foil.highlight, foil.base, foil.highlight, foil.base, foil.shadow]
