@@ -284,8 +284,9 @@ struct TimelinePlaybackView: View {
     }
 }
 
-/// Representative points for timeline stops: the middle of each region's largest landmass, so a
-/// country's overseas islands do not drag its point out to sea.
+/// Representative points for timeline stops: a point inside each region's largest landmass, so a
+/// country's overseas islands do not drag its point out to sea. Subdivisions without a bundled
+/// boundary file (e.g. German states) use the subdivision points in `world_states.json`.
 enum RegionCenters {
     static func centers(for stops: [TimelineStop]) -> [String: GeoPoint] {
         var countries: [String: GeoPoint] = [:]
@@ -294,11 +295,15 @@ enum RegionCenters {
             if let point = center(of: boundary.polygons) { countries[code] = point }
         }
         var subdivisions: [String: GeoPoint] = [:]
+        let listed = worldStatePoints()
         for country in Set(stops.filter { !$0.isCountry }.map(\.countryCode)) {
             for boundary in GeoJSONParser.parseStates(forCountry: country) {
                 if let point = center(of: boundary.polygons) {
                     subdivisions["\(country)-\(SubdivisionCode.short(boundary.id))"] = point
                 }
+            }
+            for state in GeographicData.states(for: country) where subdivisions["\(country)-\(state.id)"] == nil {
+                subdivisions["\(country)-\(state.id)"] = listed[country]?[normalized(state.name)]
             }
         }
         var result: [String: GeoPoint] = [:]
@@ -313,9 +318,41 @@ enum RegionCenters {
     static func center(of polygons: [MKPolygon]) -> GeoPoint? {
         func area(_ polygon: MKPolygon) -> Double { polygon.boundingMapRect.width * polygon.boundingMapRect.height }
         guard let largest = polygons.max(by: { area($0) < area($1) }) else { return nil }
-        let rect = largest.boundingMapRect
-        let coordinate = MKMapPoint(x: rect.midX, y: rect.midY).coordinate
-        return GeoPoint(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        let ring = UnsafeBufferPointer(start: largest.points(), count: largest.pointCount).map {
+            GeoPoint(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude)
+        }
+        return GeoPoint.interiorPoint(of: ring)
+    }
+
+    private struct ListedState: Decodable {
+        let name: String
+        let lat: String
+        let lng: String
+    }
+
+    /// Country code -> normalized subdivision name -> point.
+    private static func worldStatePoints() -> [String: [String: GeoPoint]] {
+        guard let url = Bundle.main.url(forResource: "world_states", withExtension: "json", subdirectory: "GeoData")
+                ?? Bundle.main.url(forResource: "world_states", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let decoded = try? JSONDecoder().decode([String: [ListedState]].self, from: data)
+        else { return [:] }
+        return decoded.mapValues { states in
+            var points: [String: GeoPoint] = [:]
+            for state in states {
+                if let lat = Double(state.lat), let lng = Double(state.lng) {
+                    points[normalized(state.name)] = GeoPoint(latitude: lat, longitude: lng)
+                }
+            }
+            return points
+        }
+    }
+
+    private static func normalized(_ name: String) -> String {
+        name.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: nil)
+            .replacingOccurrences(of: " state", with: "")
+            .replacingOccurrences(of: " province", with: "")
+            .trimmingCharacters(in: .whitespaces)
     }
 }
 

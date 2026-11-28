@@ -110,6 +110,39 @@ final class TimelinePlaybackTests: XCTestCase {
         XCTAssertEqual(start.interpolated(to: GeoPoint(latitude: 40.7, longitude: -74), fraction: 0), start)
     }
 
+    func testInteriorPointWhenTheBoxMiddleIsOutside() {
+        // A "C": the bounding-box middle (5, 5) is in the gap.
+        let ring = [(0, 0), (0, 10), (10, 10), (10, 8), (2, 8), (2, 2), (10, 2), (10, 0)]
+            .map { GeoPoint(latitude: Double($0.0), longitude: Double($0.1)) }
+        guard let point = GeoPoint.interiorPoint(of: ring) else { return XCTFail("no interior point") }
+        XCTAssertTrue(GeoPoint.contains(point, in: ring))
+    }
+
+    func testRegionCentersFallInsideTheirCountry() {
+        let codes = ["NO", "VN", "HR", "FR", "US", "CL", "IT"]
+        let centers = RegionCenters.centers(for: codes.enumerated().map { stop($1, day: $0) })
+        GeoLocationMatcher.shared.loadBoundariesIfNeeded()
+        for code in codes {
+            let point = centers["country:\(code)"]
+            XCTAssertNotNil(point, code)
+            guard let point else { continue }
+            let match = GeoLocationMatcher.shared.matchCoordinate(
+                CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude))
+            XCTAssertEqual(match?.countryCode, code, code)
+        }
+    }
+
+    func testSubdivisionsWithoutBoundaryFilesGetTheirOwnPoints() {
+        let stops = [stop("DE", day: 0), stop("BE", day: 1, type: .germanState, country: "DE"),
+                     stop("BY", day: 2, type: .germanState, country: "DE")]
+        let centers = RegionCenters.centers(for: stops)
+        let germany = centers["country:DE"], berlin = centers["german_state:BE"], bavaria = centers["german_state:BY"]
+        XCTAssertNotNil(berlin)
+        XCTAssertNotNil(bavaria)
+        XCTAssertNotEqual(berlin, bavaria)
+        XCTAssertNotEqual(berlin, germany)
+    }
+
     // MARK: - Stops
 
     func testStopsAreVisitedPlacesInDateOrder() {

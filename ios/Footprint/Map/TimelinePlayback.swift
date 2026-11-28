@@ -59,6 +59,43 @@ struct GeoPoint: Equatable, Hashable, Sendable {
     var latitude: Double
     var longitude: Double
 
+    /// A point inside the ring: the bounding-box middle when that is inside, otherwise the middle of
+    /// the widest stretch of the ring along the box's middle latitude (for Norway, Vietnam, Croatia...).
+    static func interiorPoint(of ring: [GeoPoint]) -> GeoPoint? {
+        guard let first = ring.first else { return nil }
+        var minLat = first.latitude, maxLat = first.latitude, minLon = first.longitude, maxLon = first.longitude
+        for p in ring {
+            minLat = min(minLat, p.latitude); maxLat = max(maxLat, p.latitude)
+            minLon = min(minLon, p.longitude); maxLon = max(maxLon, p.longitude)
+        }
+        let middle = GeoPoint(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2)
+        if contains(middle, in: ring) { return middle }
+        let crossings = edges(of: ring).compactMap { a, b -> Double? in
+            guard (a.latitude > middle.latitude) != (b.latitude > middle.latitude) else { return nil }
+            return a.longitude + (middle.latitude - a.latitude) / (b.latitude - a.latitude) * (b.longitude - a.longitude)
+        }.sorted()
+        var best: (west: Double, east: Double)?
+        for i in stride(from: 0, to: crossings.count - 1, by: 2) where crossings[i + 1] - crossings[i] > (best.map { $0.east - $0.west } ?? 0) {
+            best = (crossings[i], crossings[i + 1])
+        }
+        guard let best else { return middle }
+        return GeoPoint(latitude: middle.latitude, longitude: (best.west + best.east) / 2)
+    }
+
+    static func contains(_ point: GeoPoint, in ring: [GeoPoint]) -> Bool {
+        var inside = false
+        for (a, b) in edges(of: ring) where (a.latitude > point.latitude) != (b.latitude > point.latitude) {
+            let longitude = a.longitude + (point.latitude - a.latitude) / (b.latitude - a.latitude) * (b.longitude - a.longitude)
+            if point.longitude < longitude { inside.toggle() }
+        }
+        return inside
+    }
+
+    private static func edges(of ring: [GeoPoint]) -> [(GeoPoint, GeoPoint)] {
+        guard ring.count > 1 else { return [] }
+        return ring.indices.map { (ring[$0], ring[($0 + 1) % ring.count]) }
+    }
+
     /// Point `fraction` of the way along the great circle to `other`, so legs bend like flight paths
     /// and cross the antimeridian the short way.
     func interpolated(to other: GeoPoint, fraction: Double) -> GeoPoint {
