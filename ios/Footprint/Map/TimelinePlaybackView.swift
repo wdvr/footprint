@@ -1,20 +1,8 @@
 import MapKit
 import SwiftUI
 
-/// A single event in the travel timeline
-struct TimelineEvent: Identifiable {
-    let id = UUID()
-    let date: Date
-    let regionType: String
-    let regionCode: String
-    let regionName: String
-    let flagEmoji: String
-
-    var isState: Bool {
-        regionType != VisitedPlace.RegionType.country.rawValue
-    }
-
-    /// Map from region type to parent country code
+extension PlaybackEvent {
+    /// Parent country of each subdivision region type, for flags.
     static let regionTypeToCountry: [String: String] = [
         VisitedPlace.RegionType.usState.rawValue: "US",
         VisitedPlace.RegionType.canadianProvince.rawValue: "CA",
@@ -35,428 +23,329 @@ struct TimelineEvent: Identifiable {
         VisitedPlace.RegionType.norwegianCounty.rawValue: "NO",
     ]
 
-    /// The country code for flag emoji purposes (parent country for states)
-    var countryCodeForFlag: String {
-        if regionType == VisitedPlace.RegionType.country.rawValue {
-            return regionCode
+    /// Visited places as playback events. Region types this view doesn't know (e.g. optional
+    /// layers added later) are skipped, so new layers never leak into the movie.
+    static func events(from places: [VisitedPlace]) -> [PlaybackEvent] {
+        places.compactMap { place in
+            guard !place.isDeleted, place.isVisited,
+                VisitedPlace.RegionType(rawValue: place.regionType) != nil
+            else { return nil }
+            let isCountry = place.regionType == VisitedPlace.RegionType.country.rawValue
+            return PlaybackEvent(
+                date: place.visitedDate ?? place.markedAt,
+                regionType: place.regionType,
+                regionCode: place.regionCode,
+                regionName: place.regionName,
+                countryCode: isCountry ? place.regionCode : (regionTypeToCountry[place.regionType] ?? place.regionCode),
+                isCountry: isCountry
+            )
         }
-        return Self.regionTypeToCountry[regionType] ?? regionCode
+    }
+
+    var flagEmoji: String {
+        var scalars = String.UnicodeScalarView()
+        scalars.append(contentsOf: countryCode.uppercased().unicodeScalars.compactMap { UnicodeScalar(127397 + $0.value) })
+        return String(scalars)
     }
 }
 
-/// Animated map playback showing countries/states filling in chronologically
+/// Full-screen movie of the user's travel history: places fill in on the map as they were visited.
 struct TimelinePlaybackView: View {
     let visitedPlaces: [VisitedPlace]
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    @State private var timeline: TimelinePlaybackTimeline?
+    @State private var progress: Double = 0
     @State private var isPlaying = false
-    @State private var playbackSpeed: Double = 1.0
-    @State private var sliderValue: Double = 0.0
-    @State private var timelineEvents: [TimelineEvent] = []
-    @State private var currentEventIndex: Int = -1
-    @State private var latestEventText: String = ""
-    @State private var latestEventFlag: String = ""
-    @State private var showLatestEvent = false
-    @State private var selectedCountry: String? = nil
-    @State private var centerOnUserLocation = false
-    @State private var timer: Timer?
+    @State private var speed: PlaybackSpeed = .normal
+    @State private var isScrubbing = false
+    @State private var resumeAfterScrub = false
 
-    /// The total playback duration at 1x speed in seconds
-    private let baseDuration: Double = 18.0
-    /// Timer tick interval
-    private let tickInterval: Double = 0.05
+    /// How long (playback seconds at 1×) a newly visited place stays in the arrivals ticker.
+    private let arrivalWindow: TimeInterval = 2.5
 
-    private var dateFormatter: DateFormatter {
-        let f = DateFormatter()
-        f.dateFormat = "MMMM yyyy"
-        return f
-    }
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
 
-    /// Visible country codes based on current playback position
-    private var visibleCountryCodes: Set<String> {
-        guard !timelineEvents.isEmpty, currentEventIndex >= 0 else { return [] }
-        let endIndex = min(currentEventIndex, timelineEvents.count - 1)
-        var codes = Set<String>()
-        for i in 0...endIndex {
-            let event = timelineEvents[i]
-            if event.regionType == VisitedPlace.RegionType.country.rawValue {
-                codes.insert(event.regionCode)
+            if let timeline {
+                PlaybackMapLayer(timeline: timeline, revealedCount: timeline.revealedCount(at: progress))
+                    .equatable()
+                    .ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    header(timeline)
+                    Spacer()
+                    arrivals(timeline)
+                    controls(timeline)
+                }
+            } else {
+                emptyState
             }
         }
-        return codes
+        .statusBarHidden()
+        .persistentSystemOverlays(.hidden)
+        .onAppear {
+            guard timeline == nil else { return }
+            timeline = TimelinePlaybackTimeline(events: PlaybackEvent.events(from: visitedPlaces))
+            if reduceMotion {
+                progress = 1
+            } else if timeline != nil {
+                isPlaying = true
+            }
+        }
+        .onDisappear { isPlaying = false }
+        .task(id: isPlaying) {
+            guard isPlaying else { return }
+            let clock = ContinuousClock()
+            var last = clock.now
+            while !Task.isCancelled, isPlaying, let timeline {
+                try? await Task.sleep(for: .milliseconds(16))
+                let now = clock.now
+                let seconds = (now - last) / .seconds(1)
+                last = now
+                guard !isScrubbing else { continue }
+                progress = timeline.advanced(from: progress, elapsed: seconds, speed: speed)
+                if progress >= 1 { isPlaying = false }
+            }
+        }
     }
 
-    /// Visible state codes based on current playback position
-    private var visibleStateCodes: Set<String> {
-        guard !timelineEvents.isEmpty, currentEventIndex >= 0 else { return [] }
-        let endIndex = min(currentEventIndex, timelineEvents.count - 1)
+    // MARK: - Header
+
+    private func header(_ timeline: TimelinePlaybackTimeline) -> some View {
+        let date = timeline.date(at: progress)
+        let countries = timeline.countryCount(at: progress)
+        let places = timeline.revealedCount(at: progress)
+        return VStack(spacing: 6) {
+            HStack {
+                Button {
+                    isPlaying = false
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(width: 36, height: 36)
+                        .background(.ultraThinMaterial, in: Circle())
+                }
+                .accessibilityLabel("Close playback")
+                Spacer()
+            }
+
+            Text(date, format: .dateTime.month(.wide).year())
+                .font(.system(size: 40, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.white)
+                .contentTransition(.numericText())
+                .shadow(color: .black.opacity(0.6), radius: 6)
+                .accessibilityLabel(Text(date, format: .dateTime.month(.wide).year()))
+
+            HStack(spacing: 16) {
+                counter(value: countries, label: countries == 1 ? "country" : "countries")
+                counter(value: places, label: places == 1 ? "place" : "places")
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 24)
+        .background(
+            LinearGradient(colors: [.black.opacity(0.65), .clear], startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+        )
+    }
+
+    private func counter(value: Int, label: LocalizedStringKey) -> some View {
+        HStack(spacing: 4) {
+            Text("\(value)")
+                .font(.headline.weight(.bold))
+                .monospacedDigit()
+                .contentTransition(.numericText())
+            Text(label)
+                .font(.subheadline)
+        }
+        .foregroundStyle(.white.opacity(0.9))
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: - Arrivals
+
+    private func arrivals(_ timeline: TimelinePlaybackTimeline) -> some View {
+        let recent = timeline.recentEvents(at: progress, window: arrivalWindow)
+        return VStack(spacing: 8) {
+            ForEach(recent.reversed(), id: \.event.id) { item in
+                HStack(spacing: 8) {
+                    Text(item.event.flagEmoji).font(.title2)
+                    Text(item.event.regionName)
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(.ultraThinMaterial, in: Capsule())
+                .opacity(1 - item.age * item.age)
+                .scaleEffect(CGFloat(item.age < 0.08 && !reduceMotion ? 0.92 + item.age : 1))
+                .transition(.opacity)
+            }
+        }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: recent.map(\.event.id))
+        .padding(.bottom, 12)
+        .accessibilityHidden(true)
+    }
+
+    // MARK: - Controls
+
+    private func controls(_ timeline: TimelinePlaybackTimeline) -> some View {
+        VStack(spacing: 10) {
+            scrubber(timeline)
+
+            HStack {
+                Text(timeline.startDate, format: .dateTime.year())
+                Spacer()
+                Text(timeline.endDate, format: .dateTime.year())
+            }
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(.white.opacity(0.7))
+
+            HStack(spacing: 36) {
+                Button {
+                    progress = 0
+                } label: {
+                    Image(systemName: "backward.end.fill").font(.title2)
+                }
+                .accessibilityLabel("Restart")
+
+                Button {
+                    togglePlayback()
+                } label: {
+                    Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.system(size: 56))
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .accessibilityLabel(isPlaying ? "Pause" : "Play")
+
+                Button {
+                    speed = speed.next
+                } label: {
+                    Text(speed.label)
+                        .font(.headline.monospacedDigit())
+                        .frame(minWidth: 48)
+                        .padding(.vertical, 6)
+                        .background(.white.opacity(0.2), in: Capsule())
+                }
+                .accessibilityLabel("Playback speed")
+                .accessibilityValue(speed.label)
+            }
+            .foregroundStyle(.white)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 28)
+        .padding(.bottom, 12)
+        .background(
+            LinearGradient(colors: [.clear, .black.opacity(0.7)], startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+        )
+    }
+
+    private func scrubber(_ timeline: TimelinePlaybackTimeline) -> some View {
+        Slider(value: $progress, in: 0...1) { editing in
+            isScrubbing = editing
+            if editing {
+                resumeAfterScrub = isPlaying
+            } else if resumeAfterScrub, progress < 1 {
+                isPlaying = true
+            }
+        }
+        .tint(.white)
+        .background(alignment: .leading) {
+            GeometryReader { proxy in
+                ForEach(timeline.yearMarkers(), id: \.year) { marker in
+                    Capsule()
+                        .fill(.white.opacity(0.45))
+                        .frame(width: 2, height: 10)
+                        .position(x: proxy.size.width * marker.progress, y: proxy.size.height / 2)
+                }
+            }
+            .allowsHitTesting(false)
+        }
+        .accessibilityLabel("Timeline")
+        .accessibilityValue(Text(timeline.date(at: progress), format: .dateTime.month(.wide).year()))
+    }
+
+    private func togglePlayback() {
+        if isPlaying {
+            isPlaying = false
+        } else {
+            if progress >= 1 { progress = 0 }
+            isPlaying = true
+        }
+    }
+
+    // MARK: - Empty state
+
+    private var emptyState: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "film")
+                .font(.system(size: 48))
+            Text("No visits to play yet")
+                .font(.title3.weight(.semibold))
+            Text("Mark places you've visited and they'll appear here in the order you went.")
+                .font(.subheadline)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.white.opacity(0.7))
+            Button("Close") { dismiss() }
+                .buttonStyle(.borderedProminent)
+                .padding(.top, 8)
+        }
+        .foregroundStyle(.white)
+        .padding(32)
+    }
+}
+
+/// The map, re-rendered only when a place is revealed or hidden: `CountryMapView` rebuilds all
+/// overlays on every update, so it must not follow the per-frame playback clock.
+private struct PlaybackMapLayer: View, Equatable {
+    let timeline: TimelinePlaybackTimeline
+    let revealedCount: Int
+
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.revealedCount == rhs.revealedCount && lhs.timeline.events == rhs.timeline.events
+    }
+
+    var body: some View {
+        let revealed = timeline.events.prefix(revealedCount)
+        let countries = Set(revealed.filter(\.isCountry).map(\.regionCode))
+        CountryMapView(
+            visitedCountryCodes: countries,
+            bucketListCountryCodes: [],
+            visitedStateCodes: Self.stateCodes(revealed: revealed, countries: countries),
+            bucketListStateCodes: [],
+            selectedCountry: .constant(nil),
+            centerOnUserLocation: .constant(false)
+        )
+    }
+
+    /// Same fill rules as the main map: US/CA subdivisions individually, and every subdivision
+    /// of a country tracked at country level.
+    private static func stateCodes(revealed: ArraySlice<PlaybackEvent>, countries: Set<String>) -> Set<String> {
         var codes = Set<String>()
-        let settings = AppSettings.shared
-        for i in 0...endIndex {
-            let event = timelineEvents[i]
+        for event in revealed {
             if event.regionType == VisitedPlace.RegionType.usState.rawValue {
                 codes.insert("US-\(event.regionCode)")
             } else if event.regionType == VisitedPlace.RegionType.canadianProvince.rawValue {
                 codes.insert("CA-\(event.regionCode)")
-            } else if event.regionType == VisitedPlace.RegionType.country.rawValue {
-                // For countries tracked at country level, fill all states
-                if !settings.shouldTrackStates(for: event.regionCode) {
-                    for state in GeographicData.states(for: event.regionCode) {
-                        codes.insert("\(event.regionCode)-\(state.id)")
-                    }
-                }
+            }
+        }
+        let settings = AppSettings.shared
+        for country in countries where !settings.shouldTrackStates(for: country) {
+            for state in GeographicData.states(for: country) {
+                codes.insert("\(country)-\(state.id)")
             }
         }
         return codes
-    }
-
-    /// Current date label for display
-    private var currentDateLabel: String {
-        guard !timelineEvents.isEmpty, currentEventIndex >= 0 else { return "" }
-        let idx = min(currentEventIndex, timelineEvents.count - 1)
-        return dateFormatter.string(from: timelineEvents[idx].date)
-    }
-
-    /// Year labels for the slider
-    private var yearRange: (Int, Int) {
-        guard let first = timelineEvents.first, let last = timelineEvents.last else {
-            return (2024, 2024)
-        }
-        let cal = Calendar.current
-        return (cal.component(.year, from: first.date), cal.component(.year, from: last.date))
-    }
-
-    var body: some View {
-        ZStack {
-            // Full-screen map
-            CountryMapView(
-                visitedCountryCodes: visibleCountryCodes,
-                bucketListCountryCodes: [],
-                visitedStateCodes: visibleStateCodes,
-                bucketListStateCodes: [],
-                selectedCountry: $selectedCountry,
-                centerOnUserLocation: $centerOnUserLocation
-            )
-            .ignoresSafeArea()
-
-            // Overlay controls
-            VStack(spacing: 0) {
-                // Top bar with close button and date
-                HStack {
-                    Button {
-                        stopPlayback()
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(.white)
-                            .shadow(radius: 4)
-                    }
-                    .accessibilityLabel("Close playback")
-
-                    Spacer()
-
-                    // Date label
-                    if !currentDateLabel.isEmpty {
-                        Text(currentDateLabel)
-                            .font(.title2.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .shadow(color: .black.opacity(0.5), radius: 4)
-                            .animation(.easeInOut(duration: 0.3), value: currentDateLabel)
-                    }
-
-                    Spacer()
-
-                    // Counter
-                    let count = visibleCountryCodes.count
-                    if count > 0 {
-                        Text("\(count)")
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Capsule())
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.top, 8)
-
-                Spacer()
-
-                // Latest place appearing
-                if showLatestEvent && !latestEventText.isEmpty {
-                    HStack(spacing: 8) {
-                        if !latestEventFlag.isEmpty {
-                            Text(latestEventFlag)
-                                .font(.title)
-                        }
-                        Text(latestEventText)
-                            .font(.title3.weight(.medium))
-                            .foregroundStyle(.white)
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Capsule())
-                    .shadow(radius: 6)
-                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
-                    .padding(.bottom, 16)
-                }
-
-                // Playback controls bar
-                VStack(spacing: 12) {
-                    // Slider with year labels
-                    VStack(spacing: 4) {
-                        Slider(value: $sliderValue, in: 0...1) { editing in
-                            if editing {
-                                pausePlayback()
-                            }
-                        }
-                        .onChange(of: sliderValue) { _, newValue in
-                            updateFromSlider(newValue)
-                        }
-                        .tint(.white)
-
-                        // Year labels
-                        let (startYear, endYear) = yearRange
-                        if startYear != endYear {
-                            HStack {
-                                Text(String(startYear))
-                                    .font(.caption)
-                                    .foregroundStyle(.white.opacity(0.7))
-                                Spacer()
-                                Text(String(endYear))
-                                    .font(.caption)
-                                    .foregroundStyle(.white.opacity(0.7))
-                            }
-                        }
-                    }
-
-                    // Control buttons
-                    HStack(spacing: 24) {
-                        // Rewind to start
-                        Button {
-                            rewindToStart()
-                        } label: {
-                            Image(systemName: "backward.end.fill")
-                                .font(.title3)
-                                .foregroundStyle(.white)
-                        }
-                        .accessibilityLabel("Rewind to start")
-
-                        // Play/Pause
-                        Button {
-                            togglePlayback()
-                        } label: {
-                            Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                                .font(.largeTitle)
-                                .foregroundStyle(.white)
-                        }
-                        .accessibilityLabel(isPlaying ? "Pause" : "Play")
-
-                        // Speed selector
-                        Menu {
-                            ForEach([1.0, 2.0, 4.0], id: \.self) { speed in
-                                Button {
-                                    playbackSpeed = speed
-                                } label: {
-                                    HStack {
-                                        Text("\(Int(speed))x")
-                                        if playbackSpeed == speed {
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
-                                }
-                            }
-                        } label: {
-                            Text("\(Int(playbackSpeed))x")
-                                .font(.headline)
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .background(.white.opacity(0.2))
-                                .clipShape(Capsule())
-                        }
-                        .accessibilityLabel("Playback speed: \(Int(playbackSpeed))x")
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(
-                    LinearGradient(
-                        colors: [.clear, .black.opacity(0.6)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-            }
-        }
-        .statusBarHidden()
-        .onAppear {
-            buildTimeline()
-            if reduceMotion {
-                // Skip to final state
-                skipToEnd()
-            }
-        }
-        .onDisappear {
-            stopPlayback()
-        }
-    }
-
-    // MARK: - Timeline Building
-
-    private func buildTimeline() {
-        let activePlaces = visitedPlaces.filter { !$0.isDeleted && $0.isVisited }
-
-        // Sentinel date for places with no date (far future so they sort last)
-        let distantFuture = Date.distantFuture
-
-        timelineEvents = activePlaces.map { place in
-            let effectiveDate = place.visitedDate ?? place.markedAt
-            let countryCode: String
-            if place.regionType == VisitedPlace.RegionType.country.rawValue {
-                countryCode = place.regionCode
-            } else {
-                countryCode = TimelineEvent.regionTypeToCountry[place.regionType] ?? place.regionCode
-            }
-            let flag = flagEmoji(for: countryCode)
-            return TimelineEvent(
-                date: effectiveDate,
-                regionType: place.regionType,
-                regionCode: place.regionCode,
-                regionName: place.regionName,
-                flagEmoji: flag
-            )
-        }
-        .sorted { a, b in
-            if a.date == Date.distantFuture && b.date != Date.distantFuture { return false }
-            if b.date == Date.distantFuture && a.date != Date.distantFuture { return true }
-            return a.date < b.date
-        }
-
-        if timelineEvents.isEmpty { return }
-
-        // Start with nothing visible
-        currentEventIndex = -1
-        sliderValue = 0
-    }
-
-    // MARK: - Playback Control
-
-    private func togglePlayback() {
-        if isPlaying {
-            pausePlayback()
-        } else {
-            startPlayback()
-        }
-    }
-
-    private func startPlayback() {
-        guard !timelineEvents.isEmpty else { return }
-
-        // If at end, restart
-        if currentEventIndex >= timelineEvents.count - 1 {
-            currentEventIndex = -1
-            sliderValue = 0
-        }
-
-        isPlaying = true
-
-        let totalEvents = Double(timelineEvents.count)
-        let ticksNeeded = baseDuration / tickInterval
-        let eventsPerTick = totalEvents / ticksNeeded
-
-        timer = Timer.scheduledTimer(withTimeInterval: tickInterval, repeats: true) { _ in
-            let advance = eventsPerTick * playbackSpeed
-            let newIndex = Double(currentEventIndex) + advance
-
-            if Int(newIndex) >= timelineEvents.count - 1 {
-                currentEventIndex = timelineEvents.count - 1
-                sliderValue = 1.0
-                showEventLabel(at: currentEventIndex)
-                pausePlayback()
-            } else {
-                let nextIndex = Int(newIndex)
-                if nextIndex != currentEventIndex && nextIndex >= 0 {
-                    currentEventIndex = nextIndex
-                    sliderValue = Double(nextIndex) / Double(timelineEvents.count - 1)
-                    showEventLabel(at: nextIndex)
-                }
-            }
-        }
-    }
-
-    private func pausePlayback() {
-        isPlaying = false
-        timer?.invalidate()
-        timer = nil
-    }
-
-    private func stopPlayback() {
-        pausePlayback()
-    }
-
-    private func rewindToStart() {
-        pausePlayback()
-        currentEventIndex = -1
-        sliderValue = 0
-        withAnimation(.easeOut(duration: 0.3)) {
-            showLatestEvent = false
-        }
-    }
-
-    private func skipToEnd() {
-        guard !timelineEvents.isEmpty else { return }
-        currentEventIndex = timelineEvents.count - 1
-        sliderValue = 1.0
-        showEventLabel(at: currentEventIndex)
-    }
-
-    private func updateFromSlider(_ value: Double) {
-        guard !timelineEvents.isEmpty else { return }
-        let index = Int(value * Double(timelineEvents.count - 1))
-        let clampedIndex = max(-1, min(index, timelineEvents.count - 1))
-        if clampedIndex != currentEventIndex {
-            currentEventIndex = clampedIndex
-            if clampedIndex >= 0 {
-                showEventLabel(at: clampedIndex)
-            }
-        }
-    }
-
-    private func showEventLabel(at index: Int) {
-        guard index >= 0, index < timelineEvents.count else { return }
-        let event = timelineEvents[index]
-        latestEventFlag = event.flagEmoji
-        latestEventText = event.regionName
-        withAnimation(.easeIn(duration: 0.2)) {
-            showLatestEvent = true
-        }
-        // Auto-hide after a delay (unless playing fast)
-        DispatchQueue.main.asyncAfter(deadline: .now() + (1.5 / playbackSpeed)) {
-            if currentEventIndex != index {
-                withAnimation(.easeOut(duration: 0.3)) {
-                    showLatestEvent = false
-                }
-            }
-        }
-    }
-
-    // MARK: - Helpers
-
-    private func flagEmoji(for countryCode: String) -> String {
-        let base: UInt32 = 127397
-        var flag = ""
-        for scalar in countryCode.uppercased().unicodeScalars {
-            if let unicode = UnicodeScalar(base + scalar.value) {
-                flag.append(String(unicode))
-            }
-        }
-        return flag
     }
 }
 
