@@ -20,12 +20,26 @@ struct City: Codable, Identifiable, Hashable, Sendable {
     let longitude: Double
     /// Match radius: f(population), clamped to 1.5–15 km at build time.
     let radiusMeters: Double
+    /// Extra match areas: parts of the city that are not gazetteer cities themselves (NYC's
+    /// boroughs, Greater London's towns), each with its own centroid and radius.
+    let parts: [MatchArea]
     let population: Int
     let isNationalCapital: Bool
     /// US state capital (incl. Washington for DC) at v1.
     let isSubdivisionCapital: Bool
     /// IANA time zone id.
     let timeZone: String
+
+    struct MatchArea: Hashable, Sendable {
+        let latitude: Double
+        let longitude: Double
+        let radiusMeters: Double
+    }
+
+    /// The centroid disc first, then the parts.
+    var matchAreas: [MatchArea] {
+        [MatchArea(latitude: latitude, longitude: longitude, radiusMeters: radiusMeters)] + parts
+    }
 
     var isCapital: Bool { isNationalCapital || isSubdivisionCapital }
     var isUSStateCapital: Bool { isSubdivisionCapital && countryCode == "US" }
@@ -42,6 +56,7 @@ struct City: Codable, Identifiable, Hashable, Sendable {
         case latitude = "lat"
         case longitude = "lon"
         case radiusMeters = "r"
+        case parts
         case population = "pop"
         case isNationalCapital = "nc"
         case isSubdivisionCapital = "sc"
@@ -59,6 +74,7 @@ struct City: Codable, Identifiable, Hashable, Sendable {
         latitude: Double,
         longitude: Double,
         radiusMeters: Double,
+        parts: [MatchArea] = [],
         population: Int = 0,
         isNationalCapital: Bool = false,
         isSubdivisionCapital: Bool = false,
@@ -74,6 +90,7 @@ struct City: Codable, Identifiable, Hashable, Sendable {
         self.latitude = latitude
         self.longitude = longitude
         self.radiusMeters = radiusMeters
+        self.parts = parts
         self.population = population
         self.isNationalCapital = isNationalCapital
         self.isSubdivisionCapital = isSubdivisionCapital
@@ -92,10 +109,41 @@ struct City: Codable, Identifiable, Hashable, Sendable {
         latitude = try c.decode(Double.self, forKey: .latitude)
         longitude = try c.decode(Double.self, forKey: .longitude)
         radiusMeters = try c.decode(Double.self, forKey: .radiusMeters)
+        parts = try (c.decodeIfPresent([[Double]].self, forKey: .parts) ?? []).map { area in
+            guard area.count == 3 else {
+                throw DecodingError.dataCorruptedError(forKey: .parts, in: c, debugDescription: "expected [lat, lon, r]")
+            }
+            return MatchArea(latitude: area[0], longitude: area[1], radiusMeters: area[2])
+        }
         population = try c.decode(Int.self, forKey: .population)
         isNationalCapital = try c.decodeIfPresent(Bool.self, forKey: .isNationalCapital) ?? false
         isSubdivisionCapital = try c.decodeIfPresent(Bool.self, forKey: .isSubdivisionCapital) ?? false
         timeZone = try c.decodeIfPresent(String.self, forKey: .timeZone) ?? "UTC"
+    }
+}
+
+extension City {
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(countryCode, forKey: .countryCode)
+        try c.encodeIfPresent(boundaryCountryCode, forKey: .boundaryCountryCode)
+        try c.encodeIfPresent(subdivisionCode, forKey: .subdivisionCode)
+        if !additionalSubdivisionCodes.isEmpty {
+            try c.encode(additionalSubdivisionCodes, forKey: .additionalSubdivisionCodes)
+        }
+        try c.encodeIfPresent(countyFips, forKey: .countyFips)
+        try c.encode(latitude, forKey: .latitude)
+        try c.encode(longitude, forKey: .longitude)
+        try c.encode(radiusMeters, forKey: .radiusMeters)
+        if !parts.isEmpty {
+            try c.encode(parts.map { [$0.latitude, $0.longitude, $0.radiusMeters] }, forKey: .parts)
+        }
+        try c.encode(population, forKey: .population)
+        if isNationalCapital { try c.encode(true, forKey: .isNationalCapital) }
+        if isSubdivisionCapital { try c.encode(true, forKey: .isSubdivisionCapital) }
+        try c.encode(timeZone, forKey: .timeZone)
     }
 }
 
@@ -127,11 +175,13 @@ final class CityGazetteer: Sendable {
         var grid: [GridCell: [Int]] = [:]
         for (i, city) in cities.enumerated() {
             indexById[city.id] = i
-            grid[Self.cell(city.latitude, city.longitude), default: []].append(i)
+            for area in city.matchAreas {
+                grid[Self.cell(area.latitude, area.longitude), default: []].append(i)
+            }
         }
         self.indexById = indexById
         self.grid = grid
-        self.maxRadiusMeters = cities.map(\.radiusMeters).max() ?? 0
+        self.maxRadiusMeters = cities.flatMap(\.matchAreas).map(\.radiusMeters).max() ?? 0
     }
 
     convenience init(data: Data) throws {
@@ -159,26 +209,30 @@ final class CityGazetteer: Sendable {
         cities.filter { $0.countryCode == countryCode }
     }
 
-    /// Cities whose radius contains the coordinate, nearest centroid first.
+    /// Cities with a match area containing the coordinate, nearest centroid first (a city's
+    /// distance is to the nearest of its own centroid and its parts' that contain the point).
     func cities(containing latitude: Double, _ longitude: Double) -> [(city: City, distanceMeters: Double)] {
         guard maxRadiusMeters > 0 else { return [] }
         let center = Self.cell(latitude, longitude)
         let latSpan = Int((maxRadiusMeters / 111_320).rounded(.up))
         let metersPerLonDegree = 111_320 * max(0.01, cos(min(abs(latitude) + Double(latSpan), 90) * .pi / 180))
         let lonSpan = min(180, Int((maxRadiusMeters / metersPerLonDegree).rounded(.up)))
-        var hits: [(city: City, distanceMeters: Double)] = []
+        var nearest: [Int: Double] = [:]
         for dLat in -latSpan...latSpan {
             for dLon in -lonSpan...lonSpan {
                 let lon = ((center.lon + dLon + 180) % 360 + 360) % 360 - 180
-                for i in grid[GridCell(lat: center.lat + dLat, lon: lon)] ?? [] {
-                    let city = cities[i]
-                    let d = GeoMath.distanceMeters(lat1: latitude, lon1: longitude, lat2: city.latitude, lon2: city.longitude)
-                    if d <= city.radiusMeters {
-                        hits.append((city, d))
+                for i in grid[GridCell(lat: center.lat + dLat, lon: lon)] ?? [] where nearest[i] == nil {
+                    let distances = cities[i].matchAreas.compactMap { area -> Double? in
+                        let d = GeoMath.distanceMeters(lat1: latitude, lon1: longitude, lat2: area.latitude, lon2: area.longitude)
+                        return d <= area.radiusMeters ? d : nil
+                    }
+                    if let d = distances.min() {
+                        nearest[i] = d
                     }
                 }
             }
         }
+        let hits = nearest.map { (city: cities[$0.key], distanceMeters: $0.value) }
         return hits.sorted { ($0.distanceMeters, $0.city.id) < ($1.distanceMeters, $1.city.id) }
     }
 

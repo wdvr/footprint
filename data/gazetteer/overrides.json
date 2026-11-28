@@ -9,13 +9,15 @@
     "_doc": "Cities whose centroid the boundary file puts in another country than the one the city belongs to.",
     "7303419": "PS"
   },
-  "excludedIds": {
-    "_doc": "Places that are parts of another gazetteer city; keeping them would steal stays from it under nearest-centroid matching.",
-    "5110302": "Brooklyn (New York City borough)",
-    "5125771": "Manhattan (New York City borough)",
-    "5133273": "Queens (New York City borough)",
-    "5110266": "The Bronx (New York City borough)",
-    "5139568": "Staten Island (New York City borough)"
+  "partsOf": {
+    "_doc": "Places that are parts of another gazetteer city: not cities of their own (they would steal stays from it under nearest-centroid matching) but extra match areas of the parent. Key: parent GeoNames id.",
+    "5128581": {
+      "5110302": "Brooklyn",
+      "5125771": "Manhattan",
+      "5133273": "Queens",
+      "5110266": "The Bronx",
+      "5139568": "Staten Island"
+    }
   },
   "additionalSubdivisions": {
     "_doc": "Cities spanning several of the app's subdivisions. Value: the extra subdivision keys (CC-CODE) a stay may resolve to.",

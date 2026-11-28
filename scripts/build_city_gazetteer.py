@@ -287,12 +287,17 @@ def build():
     strip = lambda d: {k: v for k, v in d.items() if not k.startswith("_")}  # noqa: E731
     capital_overrides = strip(overrides["nationalCapitalIds"])
     country_overrides = strip(overrides["countryCodes"])
-    excluded = strip(overrides["excludedIds"])
+    parts_of = {
+        pid: parent
+        for parent, parts in strip(overrides["partsOf"]).items()
+        for pid in parts
+    }
     extra_subdivisions = strip(overrides["additionalSubdivisions"])
     state_capitals = dict(read_tsv(STATE_CAPITALS))
 
     rows = [dict(zip(EXTRACT_COLUMNS, r)) for r in read_tsv(EXTRACT)]
-    rows = [r for r in rows if r["geonameid"] not in excluded]
+    part_rows = [r for r in rows if r["geonameid"] in parts_of]
+    rows = [r for r in rows if r["geonameid"] not in parts_of]
 
     countries = Boundaries(GEO_DIR / "countries.geojson", "iso_code")
     states = {}
@@ -396,11 +401,24 @@ def build():
         if c.get("sub") in spanned and spanned[c["sub"]] != c["id"] and not c.get("nc")
     ]
     cities = [c for c in cities if c not in parts]
-    if parts:
-        print(
-            f"dropped {len(parts)} places that are parts of a multi-subdivision city: "
-            + ", ".join(c["name"] for c in parts)
+    by_id = {c["id"]: c for c in cities}
+    for part in parts:
+        by_id[spanned[part["sub"]]].setdefault("parts", []).append(
+            [part["lat"], part["lon"], part["r"]]
         )
+    for r in part_rows:
+        area = [
+            round(float(r["latitude"]), 5),
+            round(float(r["longitude"]), 5),
+            radius_meters(int(r["population"])),
+        ]
+        by_id[f"gn:{parts_of[r['geonameid']]}"].setdefault("parts", []).append(area)
+    for c in cities:
+        c.get("parts", []).sort()
+    print(
+        f"merged {len(parts) + len(part_rows)} parts into their city: "
+        + ", ".join(sorted([c["name"] for c in parts] + [r["name"] for r in part_rows]))
+    )
 
     cities.sort(key=lambda c: (-c["pop"], int(c["id"][3:])))
     ids = [c["id"] for c in cities]

@@ -199,8 +199,9 @@ def audit_gazetteer(path, states, countries, boundary_countries, errors):
             cc, _, code = sub.partition("-")
             if code not in states.get(cc, []):
                 errors.append(f"{where}: unknown subdivision {sub}")
-        if not 1_500 <= c["r"] <= 15_000:
-            errors.append(f"{where}: radius {c['r']} m outside 1500–15000")
+        for r in [c["r"]] + [area[2] for area in c.get("parts", [])]:
+            if not 1_500 <= r <= 15_000:
+                errors.append(f"{where}: radius {r} m outside 1500–15000")
     capitals = sorted(c["cc"] for c in cities if c.get("nc"))
     expected = sorted(set(countries) - COUNTRIES_WITHOUT_NATIONAL_CAPITAL)
     if capitals != expected:

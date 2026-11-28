@@ -80,6 +80,14 @@ final class CityGazetteerTests: XCTestCase {
         }
     }
 
+    func testStaysInOuterBoroughsMatchTheirCityThroughItsParts() {
+        // Beyond the 15 km centroid radius: Staten Island Mall, Enfield Town.
+        XCTAssertEqual(city(40.5822, -74.1665, "US", "NY")?.name, "New York City")
+        XCTAssertEqual(city(51.6523, -0.0807, "GB", "ENF")?.name, "London")
+        XCTAssertEqual(gazetteer.city(id: "gn:5128581")?.parts.count, 5)
+        XCTAssertNil(gazetteer.cities.first { $0.name == "Brooklyn" || $0.name == "Croydon" })
+    }
+
     func testCityAcrossAStateLineIsNotMatchedEvenIfNearer() {
         // Exchange Place, Jersey City: 2.3 km from NYC's centroid, 4.5 km from Jersey City's.
         XCTAssertEqual(city(40.7163, -74.0328, "US", "NJ")?.name, "Jersey City")
@@ -159,6 +167,29 @@ final class CityGazetteerTests: XCTestCase {
         XCTAssertEqual(border.match(latitude: 0, longitude: 0, context: CityPlaceContext(countryCode: "MX"))?.id, "laredo")
         let taipei = synthetic([make("taipei", lon: 0, cc: "TW", sub: nil)])
         XCTAssertEqual(taipei.match(latitude: 0, longitude: 0, context: CityPlaceContext(countryCode: "CN-TW"))?.id, "taipei")
+    }
+
+    func testPartsExtendACityAndCountAsItsCentroids() {
+        let part = City.MatchArea(latitude: 0, longitude: 20_000 * degreesPerMeter, radiusMeters: 3_000)
+        let parent = City(id: "parent", name: "parent", countryCode: "AA", latitude: 0, longitude: 0,
+                          radiusMeters: 15_000, parts: [part])
+        let m = synthetic([parent, make("other", lon: 16_000 * degreesPerMeter, radius: 5_000)])
+        let at = { (meters: Double) in
+            m.match(latitude: 0, longitude: meters * self.degreesPerMeter, context: CityPlaceContext(countryCode: "AA"))?.id
+        }
+        XCTAssertEqual(at(22_000), "parent")
+        XCTAssertEqual(at(17_000), "other")
+        XCTAssertEqual(at(5_000), "parent")
+        XCTAssertNil(at(24_000))
+    }
+
+    func testDecodesTheBundledFormat() throws {
+        let json = #"{"version":"t","cities":[{"id":"gn:1","name":"A","cc":"AA","lat":1,"lon":2,"r":1500,"pop":5,"parts":[[1.1,2.1,2000]],"nc":true}]}"#
+        let city = try XCTUnwrap(CityGazetteer(data: Data(json.utf8)).city(id: "gn:1"))
+        XCTAssertEqual(city.parts, [City.MatchArea(latitude: 1.1, longitude: 2.1, radiusMeters: 2_000)])
+        XCTAssertTrue(city.isNationalCapital)
+        XCTAssertFalse(city.isSubdivisionCapital)
+        XCTAssertEqual(city.additionalSubdivisionCodes, [])
     }
 
     func testGridLookupWorksAcrossTheAntimeridian() {
