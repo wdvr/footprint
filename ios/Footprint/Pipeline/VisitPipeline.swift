@@ -155,6 +155,22 @@ final class VisitPipeline {
         )
     }
 
+    /// Forgets every sample, derived visit and running total (Clear All Data / account deletion),
+    /// so nothing recorded for one account feeds the next account's stats or medals.
+    func eraseAll() {
+        guard let context = container?.mainContext else { return }
+        for visit in (try? context.fetch(FetchDescriptor<Visit>())) ?? [] {
+            context.delete(visit)
+        }
+        for sample in (try? context.fetch(FetchDescriptor<LocationSample>())) ?? [] {
+            context.delete(sample)
+        }
+        try? context.save()
+        for key in [Self.distanceDefaultsKey, Self.distanceCountedThroughKey, Self.heldBackSinceKey, Self.lastRunDefaultsKey] {
+            defaults.removeObject(forKey: key)
+        }
+    }
+
     // MARK: - Private
 
     /// Distance over legs after the last counted sample only, so late-arriving samples (e.g. a

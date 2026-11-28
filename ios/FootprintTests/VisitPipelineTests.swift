@@ -169,6 +169,20 @@ final class VisitPipelineTests: XCTestCase {
         XCTAssertNil(defaults.object(forKey: VisitPipeline.heldBackSinceKey))
     }
 
+    func testEraseAllForgetsSamplesVisitsAndDistance() throws {
+        pipeline.record(stay(startingAt: t0), now: t0.addingTimeInterval(3600))
+        defaults.set(5_000.0, forKey: VisitPipeline.distanceDefaultsKey)
+
+        pipeline.eraseAll()
+
+        let status = pipeline.status()
+        XCTAssertEqual(status.visits, 0)
+        XCTAssertEqual(status.storedSamples, 0)
+        XCTAssertEqual(status.distanceKm, 0)
+        XCTAssertNil(status.lastRunAt)
+        XCTAssertEqual(try places().count, 2, "place records are cleared by their own path")
+    }
+
     func testStatusReportsCounts() {
         pipeline.record(stay(startingAt: t0), now: t0.addingTimeInterval(3600))
         let status = pipeline.status()
