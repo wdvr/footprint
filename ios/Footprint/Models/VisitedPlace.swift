@@ -34,7 +34,7 @@ final class VisitedPlace {
             case .brazilianState: return "Brazilian State"
             case .germanState: return "German State"
             case .frenchRegion: return "French Region"
-            case .spanishCommunity: return "Spanish Community"
+            case .spanishCommunity: return "Spanish Province"
             case .italianRegion: return "Italian Region"
             case .dutchProvince: return "Dutch Province"
             case .belgianProvince: return "Belgian Province"
@@ -102,6 +102,8 @@ final class VisitedPlace {
     var visitType: String = "visited"
     var visitedDate: Date?
     var departureDate: Date?
+    /// Number of distinct confirmed visits (§3.1); manual entries count as one.
+    var visitCount: Int = 1
     var notes: String?
     var markedAt: Date
     var syncVersion: Int

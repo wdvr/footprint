@@ -44,6 +44,8 @@ struct FootprintApp: App {
         // Initialize ModelContainer with error handling
         let schema = Schema([
             VisitedPlace.self,
+            LocationSample.self,
+            Visit.self,
         ])
 
         let modelConfiguration = ModelConfiguration(
@@ -53,6 +55,7 @@ struct FootprintApp: App {
 
         do {
             let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            LegacyPlaceMigration.run(in: container.mainContext)
 
             // Add sample data if in sample data mode (DEBUG only)
             #if DEBUG
@@ -62,6 +65,7 @@ struct FootprintApp: App {
             #endif
 
             SubdivisionCodeMigration.run(in: container.mainContext)
+            VisitPipeline.shared.configure(container: container)
             self.sharedModelContainer = container
             self.modelContainerError = nil
         } catch {

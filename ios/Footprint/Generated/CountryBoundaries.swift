@@ -246,6 +246,7 @@ let countriesWithBoundaries: [CountryInfo] = [
     CountryInfo(code: "VI", name: "U.S. Virgin Is.", continent: "North America", region: "Americas"),
     CountryInfo(code: "UG", name: "Uganda", continent: "Africa", region: "Africa"),
     CountryInfo(code: "UA", name: "Ukraine", continent: "Europe", region: "Europe"),
+    CountryInfo(code: "XS", name: "Sevastopol", continent: "Europe", region: "Europe"),
     CountryInfo(code: "AE", name: "United Arab Emirates", continent: "Asia", region: "Asia"),
     CountryInfo(code: "GB", name: "United Kingdom", continent: "Europe", region: "Europe"),
     CountryInfo(code: "US", name: "United States of America", continent: "North America", region: "Americas"),
