@@ -73,6 +73,7 @@ final class Visit {
         self.kindRaw = detected.kind.rawValue
         self.countryCode = detected.countryCode
         self.subdivisionCode = detected.subdivisionCode
+        self.countyFips = detected.countyFips
     }
 
     var source: SampleSource { SampleSource(rawValue: sourceRaw) ?? .gps }

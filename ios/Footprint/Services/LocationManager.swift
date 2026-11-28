@@ -303,7 +303,7 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
 
     /// Fires the existing detection callbacks for places the pipeline newly recorded.
     func deliver(_ newPlaces: [VisitPipeline.NewPlace]) {
-        for place in newPlaces {
+        for place in newPlaces where place.countyFips == nil {
             if let stateCode = place.subdivisionCode {
                 if place.countryCode == "US" || place.countryCode == "CA" {
                     onStateDetected?(place.countryCode, stateCode)
