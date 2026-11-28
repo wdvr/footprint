@@ -184,6 +184,12 @@ struct ScratchPosterModel: Equatable, Sendable {
         "US", "CA", "AR", "BE", "ES", "FR", "GB", "IT", "JP", "KR", "NL", "NO", "RU",
     ]
 
+    /// Subdivisions that the app also lists as countries (France's overseas departments).
+    /// Their country and subdivision visits are stored separately, so either one scratches them.
+    static let territorySubdivisions: [String: Set<String>] = [
+        "FR": ["GF", "GP", "MQ", "RE", "YT"],
+    ]
+
     /// Coverage lines that fit in the stats band.
     static let maxCoverageLines = 8
 
@@ -266,10 +272,14 @@ struct ScratchPosterModel: Equatable, Sendable {
     }
 
     /// Whether a subdivision boundary (`state_code` from the bundled GeoJSON, "GB-MAN" or "CA")
-    /// is visited. Saved codes may be short ("MAN") or prefixed ("GB-MAN"); both match.
+    /// is scratched on the map. Saved codes may be short ("MAN") or prefixed ("GB-MAN"); both
+    /// match. Overseas departments also count when the territory itself was visited as a country.
     func isSubdivisionVisited(countryCode: String, boundaryCode: String) -> Bool {
-        guard let visited = visitedSubdivisions[countryCode] else { return false }
-        return visited.contains(Self.shortSubdivisionCode(boundaryCode, countryCode: countryCode))
+        let code = Self.shortSubdivisionCode(boundaryCode, countryCode: countryCode)
+        if Self.territorySubdivisions[countryCode]?.contains(code) == true, visitedCountryCodes.contains(code) {
+            return true
+        }
+        return visitedSubdivisions[countryCode]?.contains(code) ?? false
     }
 
     static func shortSubdivisionCode(_ code: String, countryCode: String) -> String {

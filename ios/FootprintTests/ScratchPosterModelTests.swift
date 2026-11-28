@@ -192,6 +192,28 @@ final class ScratchPosterModelTests: XCTestCase {
         XCTAssertEqual(model.visitedSubdivisions["GB"], ["MAN", "EDH"])
     }
 
+    func testVisitedOverseasTerritoryScratchesItsDepartment() {
+        let places = [place(.country, "FR"), place(.country, "GF"), place(.frenchRegion, "75")]
+        let model = ScratchPosterModel(places: places, trackedCountries: ["FR"], title: "")
+
+        XCTAssertTrue(model.isSubdivisionVisited(countryCode: "FR", boundaryCode: "FR-GF"))
+        XCTAssertFalse(model.isSubdivisionVisited(countryCode: "FR", boundaryCode: "FR-MQ"))
+        XCTAssertFalse(model.isSubdivisionVisited(countryCode: "FR", boundaryCode: "FR-13"))
+        XCTAssertFalse(
+            model.isSubdivisionVisited(countryCode: "US", boundaryCode: "CA"),
+            "Only listed territories borrow a country visit"
+        )
+        let france = model.coverage.first { $0.countryCode == "FR" }
+        XCTAssertEqual(france?.visitedCount, 1, "Coverage still counts saved departments only, like the app")
+    }
+
+    func testTerritorySubdivisionsAreRealSubdivisions() {
+        for (countryCode, codes) in ScratchPosterModel.territorySubdivisions {
+            let subdivisions = Set(GeographicData.states(for: countryCode).map(\.id))
+            XCTAssertTrue(codes.isSubset(of: subdivisions), countryCode)
+        }
+    }
+
     func testSubdivisionsOnlyDrawnForTrackedCountriesWithBoundaries() {
         let model = ScratchPosterModel(places: fixture, trackedCountries: ["US", "DE"], title: "")
         XCTAssertEqual(model.subdivisionCountries, ["US"], "DE has no bundled boundaries")
