@@ -304,14 +304,22 @@ class TestBadges:
         assert response.status_code == 200
         data = response.json()
 
-        # Find explorer_10 badge (in progress)
+        # Explorer is tiered in v2: bronze at 5 is earned, progress runs to silver (10)
         explorer_badge = next(
-            (b for b in data["in_progress"] if b["badge"]["id"] == "explorer_10"), None
+            (b for b in data["earned"] if b["badge"]["id"] == "explorer_10"), None
         )
         assert explorer_badge is not None
+        assert explorer_badge["tier"] == "bronze"
         assert explorer_badge["progress"] == 5
         assert explorer_badge["progress_total"] == 10
         assert explorer_badge["progress_percentage"] == 50.0
+
+        # Globetrotter (25) is still in progress
+        globetrotter = next(
+            b for b in data["in_progress"] if b["badge"]["id"] == "globetrotter_25"
+        )
+        assert globetrotter["progress"] == 5
+        assert globetrotter["progress_total"] == 25
 
 
 class TestLeaderboard:

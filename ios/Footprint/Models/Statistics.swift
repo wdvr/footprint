@@ -170,6 +170,8 @@ enum BadgeCategory: String, Codable, CaseIterable {
     }
 }
 
+/// Mirrors backend `Badge` (backend/src/models/badges.py). Medals v2 fields are optional so
+/// v1 payloads still decode.
 struct Badge: Identifiable, Codable {
     let id: String
     let name: String
@@ -179,12 +181,33 @@ struct Badge: Identifiable, Codable {
     let requirementType: String
     let requirementValue: Int
     let requirementFilter: [String: String]?
+    var family: String?
+    var tiers: [BadgeTier]?
 
     enum CodingKeys: String, CodingKey {
         case id, name, description, category, icon
         case requirementType = "requirement_type"
         case requirementValue = "requirement_value"
         case requirementFilter = "requirement_filter"
+        case family, tiers
+    }
+}
+
+struct BadgeTier: Codable, Equatable {
+    let level: String
+    let threshold: Double
+}
+
+/// A tier the user has earned (backend `BadgeTierProgress`).
+struct BadgeTierProgress: Codable, Equatable {
+    let level: String
+    let threshold: Double
+    let unlockedAt: Date?
+    let trigger: String?
+
+    enum CodingKeys: String, CodingKey {
+        case level, threshold, trigger
+        case unlockedAt = "unlocked_at"
     }
 }
 
@@ -192,10 +215,15 @@ struct BadgeProgress: Identifiable, Codable {
     var id: String { badge.id }
     let badge: Badge
     let unlocked: Bool
+    /// When the first tier was earned.
     let unlockedAt: Date?
     let progress: Int
+    /// Next tier's threshold.
     let progressTotal: Int
     let progressPercentage: Double
+    /// Highest tier earned (medals v2).
+    var tier: String?
+    var tiersEarned: [BadgeTierProgress]?
 
     enum CodingKeys: String, CodingKey {
         case badge, unlocked
@@ -203,6 +231,8 @@ struct BadgeProgress: Identifiable, Codable {
         case progress
         case progressTotal = "progress_total"
         case progressPercentage = "progress_percentage"
+        case tier
+        case tiersEarned = "tiers_earned"
     }
 }
 

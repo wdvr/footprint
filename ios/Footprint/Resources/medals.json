@@ -1,0 +1,3406 @@
+{
+ "catalogVersion": 1,
+ "tierLevels": [
+  "bronze",
+  "silver",
+  "gold",
+  "platinum"
+ ],
+ "subdivisionRegionTypes": {
+  "us_state": "US",
+  "canadian_province": "CA",
+  "australian_state": "AU",
+  "mexican_state": "MX",
+  "brazilian_state": "BR",
+  "german_state": "DE",
+  "french_region": "FR",
+  "spanish_community": "ES",
+  "italian_region": "IT",
+  "dutch_province": "NL",
+  "belgian_province": "BE",
+  "uk_country": "GB",
+  "russian_federal_subject": "RU",
+  "argentine_province": "AR",
+  "japanese_prefecture": "JP",
+  "south_korean_province": "KR",
+  "norwegian_county": "NO"
+ },
+ "countyRegionType": "us_county",
+ "namedRegionRegionType": "named_region",
+ "countryContinents": {
+  "AD": "Europe",
+  "AE": "Asia",
+  "AF": "Asia",
+  "AG": "North America",
+  "AL": "Europe",
+  "AM": "Asia",
+  "AO": "Africa",
+  "AR": "South America",
+  "AT": "Europe",
+  "AU": "Oceania",
+  "AZ": "Asia",
+  "BA": "Europe",
+  "BB": "North America",
+  "BD": "Asia",
+  "BE": "Europe",
+  "BF": "Africa",
+  "BG": "Europe",
+  "BH": "Asia",
+  "BI": "Africa",
+  "BJ": "Africa",
+  "BN": "Asia",
+  "BO": "South America",
+  "BR": "South America",
+  "BS": "North America",
+  "BT": "Asia",
+  "BW": "Africa",
+  "BY": "Europe",
+  "BZ": "North America",
+  "CA": "North America",
+  "CD": "Africa",
+  "CF": "Africa",
+  "CG": "Africa",
+  "CH": "Europe",
+  "CI": "Africa",
+  "CL": "South America",
+  "CM": "Africa",
+  "CN": "Asia",
+  "CO": "South America",
+  "CR": "North America",
+  "CU": "North America",
+  "CV": "Africa",
+  "CY": "Asia",
+  "CZ": "Europe",
+  "DE": "Europe",
+  "DJ": "Africa",
+  "DK": "Europe",
+  "DM": "North America",
+  "DO": "North America",
+  "DZ": "Africa",
+  "EC": "South America",
+  "EE": "Europe",
+  "EG": "Africa",
+  "ER": "Africa",
+  "ES": "Europe",
+  "ET": "Africa",
+  "FI": "Europe",
+  "FJ": "Oceania",
+  "FM": "Oceania",
+  "FR": "Europe",
+  "GA": "Africa",
+  "GB": "Europe",
+  "GD": "North America",
+  "GE": "Asia",
+  "GH": "Africa",
+  "GM": "Africa",
+  "GN": "Africa",
+  "GQ": "Africa",
+  "GR": "Europe",
+  "GT": "North America",
+  "GW": "Africa",
+  "GY": "South America",
+  "HN": "North America",
+  "HR": "Europe",
+  "HT": "North America",
+  "HU": "Europe",
+  "ID": "Asia",
+  "IE": "Europe",
+  "IL": "Asia",
+  "IN": "Asia",
+  "IQ": "Asia",
+  "IR": "Asia",
+  "IS": "Europe",
+  "IT": "Europe",
+  "JM": "North America",
+  "JO": "Asia",
+  "JP": "Asia",
+  "KE": "Africa",
+  "KG": "Asia",
+  "KH": "Asia",
+  "KI": "Oceania",
+  "KM": "Africa",
+  "KN": "North America",
+  "KP": "Asia",
+  "KR": "Asia",
+  "KW": "Asia",
+  "KZ": "Asia",
+  "LA": "Asia",
+  "LB": "Asia",
+  "LC": "North America",
+  "LI": "Europe",
+  "LK": "Asia",
+  "LR": "Africa",
+  "LS": "Africa",
+  "LT": "Europe",
+  "LU": "Europe",
+  "LV": "Europe",
+  "LY": "Africa",
+  "MA": "Africa",
+  "MC": "Europe",
+  "MD": "Europe",
+  "ME": "Europe",
+  "MG": "Africa",
+  "MH": "Oceania",
+  "MK": "Europe",
+  "ML": "Africa",
+  "MM": "Asia",
+  "MN": "Asia",
+  "MR": "Africa",
+  "MT": "Europe",
+  "MU": "Africa",
+  "MV": "Asia",
+  "MW": "Africa",
+  "MX": "North America",
+  "MY": "Asia",
+  "MZ": "Africa",
+  "NA": "Africa",
+  "NE": "Africa",
+  "NG": "Africa",
+  "NI": "North America",
+  "NL": "Europe",
+  "NO": "Europe",
+  "NP": "Asia",
+  "NR": "Oceania",
+  "NZ": "Oceania",
+  "OM": "Asia",
+  "PA": "North America",
+  "PE": "South America",
+  "PG": "Oceania",
+  "PH": "Asia",
+  "PK": "Asia",
+  "PL": "Europe",
+  "PS": "Asia",
+  "PT": "Europe",
+  "PW": "Oceania",
+  "PY": "South America",
+  "QA": "Asia",
+  "RO": "Europe",
+  "RS": "Europe",
+  "RU": "Europe",
+  "RW": "Africa",
+  "SA": "Asia",
+  "SB": "Oceania",
+  "SC": "Africa",
+  "SD": "Africa",
+  "SE": "Europe",
+  "SG": "Asia",
+  "SI": "Europe",
+  "SK": "Europe",
+  "SL": "Africa",
+  "SM": "Europe",
+  "SN": "Africa",
+  "SO": "Africa",
+  "SR": "South America",
+  "SS": "Africa",
+  "ST": "Africa",
+  "SV": "North America",
+  "SY": "Asia",
+  "SZ": "Africa",
+  "TD": "Africa",
+  "TG": "Africa",
+  "TH": "Asia",
+  "TJ": "Asia",
+  "TL": "Asia",
+  "TM": "Asia",
+  "TN": "Africa",
+  "TO": "Oceania",
+  "TR": "Asia",
+  "TT": "North America",
+  "TV": "Oceania",
+  "TW": "Asia",
+  "TZ": "Africa",
+  "UA": "Europe",
+  "UG": "Africa",
+  "US": "North America",
+  "UY": "South America",
+  "UZ": "Asia",
+  "VA": "Europe",
+  "VC": "North America",
+  "VE": "South America",
+  "VN": "Asia",
+  "VU": "Oceania",
+  "WS": "Oceania",
+  "XS": "Europe",
+  "YE": "Asia",
+  "ZA": "Africa",
+  "ZM": "Africa",
+  "ZW": "Africa"
+ },
+ "subdivisionCounts": {
+  "AR": 24,
+  "AU": 8,
+  "BE": 11,
+  "BR": 27,
+  "CA": 13,
+  "DE": 16,
+  "ES": 52,
+  "FR": 101,
+  "GB": 232,
+  "IT": 110,
+  "JP": 47,
+  "KR": 17,
+  "MX": 32,
+  "NL": 15,
+  "NO": 15,
+  "RU": 83,
+  "US": 51
+ },
+ "countrySets": {
+  "island_nations": [
+   "AG",
+   "BB",
+   "BH",
+   "BN",
+   "BS",
+   "CU",
+   "CV",
+   "CY",
+   "DM",
+   "DO",
+   "FJ",
+   "FM",
+   "GB",
+   "GD",
+   "HT",
+   "ID",
+   "IE",
+   "IS",
+   "JM",
+   "JP",
+   "KI",
+   "KM",
+   "KN",
+   "LC",
+   "LK",
+   "MG",
+   "MH",
+   "MT",
+   "MU",
+   "MV",
+   "NR",
+   "NZ",
+   "PG",
+   "PH",
+   "PW",
+   "SB",
+   "SC",
+   "SG",
+   "ST",
+   "TL",
+   "TO",
+   "TT",
+   "TV",
+   "TW",
+   "VC",
+   "VU",
+   "WS"
+  ],
+  "landlocked": [
+   "AD",
+   "AF",
+   "AM",
+   "AT",
+   "AZ",
+   "BF",
+   "BI",
+   "BO",
+   "BT",
+   "BW",
+   "BY",
+   "CF",
+   "CH",
+   "CZ",
+   "ET",
+   "HU",
+   "KG",
+   "KZ",
+   "LA",
+   "LI",
+   "LS",
+   "LU",
+   "MD",
+   "MK",
+   "ML",
+   "MN",
+   "MW",
+   "NE",
+   "NP",
+   "PY",
+   "RS",
+   "RW",
+   "SK",
+   "SM",
+   "SS",
+   "SZ",
+   "TD",
+   "TJ",
+   "TM",
+   "UG",
+   "UZ",
+   "VA",
+   "ZM",
+   "ZW"
+  ]
+ },
+ "countyStates": {
+  "AK": {
+   "fips": "02",
+   "count": 30
+  },
+  "AL": {
+   "fips": "01",
+   "count": 67
+  },
+  "AR": {
+   "fips": "05",
+   "count": 75
+  },
+  "AZ": {
+   "fips": "04",
+   "count": 15
+  },
+  "CA": {
+   "fips": "06",
+   "count": 58
+  },
+  "CO": {
+   "fips": "08",
+   "count": 64
+  },
+  "CT": {
+   "fips": "09",
+   "count": 9
+  },
+  "DC": {
+   "fips": "11",
+   "count": 1
+  },
+  "DE": {
+   "fips": "10",
+   "count": 3
+  },
+  "FL": {
+   "fips": "12",
+   "count": 67
+  },
+  "GA": {
+   "fips": "13",
+   "count": 159
+  },
+  "HI": {
+   "fips": "15",
+   "count": 5
+  },
+  "IA": {
+   "fips": "19",
+   "count": 99
+  },
+  "ID": {
+   "fips": "16",
+   "count": 44
+  },
+  "IL": {
+   "fips": "17",
+   "count": 102
+  },
+  "IN": {
+   "fips": "18",
+   "count": 92
+  },
+  "KS": {
+   "fips": "20",
+   "count": 105
+  },
+  "KY": {
+   "fips": "21",
+   "count": 120
+  },
+  "LA": {
+   "fips": "22",
+   "count": 64
+  },
+  "MA": {
+   "fips": "25",
+   "count": 14
+  },
+  "MD": {
+   "fips": "24",
+   "count": 24
+  },
+  "ME": {
+   "fips": "23",
+   "count": 16
+  },
+  "MI": {
+   "fips": "26",
+   "count": 83
+  },
+  "MN": {
+   "fips": "27",
+   "count": 87
+  },
+  "MO": {
+   "fips": "29",
+   "count": 115
+  },
+  "MS": {
+   "fips": "28",
+   "count": 82
+  },
+  "MT": {
+   "fips": "30",
+   "count": 56
+  },
+  "NC": {
+   "fips": "37",
+   "count": 100
+  },
+  "ND": {
+   "fips": "38",
+   "count": 53
+  },
+  "NE": {
+   "fips": "31",
+   "count": 93
+  },
+  "NH": {
+   "fips": "33",
+   "count": 10
+  },
+  "NJ": {
+   "fips": "34",
+   "count": 21
+  },
+  "NM": {
+   "fips": "35",
+   "count": 33
+  },
+  "NV": {
+   "fips": "32",
+   "count": 17
+  },
+  "NY": {
+   "fips": "36",
+   "count": 62
+  },
+  "OH": {
+   "fips": "39",
+   "count": 88
+  },
+  "OK": {
+   "fips": "40",
+   "count": 77
+  },
+  "OR": {
+   "fips": "41",
+   "count": 36
+  },
+  "PA": {
+   "fips": "42",
+   "count": 67
+  },
+  "RI": {
+   "fips": "44",
+   "count": 5
+  },
+  "SC": {
+   "fips": "45",
+   "count": 46
+  },
+  "SD": {
+   "fips": "46",
+   "count": 66
+  },
+  "TN": {
+   "fips": "47",
+   "count": 95
+  },
+  "TX": {
+   "fips": "48",
+   "count": 254
+  },
+  "UT": {
+   "fips": "49",
+   "count": 29
+  },
+  "VA": {
+   "fips": "51",
+   "count": 133
+  },
+  "VT": {
+   "fips": "50",
+   "count": 14
+  },
+  "WA": {
+   "fips": "53",
+   "count": 39
+  },
+  "WI": {
+   "fips": "55",
+   "count": 72
+  },
+  "WV": {
+   "fips": "54",
+   "count": 55
+  },
+  "WY": {
+   "fips": "56",
+   "count": 23
+  }
+ },
+ "medals": [
+  {
+   "id": "first_steps",
+   "name": "First Steps",
+   "description": "Visit your first country",
+   "family": "countries",
+   "category": "countries",
+   "metric": "countriesVisited",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 1
+    }
+   ],
+   "icon": "figure.walk",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "legacyBadgeId": "first_steps",
+   "legacyTier": "platinum"
+  },
+  {
+   "id": "explorer_10",
+   "name": "Explorer",
+   "description": "Visit 5 and then 10 countries",
+   "family": "countries",
+   "category": "countries",
+   "metric": "countriesVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 5
+    },
+    {
+     "level": "silver",
+     "threshold": 10
+    }
+   ],
+   "icon": "globe.americas",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "legacyBadgeId": "explorer_10",
+   "legacyTier": "silver"
+  },
+  {
+   "id": "globetrotter_25",
+   "name": "Globetrotter",
+   "description": "Visit 25 countries",
+   "family": "countries",
+   "category": "countries",
+   "metric": "countriesVisited",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 25
+    }
+   ],
+   "icon": "globe",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "legacyBadgeId": "globetrotter_25",
+   "legacyTier": "platinum"
+  },
+  {
+   "id": "world_traveler_50",
+   "name": "World Traveler",
+   "description": "Visit 50 countries",
+   "family": "countries",
+   "category": "countries",
+   "metric": "countriesVisited",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 50
+    }
+   ],
+   "icon": "airplane",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "legacyBadgeId": "world_traveler_50",
+   "legacyTier": "platinum"
+  },
+  {
+   "id": "elite_traveler_100",
+   "name": "Elite Traveler",
+   "description": "Visit 100 countries",
+   "family": "countries",
+   "category": "countries",
+   "metric": "countriesVisited",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 100
+    }
+   ],
+   "icon": "crown",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "legacyBadgeId": "elite_traveler_100",
+   "legacyTier": "platinum"
+  },
+  {
+   "id": "world_champion_150",
+   "name": "World Champion",
+   "description": "Visit 150 countries",
+   "family": "countries",
+   "category": "countries",
+   "metric": "countriesVisited",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 150
+    }
+   ],
+   "icon": "trophy",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "legacyBadgeId": "world_champion_150",
+   "legacyTier": "platinum"
+  },
+  {
+   "id": "full_atlas",
+   "name": "Full Atlas",
+   "description": "Visit every country in the world",
+   "family": "countries",
+   "category": "countries",
+   "metric": "countriesVisited",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 197
+    }
+   ],
+   "icon": "globe.badge.chevron.backward",
+   "platforms": [
+    "ios",
+    "backend"
+   ]
+  },
+  {
+   "id": "state_starter",
+   "name": "State Starter",
+   "description": "Visit 5 US states",
+   "family": "subdivisions",
+   "category": "states",
+   "metric": "subdivisionsVisited",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 5
+    }
+   ],
+   "icon": "flag",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "country": "US"
+   }
+  },
+  {
+   "id": "us_starter",
+   "name": "US Starter",
+   "description": "Visit 10 US states",
+   "family": "subdivisions",
+   "category": "states",
+   "metric": "subdivisionsVisited",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 10
+    }
+   ],
+   "icon": "flag",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "country": "US"
+   },
+   "legacyBadgeId": "us_starter",
+   "legacyTier": "platinum"
+  },
+  {
+   "id": "road_tripper",
+   "name": "Road Tripper",
+   "description": "Visit 15 and then 25 US states",
+   "family": "subdivisions",
+   "category": "states",
+   "metric": "subdivisionsVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 15
+    },
+    {
+     "level": "silver",
+     "threshold": 25
+    }
+   ],
+   "icon": "car",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "country": "US"
+   }
+  },
+  {
+   "id": "us_half",
+   "name": "Half the States",
+   "description": "Visit 25 US states",
+   "family": "subdivisions",
+   "category": "states",
+   "metric": "subdivisionsVisited",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 25
+    }
+   ],
+   "icon": "star",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "country": "US"
+   },
+   "legacyBadgeId": "us_half",
+   "legacyTier": "platinum"
+  },
+  {
+   "id": "coast_to_coast",
+   "name": "Coast to Coast",
+   "description": "Visit 30 and then 40 US states",
+   "family": "subdivisions",
+   "category": "states",
+   "metric": "subdivisionsVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 30
+    },
+    {
+     "level": "silver",
+     "threshold": 40
+    }
+   ],
+   "icon": "road.lanes",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "country": "US"
+   }
+  },
+  {
+   "id": "us_complete",
+   "name": "All 50 States",
+   "description": "Visit 50 US states",
+   "family": "subdivisions",
+   "category": "states",
+   "metric": "subdivisionsVisited",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 50
+    }
+   ],
+   "icon": "star.fill",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "country": "US"
+   },
+   "legacyBadgeId": "us_complete",
+   "legacyTier": "platinum"
+  },
+  {
+   "id": "fifty_plus_one",
+   "name": "Fifty Plus One",
+   "description": "Visit 49, 50 and finally all 50 states plus DC",
+   "family": "subdivisions",
+   "category": "states",
+   "metric": "subdivisionsVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 49
+    },
+    {
+     "level": "silver",
+     "threshold": 50
+    },
+    {
+     "level": "gold",
+     "threshold": 51
+    }
+   ],
+   "icon": "star.circle.fill",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "country": "US"
+   }
+  },
+  {
+   "id": "canada_explorer",
+   "name": "Canada Explorer",
+   "description": "Visit 5 Canadian provinces",
+   "family": "subdivisions",
+   "category": "states",
+   "metric": "subdivisionsVisited",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 5
+    }
+   ],
+   "icon": "leaf.circle",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "country": "CA"
+   },
+   "legacyBadgeId": "canada_explorer",
+   "legacyTier": "platinum"
+  },
+  {
+   "id": "regionalist",
+   "name": "Regionalist",
+   "description": "Visit states, provinces and regions in any tracked country",
+   "family": "subdivisions",
+   "category": "regions",
+   "metric": "subdivisionsVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 25
+    },
+    {
+     "level": "silver",
+     "threshold": 50
+    },
+    {
+     "level": "gold",
+     "threshold": 100
+    },
+    {
+     "level": "platinum",
+     "threshold": 250
+    }
+   ],
+   "icon": "map",
+   "platforms": [
+    "ios",
+    "backend"
+   ]
+  },
+  {
+   "id": "county_seat",
+   "name": "County Seat",
+   "description": "Visit 10 / 25 US counties",
+   "family": "counties",
+   "category": "states",
+   "metric": "countiesVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 10
+    },
+    {
+     "level": "silver",
+     "threshold": 25
+    }
+   ],
+   "icon": "square.grid.3x3.square",
+   "platforms": [
+    "ios",
+    "backend"
+   ]
+  },
+  {
+   "id": "county_hopper",
+   "name": "County Hopper",
+   "description": "Visit 50 / 100 US counties",
+   "family": "counties",
+   "category": "states",
+   "metric": "countiesVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 50
+    },
+    {
+     "level": "silver",
+     "threshold": 100
+    }
+   ],
+   "icon": "square.grid.3x3.square",
+   "platforms": [
+    "ios",
+    "backend"
+   ]
+  },
+  {
+   "id": "century_counties",
+   "name": "Century Counties",
+   "description": "Visit 100 / 250 US counties",
+   "family": "counties",
+   "category": "states",
+   "metric": "countiesVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 100
+    },
+    {
+     "level": "silver",
+     "threshold": 250
+    }
+   ],
+   "icon": "square.grid.3x3.square",
+   "platforms": [
+    "ios",
+    "backend"
+   ]
+  },
+  {
+   "id": "county_connoisseur",
+   "name": "County Connoisseur",
+   "description": "Visit 250 / 500 US counties",
+   "family": "counties",
+   "category": "states",
+   "metric": "countiesVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 250
+    },
+    {
+     "level": "silver",
+     "threshold": 500
+    }
+   ],
+   "icon": "square.grid.3x3.square",
+   "platforms": [
+    "ios",
+    "backend"
+   ]
+  },
+  {
+   "id": "shire_reeve",
+   "name": "Shire Reeve",
+   "description": "Visit 500 / 1,000 US counties",
+   "family": "counties",
+   "category": "states",
+   "metric": "countiesVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 500
+    },
+    {
+     "level": "silver",
+     "threshold": 1000
+    }
+   ],
+   "icon": "square.grid.3x3.square",
+   "platforms": [
+    "ios",
+    "backend"
+   ]
+  },
+  {
+   "id": "county_royalty",
+   "name": "County Royalty",
+   "description": "Visit 1,000 / 2,000 / 3,144 US counties",
+   "family": "counties",
+   "category": "states",
+   "metric": "countiesVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 1000
+    },
+    {
+     "level": "silver",
+     "threshold": 2000
+    },
+    {
+     "level": "gold",
+     "threshold": 3144
+    }
+   ],
+   "icon": "square.grid.3x3.square",
+   "platforms": [
+    "ios",
+    "backend"
+   ]
+  },
+  {
+   "id": "city_slicker",
+   "name": "City Slicker",
+   "description": "Visit 10 and then 25 cities",
+   "family": "cities",
+   "category": "special",
+   "metric": "citiesVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 10
+    },
+    {
+     "level": "silver",
+     "threshold": 25
+    }
+   ],
+   "icon": "building.2",
+   "platforms": [
+    "ios"
+   ]
+  },
+  {
+   "id": "urban_explorer",
+   "name": "Urban Explorer",
+   "description": "Visit 50 and then 100 cities",
+   "family": "cities",
+   "category": "special",
+   "metric": "citiesVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 50
+    },
+    {
+     "level": "silver",
+     "threshold": 100
+    }
+   ],
+   "icon": "building.2.crop.circle",
+   "platforms": [
+    "ios"
+   ]
+  },
+  {
+   "id": "metropolis",
+   "name": "Metropolis",
+   "description": "Visit 250, 500 and 1,000 cities",
+   "family": "cities",
+   "category": "special",
+   "metric": "citiesVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 250
+    },
+    {
+     "level": "silver",
+     "threshold": 500
+    },
+    {
+     "level": "gold",
+     "threshold": 1000
+    }
+   ],
+   "icon": "building.columns.circle",
+   "platforms": [
+    "ios"
+   ]
+  },
+  {
+   "id": "capital_gains",
+   "name": "Capital Gains",
+   "description": "Visit national capitals",
+   "family": "cities",
+   "category": "special",
+   "metric": "capitalsVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 5
+    },
+    {
+     "level": "silver",
+     "threshold": 15
+    },
+    {
+     "level": "gold",
+     "threshold": 30
+    },
+    {
+     "level": "platinum",
+     "threshold": 50
+    }
+   ],
+   "icon": "building.columns",
+   "platforms": [
+    "ios"
+   ],
+   "filter": {
+    "kind": "national"
+   }
+  },
+  {
+   "id": "capital_collector",
+   "name": "Capital Collector",
+   "description": "Visit 75 to 195 national capitals",
+   "family": "cities",
+   "category": "special",
+   "metric": "capitalsVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 75
+    },
+    {
+     "level": "silver",
+     "threshold": 100
+    },
+    {
+     "level": "gold",
+     "threshold": 150
+    },
+    {
+     "level": "platinum",
+     "threshold": 195
+    }
+   ],
+   "icon": "building.columns.fill",
+   "platforms": [
+    "ios"
+   ],
+   "filter": {
+    "kind": "national"
+   }
+  },
+  {
+   "id": "state_capital_circuit",
+   "name": "State Capital Circuit",
+   "description": "Visit US state capitals",
+   "family": "cities",
+   "category": "special",
+   "metric": "capitalsVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 10
+    },
+    {
+     "level": "silver",
+     "threshold": 25
+    },
+    {
+     "level": "gold",
+     "threshold": 40
+    },
+    {
+     "level": "platinum",
+     "threshold": 51
+    }
+   ],
+   "icon": "star.square",
+   "platforms": [
+    "ios"
+   ],
+   "filter": {
+    "kind": "us_state"
+   }
+  },
+  {
+   "id": "metro_pass",
+   "name": "Metro Pass",
+   "description": "Visit named regions",
+   "family": "regions",
+   "category": "regions",
+   "metric": "regionsVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 3
+    },
+    {
+     "level": "silver",
+     "threshold": 5
+    },
+    {
+     "level": "gold",
+     "threshold": 10
+    }
+   ],
+   "icon": "tram",
+   "platforms": [
+    "ios",
+    "backend"
+   ]
+  },
+  {
+   "id": "region_hopper",
+   "name": "Region Hopper",
+   "description": "Visit 15 to 80 named regions",
+   "family": "regions",
+   "category": "regions",
+   "metric": "regionsVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 15
+    },
+    {
+     "level": "silver",
+     "threshold": 25
+    },
+    {
+     "level": "gold",
+     "threshold": 40
+    },
+    {
+     "level": "platinum",
+     "threshold": 80
+    }
+   ],
+   "icon": "point.3.connected.trianglepath.dotted",
+   "platforms": [
+    "ios",
+    "backend"
+   ]
+  },
+  {
+   "id": "europe_explorer",
+   "name": "Europe Explorer",
+   "description": "Visit European countries",
+   "family": "continents",
+   "category": "continents",
+   "metric": "continentCountries",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 10
+    },
+    {
+     "level": "silver",
+     "threshold": 20
+    },
+    {
+     "level": "gold",
+     "threshold": 30
+    },
+    {
+     "level": "platinum",
+     "threshold": 32
+    }
+   ],
+   "icon": "building.columns",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "continents": "Europe"
+   },
+   "legacyBadgeId": "europe_explorer",
+   "legacyTier": "bronze"
+  },
+  {
+   "id": "asia_adventurer",
+   "name": "Asia Adventurer",
+   "description": "Visit Asian countries",
+   "family": "continents",
+   "category": "continents",
+   "metric": "continentCountries",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 10
+    },
+    {
+     "level": "silver",
+     "threshold": 20
+    },
+    {
+     "level": "gold",
+     "threshold": 30
+    },
+    {
+     "level": "platinum",
+     "threshold": 40
+    }
+   ],
+   "icon": "building.2",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "continents": "Asia"
+   },
+   "legacyBadgeId": "asia_adventurer",
+   "legacyTier": "bronze"
+  },
+  {
+   "id": "africa_safari",
+   "name": "African Safari",
+   "description": "Visit African countries",
+   "family": "continents",
+   "category": "continents",
+   "metric": "continentCountries",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 10
+    },
+    {
+     "level": "silver",
+     "threshold": 20
+    },
+    {
+     "level": "gold",
+     "threshold": 30
+    },
+    {
+     "level": "platinum",
+     "threshold": 40
+    }
+   ],
+   "icon": "leaf",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "continents": "Africa"
+   },
+   "legacyBadgeId": "africa_safari",
+   "legacyTier": "bronze"
+  },
+  {
+   "id": "americas_explorer",
+   "name": "Americas Explorer",
+   "description": "Visit countries in the Americas",
+   "family": "continents",
+   "category": "continents",
+   "metric": "continentCountries",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 10
+    },
+    {
+     "level": "silver",
+     "threshold": 15
+    },
+    {
+     "level": "gold",
+     "threshold": 20
+    },
+    {
+     "level": "platinum",
+     "threshold": 25
+    }
+   ],
+   "icon": "mountain.2",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "continents": "North America,South America"
+   },
+   "legacyBadgeId": "americas_explorer",
+   "legacyTier": "bronze"
+  },
+  {
+   "id": "oceania_hopper",
+   "name": "Island Hopper",
+   "description": "Visit Oceania countries",
+   "family": "continents",
+   "category": "continents",
+   "metric": "continentCountries",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 5
+    },
+    {
+     "level": "silver",
+     "threshold": 8
+    },
+    {
+     "level": "gold",
+     "threshold": 12
+    },
+    {
+     "level": "platinum",
+     "threshold": 14
+    }
+   ],
+   "icon": "water.waves",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "continents": "Oceania"
+   },
+   "legacyBadgeId": "oceania_hopper",
+   "legacyTier": "bronze"
+  },
+  {
+   "id": "all_continents",
+   "name": "Continental Master",
+   "description": "Visit 3, 5, 6 and all 7 continents",
+   "family": "continents",
+   "category": "continents",
+   "metric": "continentsTouched",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 3
+    },
+    {
+     "level": "silver",
+     "threshold": 5
+    },
+    {
+     "level": "gold",
+     "threshold": 6
+    },
+    {
+     "level": "platinum",
+     "threshold": 7
+    }
+   ],
+   "icon": "globe.europe.africa",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "legacyBadgeId": "all_continents",
+   "legacyTier": "gold",
+   "note": "Antarctica counts from a visit or photo south of 60°S."
+  },
+  {
+   "id": "complete_counties_ak",
+   "name": "AK Complete",
+   "description": "Visit every county in AK",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 30
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "AK"
+   }
+  },
+  {
+   "id": "complete_counties_al",
+   "name": "AL Complete",
+   "description": "Visit every county in AL",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 67
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "AL"
+   }
+  },
+  {
+   "id": "complete_counties_ar",
+   "name": "AR Complete",
+   "description": "Visit every county in AR",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 75
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "AR"
+   }
+  },
+  {
+   "id": "complete_counties_az",
+   "name": "AZ Complete",
+   "description": "Visit every county in AZ",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 15
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "AZ"
+   }
+  },
+  {
+   "id": "complete_counties_ca",
+   "name": "CA Complete",
+   "description": "Visit every county in CA",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 58
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "CA"
+   }
+  },
+  {
+   "id": "complete_counties_co",
+   "name": "CO Complete",
+   "description": "Visit every county in CO",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 64
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "CO"
+   }
+  },
+  {
+   "id": "complete_counties_ct",
+   "name": "CT Complete",
+   "description": "Visit every county in CT",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 9
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "CT"
+   }
+  },
+  {
+   "id": "complete_counties_dc",
+   "name": "DC Complete",
+   "description": "Visit every county in DC",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 1
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "DC"
+   }
+  },
+  {
+   "id": "complete_counties_de",
+   "name": "DE Complete",
+   "description": "Visit every county in DE",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 3
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "DE"
+   }
+  },
+  {
+   "id": "complete_counties_fl",
+   "name": "FL Complete",
+   "description": "Visit every county in FL",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 67
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "FL"
+   }
+  },
+  {
+   "id": "complete_counties_ga",
+   "name": "GA Complete",
+   "description": "Visit every county in GA",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 159
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "GA"
+   }
+  },
+  {
+   "id": "complete_counties_hi",
+   "name": "HI Complete",
+   "description": "Visit every county in HI",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 5
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "HI"
+   }
+  },
+  {
+   "id": "complete_counties_ia",
+   "name": "IA Complete",
+   "description": "Visit every county in IA",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 99
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "IA"
+   }
+  },
+  {
+   "id": "complete_counties_id",
+   "name": "ID Complete",
+   "description": "Visit every county in ID",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 44
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "ID"
+   }
+  },
+  {
+   "id": "complete_counties_il",
+   "name": "IL Complete",
+   "description": "Visit every county in IL",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 102
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "IL"
+   }
+  },
+  {
+   "id": "complete_counties_in",
+   "name": "IN Complete",
+   "description": "Visit every county in IN",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 92
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "IN"
+   }
+  },
+  {
+   "id": "complete_counties_ks",
+   "name": "KS Complete",
+   "description": "Visit every county in KS",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 105
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "KS"
+   }
+  },
+  {
+   "id": "complete_counties_ky",
+   "name": "KY Complete",
+   "description": "Visit every county in KY",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 120
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "KY"
+   }
+  },
+  {
+   "id": "complete_counties_la",
+   "name": "LA Complete",
+   "description": "Visit every county in LA",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 64
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "LA"
+   }
+  },
+  {
+   "id": "complete_counties_ma",
+   "name": "MA Complete",
+   "description": "Visit every county in MA",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 14
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "MA"
+   }
+  },
+  {
+   "id": "complete_counties_md",
+   "name": "MD Complete",
+   "description": "Visit every county in MD",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 24
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "MD"
+   }
+  },
+  {
+   "id": "complete_counties_me",
+   "name": "ME Complete",
+   "description": "Visit every county in ME",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 16
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "ME"
+   }
+  },
+  {
+   "id": "complete_counties_mi",
+   "name": "MI Complete",
+   "description": "Visit every county in MI",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 83
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "MI"
+   }
+  },
+  {
+   "id": "complete_counties_mn",
+   "name": "MN Complete",
+   "description": "Visit every county in MN",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 87
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "MN"
+   }
+  },
+  {
+   "id": "complete_counties_mo",
+   "name": "MO Complete",
+   "description": "Visit every county in MO",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 115
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "MO"
+   }
+  },
+  {
+   "id": "complete_counties_ms",
+   "name": "MS Complete",
+   "description": "Visit every county in MS",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 82
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "MS"
+   }
+  },
+  {
+   "id": "complete_counties_mt",
+   "name": "MT Complete",
+   "description": "Visit every county in MT",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 56
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "MT"
+   }
+  },
+  {
+   "id": "complete_counties_nc",
+   "name": "NC Complete",
+   "description": "Visit every county in NC",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 100
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "NC"
+   }
+  },
+  {
+   "id": "complete_counties_nd",
+   "name": "ND Complete",
+   "description": "Visit every county in ND",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 53
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "ND"
+   }
+  },
+  {
+   "id": "complete_counties_ne",
+   "name": "NE Complete",
+   "description": "Visit every county in NE",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 93
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "NE"
+   }
+  },
+  {
+   "id": "complete_counties_nh",
+   "name": "NH Complete",
+   "description": "Visit every county in NH",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 10
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "NH"
+   }
+  },
+  {
+   "id": "complete_counties_nj",
+   "name": "NJ Complete",
+   "description": "Visit every county in NJ",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 21
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "NJ"
+   }
+  },
+  {
+   "id": "complete_counties_nm",
+   "name": "NM Complete",
+   "description": "Visit every county in NM",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 33
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "NM"
+   }
+  },
+  {
+   "id": "complete_counties_nv",
+   "name": "NV Complete",
+   "description": "Visit every county in NV",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 17
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "NV"
+   }
+  },
+  {
+   "id": "complete_counties_ny",
+   "name": "NY Complete",
+   "description": "Visit every county in NY",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 62
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "NY"
+   }
+  },
+  {
+   "id": "complete_counties_oh",
+   "name": "OH Complete",
+   "description": "Visit every county in OH",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 88
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "OH"
+   }
+  },
+  {
+   "id": "complete_counties_ok",
+   "name": "OK Complete",
+   "description": "Visit every county in OK",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 77
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "OK"
+   }
+  },
+  {
+   "id": "complete_counties_or",
+   "name": "OR Complete",
+   "description": "Visit every county in OR",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 36
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "OR"
+   }
+  },
+  {
+   "id": "complete_counties_pa",
+   "name": "PA Complete",
+   "description": "Visit every county in PA",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 67
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "PA"
+   }
+  },
+  {
+   "id": "complete_counties_ri",
+   "name": "RI Complete",
+   "description": "Visit every county in RI",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 5
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "RI"
+   }
+  },
+  {
+   "id": "complete_counties_sc",
+   "name": "SC Complete",
+   "description": "Visit every county in SC",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 46
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "SC"
+   }
+  },
+  {
+   "id": "complete_counties_sd",
+   "name": "SD Complete",
+   "description": "Visit every county in SD",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 66
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "SD"
+   }
+  },
+  {
+   "id": "complete_counties_tn",
+   "name": "TN Complete",
+   "description": "Visit every county in TN",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 95
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "TN"
+   }
+  },
+  {
+   "id": "complete_counties_tx",
+   "name": "TX Complete",
+   "description": "Visit every county in TX",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 254
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "TX"
+   }
+  },
+  {
+   "id": "complete_counties_ut",
+   "name": "UT Complete",
+   "description": "Visit every county in UT",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 29
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "UT"
+   }
+  },
+  {
+   "id": "complete_counties_va",
+   "name": "VA Complete",
+   "description": "Visit every county in VA",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 133
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "VA"
+   }
+  },
+  {
+   "id": "complete_counties_vt",
+   "name": "VT Complete",
+   "description": "Visit every county in VT",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 14
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "VT"
+   }
+  },
+  {
+   "id": "complete_counties_wa",
+   "name": "WA Complete",
+   "description": "Visit every county in WA",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 39
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "WA"
+   }
+  },
+  {
+   "id": "complete_counties_wi",
+   "name": "WI Complete",
+   "description": "Visit every county in WI",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 72
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "WI"
+   }
+  },
+  {
+   "id": "complete_counties_wv",
+   "name": "WV Complete",
+   "description": "Visit every county in WV",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 55
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "WV"
+   }
+  },
+  {
+   "id": "complete_counties_wy",
+   "name": "WY Complete",
+   "description": "Visit every county in WY",
+   "family": "completionist",
+   "category": "states",
+   "metric": "countiesInState",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 23
+    }
+   ],
+   "icon": "checkmark.seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "state": "WY"
+   }
+  },
+  {
+   "id": "lower_48",
+   "name": "Lower 48",
+   "description": "Visit all 48 contiguous US states",
+   "family": "completionist",
+   "category": "states",
+   "metric": "subdivisionSet",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 48
+    }
+   ],
+   "icon": "flag.2.crossed",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "country": "US"
+   },
+   "members": [
+    "AL",
+    "AZ",
+    "AR",
+    "CA",
+    "CO",
+    "CT",
+    "DE",
+    "FL",
+    "GA",
+    "ID",
+    "IL",
+    "IN",
+    "IA",
+    "KS",
+    "KY",
+    "LA",
+    "ME",
+    "MD",
+    "MA",
+    "MI",
+    "MN",
+    "MS",
+    "MO",
+    "MT",
+    "NE",
+    "NV",
+    "NH",
+    "NJ",
+    "NM",
+    "NY",
+    "NC",
+    "ND",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UT",
+    "VT",
+    "VA",
+    "WA",
+    "WV",
+    "WI",
+    "WY"
+   ]
+  },
+  {
+   "id": "canada_complete",
+   "name": "True North Strong",
+   "description": "Visit all Canadian provinces and territories",
+   "family": "completionist",
+   "category": "states",
+   "metric": "subdivisionsVisited",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 13
+    }
+   ],
+   "icon": "maple.leaf",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "country": "CA"
+   },
+   "legacyBadgeId": "canada_complete",
+   "legacyTier": "platinum"
+  },
+  {
+   "id": "hexagone",
+   "name": "Hexagone",
+   "description": "Visit every French department",
+   "family": "completionist",
+   "category": "special",
+   "metric": "subdivisionsVisited",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 101
+    }
+   ],
+   "icon": "seal",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "country": "FR"
+   }
+  },
+  {
+   "id": "land_of_the_rising_sun",
+   "name": "Land of the Rising Sun",
+   "description": "Visit all Japanese prefectures",
+   "family": "completionist",
+   "category": "special",
+   "metric": "subdivisionsVisited",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 47
+    }
+   ],
+   "icon": "sun.horizon",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "country": "JP"
+   }
+  },
+  {
+   "id": "home_turf",
+   "name": "Home Turf",
+   "description": "Visit every subdivision of your home country",
+   "family": "completionist",
+   "category": "special",
+   "metric": "homeCountryCompletion",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 100
+    }
+   ],
+   "icon": "house",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "note": "Home is the tracked country where you have visited the most subdivisions."
+  },
+  {
+   "id": "full_atlas_africa",
+   "name": "Full Atlas: Africa",
+   "description": "Visit every country in Africa",
+   "family": "completionist",
+   "category": "continents",
+   "metric": "continentCountries",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 54
+    }
+   ],
+   "icon": "globe.desk",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "continents": "Africa"
+   }
+  },
+  {
+   "id": "full_atlas_asia",
+   "name": "Full Atlas: Asia",
+   "description": "Visit every country in Asia",
+   "family": "completionist",
+   "category": "continents",
+   "metric": "continentCountries",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 49
+    }
+   ],
+   "icon": "globe.desk",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "continents": "Asia"
+   }
+  },
+  {
+   "id": "full_atlas_europe",
+   "name": "Full Atlas: Europe",
+   "description": "Visit every country in Europe",
+   "family": "completionist",
+   "category": "continents",
+   "metric": "continentCountries",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 45
+    }
+   ],
+   "icon": "globe.desk",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "continents": "Europe"
+   }
+  },
+  {
+   "id": "full_atlas_north_america",
+   "name": "Full Atlas: North America",
+   "description": "Visit every country in North America",
+   "family": "completionist",
+   "category": "continents",
+   "metric": "continentCountries",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 23
+    }
+   ],
+   "icon": "globe.desk",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "continents": "North America"
+   }
+  },
+  {
+   "id": "full_atlas_oceania",
+   "name": "Full Atlas: Oceania",
+   "description": "Visit every country in Oceania",
+   "family": "completionist",
+   "category": "continents",
+   "metric": "continentCountries",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 14
+    }
+   ],
+   "icon": "globe.desk",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "continents": "Oceania"
+   }
+  },
+  {
+   "id": "full_atlas_south_america",
+   "name": "Full Atlas: South America",
+   "description": "Visit every country in South America",
+   "family": "completionist",
+   "category": "continents",
+   "metric": "continentCountries",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 12
+    }
+   ],
+   "icon": "globe.desk",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "continents": "South America"
+   }
+  },
+  {
+   "id": "wanderer",
+   "name": "Wanderer",
+   "description": "Travel 1,000 km",
+   "family": "distance",
+   "category": "special",
+   "metric": "distanceKm",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 1000
+    }
+   ],
+   "icon": "figure.hiking",
+   "platforms": [
+    "ios"
+   ],
+   "note": "Counts distance recorded since automatic tracking was turned on."
+  },
+  {
+   "id": "voyager",
+   "name": "Voyager",
+   "description": "Travel 5,000 and then 10,000 km",
+   "family": "distance",
+   "category": "special",
+   "metric": "distanceKm",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 5000
+    },
+    {
+     "level": "silver",
+     "threshold": 10000
+    }
+   ],
+   "icon": "ferry",
+   "platforms": [
+    "ios"
+   ],
+   "note": "Counts distance recorded since automatic tracking was turned on."
+  },
+  {
+   "id": "around_the_world",
+   "name": "Around the World",
+   "description": "Travel around the Earth and to the Moon",
+   "family": "distance",
+   "category": "special",
+   "metric": "distanceKm",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 25000
+    },
+    {
+     "level": "silver",
+     "threshold": 40075
+    },
+    {
+     "level": "gold",
+     "threshold": 100000
+    },
+    {
+     "level": "platinum",
+     "threshold": 384400
+    }
+   ],
+   "icon": "moon.stars",
+   "platforms": [
+    "ios"
+   ],
+   "note": "Counts distance recorded since automatic tracking was turned on."
+  },
+  {
+   "id": "monthly_explorer",
+   "name": "Monthly Explorer",
+   "description": "A new place every calendar month in a row",
+   "family": "streaks",
+   "category": "special",
+   "metric": "newPlaceStreakMonths",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 3
+    },
+    {
+     "level": "silver",
+     "threshold": 6
+    },
+    {
+     "level": "gold",
+     "threshold": 12
+    },
+    {
+     "level": "platinum",
+     "threshold": 24
+    }
+   ],
+   "icon": "calendar",
+   "platforms": [
+    "ios",
+    "backend"
+   ]
+  },
+  {
+   "id": "weekly_wanderer",
+   "name": "Weekly Wanderer",
+   "description": "A new place every week in a row",
+   "family": "streaks",
+   "category": "special",
+   "metric": "newPlaceStreakWeeks",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 4
+    },
+    {
+     "level": "silver",
+     "threshold": 8
+    },
+    {
+     "level": "gold",
+     "threshold": 12
+    },
+    {
+     "level": "platinum",
+     "threshold": 26
+    }
+   ],
+   "icon": "calendar.badge.clock",
+   "platforms": [
+    "ios",
+    "backend"
+   ]
+  },
+  {
+   "id": "regular_explorer",
+   "name": "Regular Explorer",
+   "description": "Discover new places in 2 to 10 different years",
+   "family": "streaks",
+   "category": "special",
+   "metric": "distinctYearsActive",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 2
+    },
+    {
+     "level": "silver",
+     "threshold": 3
+    },
+    {
+     "level": "gold",
+     "threshold": 5
+    },
+    {
+     "level": "platinum",
+     "threshold": 10
+    }
+   ],
+   "icon": "repeat",
+   "platforms": [
+    "ios",
+    "backend"
+   ]
+  },
+  {
+   "id": "decade_of_footprints",
+   "name": "Decade of Footprints",
+   "description": "5 and then 10 years between first and latest visit",
+   "family": "streaks",
+   "category": "special",
+   "metric": "yearsSpan",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 5
+    },
+    {
+     "level": "silver",
+     "threshold": 10
+    }
+   ],
+   "icon": "hourglass",
+   "platforms": [
+    "ios",
+    "backend"
+   ]
+  },
+  {
+   "id": "time_zone_master",
+   "name": "Time Zone Master",
+   "description": "Visit 6, 12 and 18 time zones",
+   "family": "timezones",
+   "category": "special",
+   "metric": "timeZonesVisited",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 6
+    },
+    {
+     "level": "silver",
+     "threshold": 12
+    },
+    {
+     "level": "gold",
+     "threshold": 18
+    }
+   ],
+   "icon": "clock",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "legacyBadgeId": "time_zone_master",
+   "legacyTier": "silver"
+  },
+  {
+   "id": "all_time_zones",
+   "name": "Around the Clock",
+   "description": "Visit all 24 time zones",
+   "family": "timezones",
+   "category": "special",
+   "metric": "timeZonesVisited",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 24
+    }
+   ],
+   "icon": "clock.badge.checkmark",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "legacyBadgeId": "all_time_zones",
+   "legacyTier": "platinum"
+  },
+  {
+   "id": "date_line_crosser",
+   "name": "Date Line Crosser",
+   "description": "Visit both UTC+12 and UTC−11 or beyond",
+   "family": "timezones",
+   "category": "special",
+   "metric": "dateLineCrossed",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 1
+    }
+   ],
+   "icon": "arrow.left.and.right",
+   "platforms": [
+    "ios",
+    "backend"
+   ]
+  },
+  {
+   "id": "four_hemispheres",
+   "name": "Four Hemispheres",
+   "description": "Visit the northern, southern, eastern and western hemispheres",
+   "family": "novelty",
+   "category": "special",
+   "metric": "hemispheresTouched",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 4
+    }
+   ],
+   "icon": "circle.grid.cross",
+   "platforms": [
+    "ios"
+   ]
+  },
+  {
+   "id": "equator_crosser",
+   "name": "Equator Crosser",
+   "description": "Visit both sides of the equator",
+   "family": "novelty",
+   "category": "special",
+   "metric": "hemispheresTouched",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 2
+    }
+   ],
+   "icon": "arrow.up.and.down",
+   "platforms": [
+    "ios"
+   ],
+   "filter": {
+    "axis": "lat"
+   }
+  },
+  {
+   "id": "meridian_split",
+   "name": "Meridian Split",
+   "description": "Visit both sides of the prime meridian",
+   "family": "novelty",
+   "category": "special",
+   "metric": "hemispheresTouched",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 2
+    }
+   ],
+   "icon": "arrow.left.and.right.circle",
+   "platforms": [
+    "ios"
+   ],
+   "filter": {
+    "axis": "lon"
+   }
+  },
+  {
+   "id": "on_the_equator",
+   "name": "On the Equator",
+   "description": "Visit within 0.5° of the equator",
+   "family": "novelty",
+   "category": "special",
+   "metric": "coordinateInBand",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 1
+    }
+   ],
+   "icon": "circle.and.line.horizontal",
+   "platforms": [
+    "ios"
+   ],
+   "filter": {
+    "minLat": "-0.5",
+    "maxLat": "0.5"
+   }
+  },
+  {
+   "id": "polar_explorer",
+   "name": "Polar Explorer",
+   "description": "Visit north of the Arctic Circle",
+   "family": "novelty",
+   "category": "special",
+   "metric": "coordinateInBand",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 1
+    }
+   ],
+   "icon": "snowflake",
+   "platforms": [
+    "ios"
+   ],
+   "filter": {
+    "minLat": "66.56"
+   }
+  },
+  {
+   "id": "southern_cross",
+   "name": "Southern Cross",
+   "description": "Visit south of the Tropic of Capricorn",
+   "family": "novelty",
+   "category": "special",
+   "metric": "coordinateInBand",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 1
+    }
+   ],
+   "icon": "sparkles",
+   "platforms": [
+    "ios"
+   ],
+   "filter": {
+    "maxLat": "-23.44"
+   }
+  },
+  {
+   "id": "island_nations",
+   "name": "Island Nations",
+   "description": "Visit 5, 10 and 20 island nations",
+   "family": "novelty",
+   "category": "special",
+   "metric": "countriesInSet",
+   "tiers": [
+    {
+     "level": "bronze",
+     "threshold": 5
+    },
+    {
+     "level": "silver",
+     "threshold": 10
+    },
+    {
+     "level": "gold",
+     "threshold": 20
+    }
+   ],
+   "icon": "beach.umbrella",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "set": "island_nations"
+   }
+  },
+  {
+   "id": "landlocked",
+   "name": "Landlocked",
+   "description": "Visit 5 landlocked countries",
+   "family": "novelty",
+   "category": "special",
+   "metric": "countriesInSet",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 5
+    }
+   ],
+   "icon": "mountain.2.circle",
+   "platforms": [
+    "ios",
+    "backend"
+   ],
+   "filter": {
+    "set": "landlocked"
+   }
+  },
+  {
+   "id": "bucket_list_5",
+   "name": "Dream Chaser",
+   "description": "Check off 5 places from your bucket list",
+   "family": "streaks",
+   "category": "special",
+   "metric": "bucketListCompleted",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 5
+    }
+   ],
+   "icon": "checklist",
+   "platforms": [
+    "ios"
+   ],
+   "legacyBadgeId": "bucket_list_5",
+   "legacyTier": "platinum",
+   "note": "Counts bucket-list places visited since medals v2."
+  },
+  {
+   "id": "bucket_list_25",
+   "name": "Dream Achiever",
+   "description": "Check off 25 places from your bucket list",
+   "family": "streaks",
+   "category": "special",
+   "metric": "bucketListCompleted",
+   "tiers": [
+    {
+     "level": "platinum",
+     "threshold": 25
+    }
+   ],
+   "icon": "checklist.checked",
+   "platforms": [
+    "ios"
+   ],
+   "legacyBadgeId": "bucket_list_25",
+   "legacyTier": "platinum",
+   "note": "Counts bucket-list places visited since medals v2."
+  }
+ ]
+}

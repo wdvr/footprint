@@ -7,10 +7,10 @@ from pydantic import BaseModel, Field
 
 from src.api.routes.auth import get_current_user
 from src.models.badges import (
-    BADGES,
-    Badge,
+    BADGES_BY_ID,
     BadgeProgress,
     BadgesResponse,
+    BadgeTierProgress,
 )
 from src.models.geographic import (
     CONTINENT_COUNTRY_COUNTS,
@@ -22,6 +22,7 @@ from src.models.geographic import (
     get_country_timezones,
 )
 from src.services.dynamodb import db_service
+from src.services.medals import MedalResult, evaluate
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -205,131 +206,49 @@ async def get_timezone_stats(current_user: dict = Depends(get_current_user)):
     )
 
 
-def _calculate_badge_progress(
-    badge: Badge,
-    countries_visited: int,
-    us_states_visited: int,
-    canadian_provinces_visited: int,
-    continent_counts: dict[str, int],
-    time_zones_visited: int,
-    continents_visited: int,
-    bucket_list_completed: int = 0,
-) -> BadgeProgress:
-    """Calculate progress for a single badge."""
-    progress = 0
-    total = badge.requirement_value
-
-    if badge.requirement_type == "countries_visited":
-        progress = countries_visited
-    elif badge.requirement_type == "us_states_visited":
-        progress = us_states_visited
-    elif badge.requirement_type == "canadian_provinces_visited":
-        progress = canadian_provinces_visited
-    elif badge.requirement_type == "continent_countries":
-        continent = (
-            badge.requirement_filter.get("continent")
-            if badge.requirement_filter
-            else None
-        )
-        if continent:
-            progress = continent_counts.get(continent, 0)
-    elif badge.requirement_type == "americas_countries":
-        progress = continent_counts.get("North America", 0) + continent_counts.get(
-            "South America", 0
-        )
-    elif badge.requirement_type == "continents_visited":
-        progress = continents_visited
-    elif badge.requirement_type == "time_zones_visited":
-        progress = time_zones_visited
-    elif badge.requirement_type == "bucket_list_completed":
-        progress = bucket_list_completed
-
-    unlocked = progress >= total
-    percentage = min(100.0, round(progress / total * 100, 2)) if total > 0 else 0
-
+def _badge_progress(result: MedalResult) -> BadgeProgress:
+    """Map a medal evaluation onto the v1 `BadgeProgress` shape."""
+    total = result.progress_total
+    progress = int(result.value)
+    percentage = min(100.0, round(result.value / total * 100, 2)) if total > 0 else 0
+    top = result.highest_award
     return BadgeProgress(
-        badge=badge,
-        unlocked=unlocked,
-        unlocked_at=None,  # TODO: Track actual unlock time
+        badge=BADGES_BY_ID[result.definition["id"]],
+        unlocked=top is not None,
+        unlocked_at=result.awards[0].earned_at if result.awards else None,
         progress=progress,
-        progress_total=total,
+        progress_total=int(total),
         progress_percentage=percentage,
+        tier=top.level if top else None,
+        tiers_earned=[
+            BadgeTierProgress(
+                level=a.level,
+                threshold=a.threshold,
+                unlocked_at=a.earned_at,
+                trigger=a.trigger,
+            )
+            for a in result.awards
+        ],
     )
 
 
 @router.get("/badges", response_model=BadgesResponse)
 async def get_badges(current_user: dict = Depends(get_current_user)):
     """
-    Get user's badge progress and achievements.
+    Get user's medal (badge) progress and achievements.
 
-    Shows earned badges and progress toward unearned ones.
+    Medals v2: tiered medals evaluated from the user's places in date order, so
+    `unlocked_at` is when the first tier was actually reached. Earned medals
+    list their tiers; in-progress ones show progress toward the next tier.
     """
     user_id = current_user["user_id"]
     places = db_service.get_user_visited_places(user_id)
 
-    # Calculate stats
-    active_places = [p for p in places if not p.get("is_deleted", False)]
-
-    # Countries
-    country_places = [
-        p
-        for p in active_places
-        if p.get("region_type") == "country" and p.get("status", "visited") == "visited"
-    ]
-    countries_visited = len(country_places)
-
-    # States
-    us_states_visited = sum(
-        1
-        for p in active_places
-        if p.get("region_type") == "us_state"
-        and p.get("status", "visited") == "visited"
-    )
-    canadian_provinces_visited = sum(
-        1
-        for p in active_places
-        if p.get("region_type") == "canadian_province"
-        and p.get("status", "visited") == "visited"
-    )
-
-    # Continent breakdown
-    continent_counts: dict[str, int] = {}
-    continents_with_visits = set()
-    for p in country_places:
-        code = p.get("region_code")
-        continent = get_country_continent(code)
-        if continent:
-            continent_counts[continent.value] = (
-                continent_counts.get(continent.value, 0) + 1
-            )
-            continents_with_visits.add(continent.value)
-
-    # Time zones
-    visited_zones: set[int] = set()
-    for p in country_places:
-        code = p.get("region_code")
-        zones = get_country_timezones(code)
-        visited_zones.update(zones)
-
-    # Calculate badge progress
     earned = []
     in_progress = []
-
-    for badge in BADGES:
-        progress = _calculate_badge_progress(
-            badge=badge,
-            countries_visited=countries_visited,
-            us_states_visited=us_states_visited,
-            canadian_provinces_visited=canadian_provinces_visited,
-            continent_counts=continent_counts,
-            time_zones_visited=len(visited_zones),
-            continents_visited=len(continents_with_visits),
-        )
-
-        if progress.unlocked:
-            earned.append(progress)
-        else:
-            in_progress.append(progress)
+    for result in evaluate(places):
+        progress = _badge_progress(result)
+        (earned if progress.unlocked else in_progress).append(progress)
 
     # Sort by progress percentage (descending) for in-progress
     in_progress.sort(key=lambda x: x.progress_percentage, reverse=True)
@@ -338,7 +257,7 @@ async def get_badges(current_user: dict = Depends(get_current_user)):
         earned=earned,
         in_progress=in_progress,
         total_earned=len(earned),
-        total_badges=len(BADGES),
+        total_badges=len(earned) + len(in_progress),
     )
 
 

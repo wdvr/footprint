@@ -158,109 +158,85 @@ struct TimeZoneBar: View {
     }
 }
 
-// MARK: - Badges Progress View
+// MARK: - Medals Summary
 
+/// Medals v2 summary for the Stats screen; the cabinet is one tap away.
 struct BadgesProgressView: View {
     let visitedPlaces: [VisitedPlace]
+    private let service = MedalService.shared
 
-    private var badgeProgress: [LocalBadgeProgress] {
-        LocalBadgeProgress.calculateProgress(visitedPlaces: visitedPlaces)
+    private var results: [MedalEngine.Result] { service.visibleResults(places: visitedPlaces) }
+
+    private var earned: [MedalEngine.Result] {
+        results.filter(\.isEarned).sorted { ($0.highestAward?.earnedAt ?? .distantPast) > ($1.highestAward?.earnedAt ?? .distantPast) }
     }
 
-    private var earnedBadges: [LocalBadgeProgress] {
-        badgeProgress.filter { $0.unlocked }
-    }
-
-    private var inProgressBadges: [LocalBadgeProgress] {
-        badgeProgress.filter { !$0.unlocked }
-            .sorted { $0.progressPercentage > $1.progressPercentage }
+    private var next: MedalEngine.Result? {
+        results.filter { $0.nextTier != nil && $0.value > 0 }.max { $0.progressFraction < $1.progressFraction }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Image(systemName: "trophy")
-                    .foregroundStyle(.yellow)
-                    .accessibilityHidden(true)
-                Text("Achievements")
-                    .font(.headline)
-                    .accessibilityAddTraits(.isHeader)
-                Spacer()
-                Text("\(earnedBadges.count)/\(badgeProgress.count)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+        NavigationLink {
+            MedalsView()
+        } label: {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Image(systemName: "medal")
+                        .foregroundStyle(.yellow)
+                        .accessibilityHidden(true)
+                    Text("Medals")
+                        .font(.headline)
+                        .accessibilityAddTraits(.isHeader)
+                    Spacer()
+                    Text("\(earned.count)/\(results.count)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .accessibilityHidden(true)
+                }
 
-            // Earned badges
-            if !earnedBadges.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(earnedBadges) { badge in
-                            EarnedBadgeIcon(badge: badge)
+                if !earned.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(earned.prefix(12)) { result in
+                                MedalTile(result: result).frame(width: 72)
+                            }
                         }
                     }
                 }
-            }
 
-            // Next badges to earn
-            if let nextBadge = inProgressBadges.first {
-                Divider()
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Next Achievement")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .accessibilityAddTraits(.isHeader)
-
-                    HStack {
-                        Image(systemName: nextBadge.icon)
-                            .foregroundStyle(.gray)
-                            .accessibilityHidden(true)
-                        Text(nextBadge.name)
-                            .font(.subheadline)
-                        Spacer()
-                        Text("\(nextBadge.progress)/\(nextBadge.progressTotal)")
+                if let next, let tier = next.nextTier {
+                    Divider()
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Next Medal")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                        HStack {
+                            Image(systemName: next.definition.icon)
+                                .foregroundStyle(.gray)
+                                .accessibilityHidden(true)
+                            Text("\(next.definition.name) · \(MedalTierLevel(rawValue: tier.level)?.displayName ?? tier.level)")
+                                .font(.subheadline)
+                            Spacer()
+                            Text("\(Int(next.value))/\(Int(tier.threshold))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        ProgressView(value: next.progressFraction)
+                            .tint(.yellow)
+                            .accessibilityHidden(true)
                     }
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("\(nextBadge.name), \(nextBadge.progress) of \(nextBadge.progressTotal)")
-
-                    ProgressView(value: nextBadge.progressPercentage, total: 100)
-                        .tint(.yellow)
-                        .accessibilityHidden(true)
                 }
             }
+            .padding()
+            .background(.quaternary)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
-        .padding()
-        .background(.quaternary)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-}
-
-struct EarnedBadgeIcon: View {
-    let badge: LocalBadgeProgress
-
-    var body: some View {
-        VStack(spacing: 4) {
-            ZStack {
-                Circle()
-                    .fill(.yellow.gradient)
-                    .frame(width: 50, height: 50)
-
-                Image(systemName: badge.icon)
-                    .font(.title2)
-                    .foregroundStyle(.white)
-            }
-
-            Text(badge.name)
-                .font(.caption2)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-                .frame(width: 60)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Achievement unlocked: \(badge.name)")
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("medalsSummary")
     }
 }
 

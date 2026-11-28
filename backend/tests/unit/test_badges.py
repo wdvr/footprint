@@ -25,9 +25,9 @@ class TestBadgeDefinitions:
             assert badge.category, f"Badge missing category: {badge.id}"
             assert badge.icon, f"Badge missing icon: {badge.id}"
             assert badge.requirement_type, f"Badge missing requirement_type: {badge.id}"
-            assert badge.requirement_value > 0, (
-                f"Badge has invalid requirement_value: {badge.id}"
-            )
+            assert (
+                badge.requirement_value > 0
+            ), f"Badge has invalid requirement_value: {badge.id}"
 
     def test_badge_ids_are_unique(self):
         """Test that all badge IDs are unique."""
@@ -174,42 +174,52 @@ class TestSpecificBadges:
     def test_first_steps_badge(self):
         """Test First Steps badge definition."""
         badge = get_badge("first_steps")
-        assert badge.requirement_type == "countries_visited"
+        assert badge.requirement_type == "countriesVisited"
         assert badge.requirement_value == 1
 
     def test_explorer_badge(self):
         """Test Explorer badge definition."""
         badge = get_badge("explorer_10")
-        assert badge.requirement_type == "countries_visited"
-        assert badge.requirement_value == 10
+        assert badge.requirement_type == "countriesVisited"
+        # Medals v2: Explorer is tiered, bronze at 5 and silver (the v1 badge) at 10
+        assert badge.requirement_value == 5
+        assert [(t.level, t.threshold) for t in badge.tiers] == [
+            ("bronze", 5),
+            ("silver", 10),
+        ]
 
     def test_globetrotter_badge(self):
         """Test Globetrotter badge definition."""
         badge = get_badge("globetrotter_25")
-        assert badge.requirement_type == "countries_visited"
+        assert badge.requirement_type == "countriesVisited"
         assert badge.requirement_value == 25
 
     def test_europe_explorer_badge(self):
         """Test Europe Explorer badge definition."""
         badge = get_badge("europe_explorer")
-        assert badge.requirement_type == "continent_countries"
+        assert badge.requirement_type == "continentCountries"
         assert badge.requirement_value == 10
-        assert badge.requirement_filter == {"continent": "Europe"}
+        assert badge.requirement_filter == {"continents": "Europe"}
 
     def test_us_complete_badge(self):
         """Test All 50 States badge definition."""
         badge = get_badge("us_complete")
-        assert badge.requirement_type == "us_states_visited"
+        assert badge.requirement_type == "subdivisionsVisited"
+        assert badge.requirement_filter == {"country": "US"}
         assert badge.requirement_value == 50
 
     def test_time_zone_master_badge(self):
         """Test Time Zone Master badge definition."""
         badge = get_badge("time_zone_master")
-        assert badge.requirement_type == "time_zones_visited"
-        assert badge.requirement_value == 12
+        assert badge.requirement_type == "timeZonesVisited"
+        # Tiered in v2: the v1 threshold (12 zones) is the silver rung
+        assert badge.requirement_value == 6
+        assert ("silver", 12) in [(t.level, t.threshold) for t in badge.tiers]
 
     def test_all_continents_badge(self):
         """Test Continental Master badge definition."""
         badge = get_badge("all_continents")
-        assert badge.requirement_type == "continents_visited"
-        assert badge.requirement_value == 6  # Excluding Antarctica
+        assert badge.requirement_type == "continentsTouched"
+        # Tiered in v2: the v1 threshold (6, excluding Antarctica) is the gold rung
+        assert badge.requirement_value == 3
+        assert ("gold", 6) in [(t.level, t.threshold) for t in badge.tiers]
