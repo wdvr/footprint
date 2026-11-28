@@ -2854,6 +2854,19 @@ struct StatsView: View {
                     }
                     .padding(.horizontal)
 
+                    // Named Regions
+                    Divider()
+                        .padding(.horizontal)
+
+                    NavigationLink {
+                        RegionsView(visitedPlaces: visitedPlaces)
+                    } label: {
+                        NamedRegionsStatRow(visitedPlaces: visitedPlaces)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal)
+                    .accessibilityIdentifier("namedRegionsLink")
+
                     // Year in Review
                     Divider()
                         .padding(.horizontal)

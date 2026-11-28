@@ -102,6 +102,9 @@ jobs:
             - 'ios/Footprint/Resources/GeoData/**'
             - 'scripts/audit_geodata.py'
             - 'scripts/test_audit_geodata.py'
+            - 'scripts/audit_regions.py'
+            - 'scripts/test_audit_regions.py'
+            - 'data/regions/**'
             - '.github/workflows/ci.yml'
 
   backend-test:
@@ -157,10 +160,13 @@ jobs:
     - name: Audit bundled geographic data
       run: python3 scripts/audit_geodata.py
 
+    - name: Audit named regions
+      run: python3 scripts/audit_regions.py
+
     - name: Test the audit
       run: |
         pip install pytest
-        cd scripts && python3 -m pytest -v test_audit_geodata.py
+        cd scripts && python3 -m pytest -v test_audit_geodata.py test_audit_regions.py
 
   infrastructure-validate:
     name: Infrastructure Validation
