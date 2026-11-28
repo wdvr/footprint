@@ -718,7 +718,12 @@ class DynamoDBService:
         return f"REFRESH#{session_id}"
 
     def create_refresh_session(
-        self, user_id: str, session_id: str, token_hash: str, expires_at: int
+        self,
+        user_id: str,
+        session_id: str,
+        token_hash: str,
+        expires_at: int,
+        previous_hash: str | None = None,
     ) -> dict[str, Any]:
         """Store a new refresh token session; `expires_at` is a unix timestamp."""
         now = datetime.now(UTC).isoformat()
@@ -729,6 +734,7 @@ class DynamoDBService:
             "user_id": user_id,
             "session_id": session_id,
             "token_hash": token_hash,
+            "previous_hash": previous_hash,
             "created_at": now,
             "updated_at": now,
             "ttl": expires_at,
@@ -763,6 +769,7 @@ class DynamoDBService:
         so two concurrent refreshes with the same token cannot both rotate.
         The previous hash is kept so a client that never received the last
         rotation (lost response) can still refresh once with its older token.
+        Any other (reused) token means the session leaked: it is revoked.
         """
         session = self.get_refresh_session(user_id, session_id)
         if not session:
@@ -775,6 +782,7 @@ class DynamoDBService:
             # One-time grace for a lost response: the previous token is consumed.
             previous_hash = None
         else:
+            self.delete_refresh_session(user_id, session_id)
             return False
 
         try:
@@ -801,29 +809,14 @@ class DynamoDBService:
             return False
         return True
 
-    def delete_refresh_session(
-        self, user_id: str, session_id: str, token_hash: str | None = None
-    ) -> bool:
-        """
-        Revoke a refresh token session.
-
-        With `token_hash`, only delete if it is the session's current or previous
-        token, so a superseded token cannot sign out the active session.
-        """
-        kwargs: dict[str, Any] = {
-            "Key": {
+    def delete_refresh_session(self, user_id: str, session_id: str) -> None:
+        """Revoke a refresh token session."""
+        table.delete_item(
+            Key={
                 "pk": self._get_user_pk(user_id),
                 "sk": self._get_refresh_session_sk(session_id),
             }
-        }
-        if token_hash is not None:
-            kwargs["ConditionExpression"] = "token_hash = :h OR previous_hash = :h"
-            kwargs["ExpressionAttributeValues"] = {":h": token_hash}
-        try:
-            table.delete_item(**kwargs)
-        except table.meta.client.exceptions.ConditionalCheckFailedException:
-            return False
-        return True
+        )
 
     def consume_legacy_refresh_token(self, user_id: str, jti: str, ttl: int) -> bool:
         """Record a pre-session refresh token as used; False if already used."""

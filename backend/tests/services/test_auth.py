@@ -420,9 +420,11 @@ class TestRefreshSessionLifecycle:
     def test_refresh_rejects_token_rotated_past(self, auth):
         first = auth.create_tokens("user-1")
         second = auth.refresh_tokens(first.refresh_token)
-        auth.refresh_tokens(second.refresh_token)
+        third = auth.refresh_tokens(second.refresh_token)
 
         assert auth.refresh_tokens(first.refresh_token) is None
+        # Reuse of a rotated-out token revokes the whole session.
+        assert auth.refresh_tokens(third.refresh_token) is None
 
     def test_refresh_accepts_previous_token_after_lost_response(self, auth):
         first = auth.create_tokens("user-1")
@@ -431,17 +433,24 @@ class TestRefreshSessionLifecycle:
         retried = auth.refresh_tokens(first.refresh_token)
 
         assert retried is not None
-        assert auth.refresh_tokens(first.refresh_token) is None
         assert auth.refresh_tokens(retried.refresh_token) is not None
 
-    def test_superseded_token_cannot_revoke_active_session(self, auth):
+    def test_grace_token_is_single_use(self, auth):
         first = auth.create_tokens("user-1")
-        second = auth.refresh_tokens(first.refresh_token)
-        third = auth.refresh_tokens(second.refresh_token)
+        auth.refresh_tokens(first.refresh_token)
+        retried = auth.refresh_tokens(first.refresh_token)
+
+        assert auth.refresh_tokens(first.refresh_token) is None
+        assert auth.refresh_tokens(retried.refresh_token) is None
+
+    def test_superseded_token_can_still_revoke_session(self, auth):
+        first = auth.create_tokens("user-1")
+        auth.refresh_tokens(first.refresh_token)  # lost response
+        leaked = auth.refresh_tokens(first.refresh_token)  # grace used by a copy
 
         auth.revoke_refresh_token(first.refresh_token)
 
-        assert auth.refresh_tokens(third.refresh_token) is not None
+        assert auth.refresh_tokens(leaked.refresh_token) is None
 
     def test_revoked_session_cannot_refresh(self, auth):
         tokens = auth.create_tokens("user-1")
@@ -473,6 +482,23 @@ class TestRefreshSessionLifecycle:
 
         assert auth.refresh_tokens(migrated.refresh_token) is None
         assert auth.refresh_tokens(legacy) is None
+
+    def test_legacy_migration_survives_lost_response(self, auth):
+        legacy = auth.create_refresh_token("user-1")
+        auth.refresh_tokens(legacy)  # response lost on the client
+
+        retried = auth.refresh_tokens(legacy)
+
+        assert retried is not None
+        assert auth.refresh_tokens(retried.refresh_token) is not None
+
+    def test_legacy_token_revokes_its_migrated_session(self, auth):
+        legacy = auth.create_refresh_token("user-1")
+        migrated = auth.refresh_tokens(legacy)
+
+        auth.revoke_refresh_token(legacy)
+
+        assert auth.refresh_tokens(migrated.refresh_token) is None
 
     def test_expired_refresh_token_rejected(self, auth):
         expired = auth.create_refresh_token(

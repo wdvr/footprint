@@ -183,9 +183,14 @@ class AuthService:
             expires_in=self.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
 
-    def create_tokens(self, user_id: str) -> TokenResponse:
+    def create_tokens(
+        self,
+        user_id: str,
+        session_id: str | None = None,
+        previous_hash: str | None = None,
+    ) -> TokenResponse:
         """Start a new refresh session and return its access and refresh tokens."""
-        session_id = str(uuid.uuid4())
+        session_id = session_id or str(uuid.uuid4())
         expire = self._refresh_expiry()
         refresh_token = self.create_refresh_token(user_id, session_id, expire)
         db_service.create_refresh_session(
@@ -193,6 +198,7 @@ class AuthService:
             session_id,
             self.hash_token(refresh_token),
             int(expire.timestamp()),
+            previous_hash=previous_hash,
         )
         return self._token_response(user_id, refresh_token)
 
@@ -379,15 +385,20 @@ class AuthService:
 
         session_id = payload.get("sid")
         if not session_id:
-            # Token issued before server-side sessions existed: migrate it into
-            # a session once so existing installs are not signed out. The legacy
-            # token is consumed so it cannot be exchanged again (e.g. after logout).
+            # Token issued before server-side sessions existed: migrate it into a
+            # session so existing installs are not signed out. The first exchange
+            # creates the session with the legacy token as its one-time grace
+            # token; a retry (lost response) goes through normal rotation.
             jti = payload.get("jti")
-            if not jti or not db_service.consume_legacy_refresh_token(
+            if not jti:
+                return None
+            session_id = f"legacy-{jti}"
+            if db_service.consume_legacy_refresh_token(
                 user_id, jti, int(payload["exp"])
             ):
-                return None
-            return self.create_tokens(user_id)
+                return self.create_tokens(
+                    user_id, session_id, previous_hash=self.hash_token(refresh_token)
+                )
 
         expire = self._refresh_expiry()
         new_refresh_token = self.create_refresh_token(user_id, session_id, expire)
@@ -404,13 +415,20 @@ class AuthService:
         return self._token_response(user_id, new_refresh_token)
 
     def revoke_refresh_token(self, refresh_token: str) -> None:
-        """Revoke the session a refresh token belongs to (sign out). Idempotent."""
+        """
+        Revoke the session a refresh token belongs to (sign out). Idempotent.
+
+        Any token issued for the session can revoke it, so a device whose token
+        was superseded by a leaked copy can still end that session.
+        """
         payload = self._decode_refresh_token(refresh_token, verify_exp=False)
-        if not payload or not payload.get("sid"):
+        if not payload:
             return
-        db_service.delete_refresh_session(
-            payload["sub"], payload["sid"], self.hash_token(refresh_token)
+        session_id = payload.get("sid") or (
+            f"legacy-{payload['jti']}" if payload.get("jti") else None
         )
+        if session_id:
+            db_service.delete_refresh_session(payload["sub"], session_id)
 
 
 # Singleton instance
