@@ -5,6 +5,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
+    id("androidx.room")
 }
 
 android {
@@ -24,12 +25,6 @@ android {
         buildConfigField("String", "MAPS_API_KEY", "\"\"")
 
         manifestPlaceholders["MAPS_API_KEY"] = ""
-
-        javaCompileOptions {
-            annotationProcessorOptions {
-                arguments["room.schemaLocation"] = "$projectDir/schemas"
-            }
-        }
     }
 
     buildTypes {
@@ -58,10 +53,11 @@ android {
         compose = true
         buildConfig = true
     }
+}
 
-    ksp {
-        arg("room.schemaLocation", "$projectDir/schemas")
-    }
+room {
+    // Per-variant schema output avoids debug/release KSP tasks racing on the same schema file
+    schemaDirectory("$projectDir/schemas")
 }
 
 dependencies {
