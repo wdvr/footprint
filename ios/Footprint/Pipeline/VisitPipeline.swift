@@ -122,7 +122,9 @@ final class VisitPipeline {
             storedSamples: (try? context.fetchCount(FetchDescriptor<LocationSample>())) ?? 0,
             visits: (try? context.fetchCount(FetchDescriptor<Visit>())) ?? 0,
             lastRunAt: defaults.object(forKey: Self.lastRunDefaultsKey) as? Date,
-            distanceKm: defaults.double(forKey: Self.distanceDefaultsKey) / 1000
+            // The log path is the floor that survives sample retention; the track adds the
+            // movement between stays.
+            distanceKm: max(defaults.double(forKey: Self.distanceDefaultsKey), logDistanceMeters()) / 1000
         )
     }
 
@@ -147,9 +149,10 @@ final class VisitPipeline {
     ) -> [NewPlace] {
         // Visits re-derived from an overlapping window extend the row they came from, however long
         // ago that row started.
-        var existing = (try? context.fetch(FetchDescriptor<Visit>(
+        // Grandfathered rows mirror user records, not stays, so detections never merge into them.
+        var existing = ((try? context.fetch(FetchDescriptor<Visit>(
             predicate: #Predicate { ($0.departedAt ?? $0.arrivedAt) >= windowStart }
-        ))) ?? []
+        ))) ?? []).filter { $0.evidence == .detected }
         var newPlaces: [NewPlace] = []
 
         for visit in detected {
