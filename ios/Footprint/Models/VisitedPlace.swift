@@ -34,7 +34,7 @@ final class VisitedPlace {
             case .brazilianState: return "Brazilian State"
             case .germanState: return "German State"
             case .frenchRegion: return "French Region"
-            case .spanishCommunity: return "Spanish Community"
+            case .spanishCommunity: return "Spanish Province"
             case .italianRegion: return "Italian Region"
             case .dutchProvince: return "Dutch Province"
             case .belgianProvince: return "Belgian Province"

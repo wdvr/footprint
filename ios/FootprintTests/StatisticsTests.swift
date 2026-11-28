@@ -83,7 +83,7 @@ final class StatisticsTests: XCTestCase {
         let europe = stats.first { $0.name == "Europe" }
         XCTAssertNotNil(europe)
         XCTAssertEqual(europe?.visited, 3) // FR, DE, IT
-        XCTAssertEqual(europe?.total, 44)
+        XCTAssertEqual(europe?.total, 45) // includes Sevastopol (XS)
     }
 
     func testContinentStatsEmpty() {
@@ -100,26 +100,37 @@ final class StatisticsTests: XCTestCase {
 
         let europe = stats.first { $0.name == "Europe" }
         XCTAssertNotNil(europe)
-        let expectedPercentage = Double(2) / Double(44) * 100
+        let expectedPercentage = Double(2) / Double(45) * 100
         XCTAssertEqual(europe?.percentage ?? 0, expectedPercentage, accuracy: 0.01)
     }
 
     // MARK: - TimeZoneLocalStats Tests
 
+    // US spans multiple time zones, so its zones come from the visited states only
+    private let usStatesNYAndHI = [
+        (VisitedPlace.RegionType.usState.rawValue, "NY"),
+        (VisitedPlace.RegionType.usState.rawValue, "HI"),
+    ]
+
     func testTimeZoneCalculation() {
         let visitedCountries = ["GB", "JP", "US"]
-        let stats = TimeZoneLocalStats.calculate(visitedCountries: visitedCountries)
+        let stats = TimeZoneLocalStats.calculate(visitedCountries: visitedCountries, visitedStates: usStatesNYAndHI)
 
-        // GB = UTC+0, JP = UTC+9, US = UTC-10 to UTC-5
-        XCTAssertTrue(stats.visitedZones.contains(0)) // GB
-        XCTAssertTrue(stats.visitedZones.contains(9)) // JP
-        XCTAssertTrue(stats.visitedZones.contains(-5)) // US Eastern
-        XCTAssertTrue(stats.visitedZones.contains(-10)) // US Hawaii
+        // GB = UTC+0, JP = UTC+9, NY = UTC-5, HI = UTC-10
+        XCTAssertEqual(stats.visitedZones, [0, 9, -5, -10])
+        XCTAssertEqual(stats.zonesVisited, 4)
+    }
+
+    func testTimeZoneMultiZoneCountryWithoutStates() {
+        let stats = TimeZoneLocalStats.calculate(visitedCountries: ["GB", "JP", "US"])
+
+        // Visiting the US without any states adds no US time zones
+        XCTAssertEqual(stats.visitedZones, [0, 9])
     }
 
     func testTimeZoneFarthestPoints() {
         let visitedCountries = ["GB", "JP", "US"]
-        let stats = TimeZoneLocalStats.calculate(visitedCountries: visitedCountries)
+        let stats = TimeZoneLocalStats.calculate(visitedCountries: visitedCountries, visitedStates: usStatesNYAndHI)
 
         XCTAssertEqual(stats.farthestEast, 9) // Japan
         XCTAssertEqual(stats.farthestWest, -10) // US Hawaii
