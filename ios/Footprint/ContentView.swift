@@ -1358,13 +1358,7 @@ struct WorldMapView: View {
                 TimelinePlaybackView(visitedPlaces: visitedPlaces)
             }
             .sheet(isPresented: $showingWorldMapExport) {
-                WorldMapExportView(
-                    visitedCountryCodes: visitedCountryCodes,
-                    bucketListCountryCodes: bucketListCountryCodes,
-                    visitedStateCodes: visitedStateCodes,
-                    bucketListStateCodes: bucketListStateCodes,
-                    visitedPlaces: visitedPlaces
-                )
+                ScratchPosterView(visitedPlaces: visitedPlaces)
             }
             .sheet(isPresented: $showingPhotoGallery) {
                 PhotoGalleryView(photoAssetIDs: selectedPhotoAssetIDs)
@@ -2930,7 +2924,7 @@ struct StatsView: View {
                 ShareSheetView(visitedPlaces: visitedPlaces)
             }
             .sheet(isPresented: $showPosterGenerator) {
-                PosterGeneratorView(visitedPlaces: visitedPlaces)
+                ScratchPosterView(visitedPlaces: visitedPlaces)
             }
             .sheet(isPresented: $showingYearInReview) {
                 YearInReviewView(visitedPlaces: visitedPlaces)
