@@ -177,4 +177,59 @@ final class VisitPipelineTests: XCTestCase {
         XCTAssertEqual(status.pendingSamples, 0)
         XCTAssertEqual(status.lastRunAt, t0.addingTimeInterval(3600))
     }
+
+    // MARK: - Counties (Phase 2)
+
+    /// San Francisco County, California; fixes south of 36.5°N (offshore) resolve to nowhere.
+    private func useCounty(_ fips: String?) {
+        pipeline.resolve = { latitude, _ in
+            latitude < 36.5 ? nil : PlaceKey(countryCode: "US", subdivisionCode: "CA", countyFips: fips)
+        }
+    }
+
+    func testCountyStayUpsertsUSCounty() throws {
+        useCounty("06075")
+        let newPlaces = pipeline.record(stay(startingAt: t0), now: t0.addingTimeInterval(3600))
+
+        XCTAssertTrue(newPlaces.contains(VisitPipeline.NewPlace(countryCode: "US", subdivisionCode: "CA", countyFips: "06075")))
+        let county = try XCTUnwrap(places().first { $0.regionType == VisitedPlace.RegionType.usCounty.rawValue })
+        XCTAssertEqual(county.regionCode, "06075")
+        XCTAssertEqual(county.regionName, "San Francisco County")
+        XCTAssertEqual(county.visitedDate, t0)
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Visit>()), 3)
+    }
+
+    func testReresolveBackfillsCountiesOnceAndIsIdempotent() throws {
+        useCounty(nil)
+        pipeline.record(stay(startingAt: t0), now: t0.addingTimeInterval(3600))
+        // Away from California overnight, so the next day's stay is a second visit.
+        pipeline.record([EvidenceSample(timestamp: t0.addingTimeInterval(43_200), latitude: 36, longitude: -122,
+                                        horizontalAccuracy: 20)], now: t0.addingTimeInterval(43_200))
+        pipeline.record(stay(startingAt: t0.addingTimeInterval(86_400)), now: t0.addingTimeInterval(90_000))
+        XCTAssertFalse(try places().contains { $0.regionType == VisitedPlace.RegionType.usCounty.rawValue })
+
+        useCounty("06075")
+        let first = pipeline.reresolveIfNeeded(dataVersion: "v2", now: t0.addingTimeInterval(100_000))
+        XCTAssertEqual(first.compactMap(\.countyFips), ["06075"])
+        let snapshot = try places().map { "\($0.regionType):\($0.regionCode):\($0.visitCount)" }
+        XCTAssertTrue(snapshot.contains("us_county:06075:2"))
+        XCTAssertTrue(snapshot.contains("us_state:CA:2"))
+
+        XCTAssertEqual(pipeline.reresolveIfNeeded(dataVersion: "v2"), [])
+        pipeline.reresolve(now: t0.addingTimeInterval(200_000))
+        XCTAssertEqual(try places().map { "\($0.regionType):\($0.regionCode):\($0.visitCount)" }, snapshot)
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Visit>()), 6)
+    }
+
+    func testForcedReresolveRunsAgainForTheSameDataVersion() throws {
+        useCounty(nil)
+        pipeline.record(stay(startingAt: t0), now: t0.addingTimeInterval(3600))
+        XCTAssertEqual(pipeline.reresolveIfNeeded(dataVersion: "v2"), [])
+
+        // Counties switched on after the data version was already stamped.
+        useCounty("06075")
+        XCTAssertEqual(pipeline.reresolveIfNeeded(dataVersion: "v2"), [])
+        let forced = pipeline.reresolveIfNeeded(dataVersion: "v2", force: true)
+        XCTAssertEqual(forced.compactMap(\.countyFips), ["06075"])
+    }
 }

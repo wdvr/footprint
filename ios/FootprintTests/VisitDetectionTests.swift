@@ -206,3 +206,52 @@ final class VisitDetectionTests: XCTestCase {
         XCTAssertEqual(DistanceAccumulator.meters(drive), 3_000, accuracy: 5)
     }
 }
+
+// MARK: - County level (§2.2, §3.3)
+
+extension VisitDetectionTests {
+    /// Fake US: latitude < 10.001 is county 00001, else 00002; all in state N of country US.
+    private var countyWorld: VisitDetector.Resolver {
+        { lat, _ in
+            PlaceKey(countryCode: "US", subdivisionCode: "N", countyFips: lat < 10.001 ? "00001" : "00002")
+        }
+    }
+
+    func testCountyStayRecordsCountyVisit() {
+        let visits = VisitDetector.detect(stay, resolve: countyWorld, calendar: utc)
+        let county = visits.filter { $0.level == .county }
+        XCTAssertEqual(county.count, 1)
+        XCTAssertEqual(county.first?.countyFips, "00001")
+        XCTAssertEqual(county.first?.subdivisionCode, "N")
+        XCTAssertEqual(county.first?.kind, .visited)
+        XCTAssertEqual(Set(visits.map(\.level)), [.country, .subdivision, .county])
+        XCTAssertNil(visits.first { $0.level == .country }?.countyFips)
+    }
+
+    func testCoarseFixesAreNotCountyEvidence() {
+        let coarse = (0...12).map { sample(Double($0), 10, 10, accuracy: 600) }
+        let visits = VisitDetector.detect(coarse, resolve: countyWorld, calendar: utc)
+        XCTAssertTrue(visits.contains { $0.level == .subdivision })
+        XCTAssertFalse(visits.contains { $0.level == .county })
+    }
+
+    func testCoarseFixInsideStayDoesNotSplitCountyVisit() {
+        var samples = stay
+        samples[6] = sample(6, 10, 10, accuracy: 600)
+        let county = VisitDetector.detect(samples, resolve: countyWorld, calendar: utc).filter { $0.level == .county }
+        XCTAssertEqual(county.count, 1)
+        XCTAssertEqual(county.first?.sampleCount, 12)
+    }
+
+    /// Owner ruling: a highway drive-through county is a full visit.
+    func testDriveThroughCountyIsFullVisit() {
+        // ~100 km/h north through county 00001 into 00002, a fix every minute.
+        let drive = (0...6).map { sample(Double($0), 10 + Double($0) * 1_700 * degreesPerMeter, 10) }
+        let county = VisitDetector.detect(drive, resolve: countyWorld, calendar: utc).filter { $0.level == .county }
+        XCTAssertEqual(county.map(\.countyFips), ["00002"])
+        XCTAssertEqual(county.first?.kind, .visited)
+        let transit = VisitDetector.detect(drive, resolve: countyWorld, config: specDefault, calendar: utc)
+            .filter { $0.level == .county }
+        XCTAssertEqual(transit.first?.kind, .transit)
+    }
+}

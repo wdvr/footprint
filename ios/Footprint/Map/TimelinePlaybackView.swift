@@ -23,12 +23,12 @@ extension PlaybackEvent {
         VisitedPlace.RegionType.norwegianCounty.rawValue: "NO",
     ]
 
-    /// Visited places as playback events. Region types this view doesn't know (e.g. optional
-    /// layers added later) are skipped, so new layers never leak into the movie.
+    /// Visited places as playback events. Opt-in layers (counties) and region types this view
+    /// doesn't know are skipped, so they never leak into the movie.
     static func events(from places: [VisitedPlace]) -> [PlaybackEvent] {
         places.compactMap { place in
             guard !place.isDeleted, place.isVisited,
-                VisitedPlace.RegionType(rawValue: place.regionType) != nil
+                let type = VisitedPlace.RegionType(rawValue: place.regionType), type != .usCounty
             else { return nil }
             let isCountry = place.regionType == VisitedPlace.RegionType.country.rawValue
             return PlaybackEvent(
