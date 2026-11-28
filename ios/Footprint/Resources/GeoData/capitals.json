@@ -795,13 +795,13 @@
    "timeZone": "Africa/Conakry"
   },
   {
-   "id": "gn:2309527",
-   "name": "Malabo",
+   "id": "gn:12226438",
+   "name": "Ciudad de la Paz",
    "countryCode": "GQ",
    "subdivisionCode": null,
-   "lat": 3.75578,
-   "lon": 8.78166,
-   "population": 155963,
+   "lat": 1.5925,
+   "lon": 10.82361,
+   "population": 2000,
    "isNationalCapital": true,
    "isSubdivisionCapital": false,
    "timeZone": "Africa/Malabo"

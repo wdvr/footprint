@@ -45,7 +45,6 @@ NON_SOVEREIGN = {"TW", "XS"}
 NATIONAL_OVERRIDES = {
     "IL": 281184,  # Jerusalem (GeoNames files it as PPLA)
     "PS": 282239,  # Ramallah, administrative seat of the State of Palestine
-    "GQ": 2309527,  # Malabo (GeoNames already moved PPLC to Ciudad de la Paz)
 }
 
 US_STATE_COUNT = 51
