@@ -206,10 +206,12 @@ struct ScratchPosterContent: Sendable, Equatable {
             if place.regionType == VisitedPlace.RegionType.usState.rawValue { states.insert("US-\(place.regionCode)") }
             if place.regionType == VisitedPlace.RegionType.canadianProvince.rawValue { states.insert("CA-\(place.regionCode)") }
         }
-        let continents = LocalContinentStats.calculateStats(visitedCountries: Array(countries))
+        var continents = LocalContinentStats.calculateStats(visitedCountries: Array(countries))
             .map { Continent(name: $0.name, visited: $0.visited, total: $0.total) }
+        let countryCount = min(worldCountryCount, continents.reduce(0) { $0 + $1.visited })
+        if countries.contains("AQ") { continents.append(Continent(name: "Antarctica", visited: 1, total: 1)) }
         return ScratchPosterContent(title: title, visitedCountryCodes: countries, visitedStateCodes: states,
                                     continents: continents, date: date,
-                                    countryCount: min(worldCountryCount, continents.reduce(0) { $0 + $1.visited }))
+                                    countryCount: countryCount)
     }
 }

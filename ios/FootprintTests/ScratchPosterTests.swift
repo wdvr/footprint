@@ -85,6 +85,16 @@ final class ScratchPosterTests: XCTestCase {
         XCTAssertEqual(content.worldPercent, 0)
     }
 
+    func testAntarcticaCountsAsAContinent() {
+        let content = ScratchPosterContent.make(title: "South", places: [
+            VisitedPlace(regionType: .country, regionCode: "AQ", regionName: "Antarctica"),
+            VisitedPlace(regionType: .country, regionCode: "AR", regionName: "Argentina"),
+        ])
+        XCTAssertEqual(content.continentCount, 2)
+        XCTAssertEqual(content.countryCount, 1)
+        XCTAssertTrue(content.continents.contains { $0.name == "Antarctica" && $0.visited == 1 })
+    }
+
     // MARK: - Rendering
 
     func testPDFIsOnePageAtPaperSize() throws {
