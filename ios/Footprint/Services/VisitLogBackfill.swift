@@ -56,28 +56,32 @@ enum VisitLogBackfill {
         }
 
         var earliestDetected: [VisitLog.PlaceID: Date] = [:]
+        var fullyDetected: Set<VisitLog.PlaceID> = []
         var mirrors: [VisitLog.PlaceID: [Visit]] = [:]
         for visit in visits {
             let id = visit.logEntry.placeID
             switch visit.evidence {
-            // Only a full detected visit explains a visited place; a layover does not.
-            case .detected where visit.kind == .visited:
-                earliestDetected[id] = min(earliestDetected[id] ?? visit.arrivedAt, visit.arrivedAt)
             case .detected:
-                break
+                earliestDetected[id] = min(earliestDetected[id] ?? visit.arrivedAt, visit.arrivedAt)
+                if visit.kind == .visited { fullyDetected.insert(id) }
             case .grandfathered:
                 mirrors[id, default: []].append(visit)
             }
         }
 
+        // Evidence explains a place when it accounts for both its date (detected at or before it)
+        // and its status (a visited place needs a full detected visit, not only a layover).
+        func explained(_ place: VisitedPlace, _ id: VisitLog.PlaceID) -> Bool {
+            guard let detected = earliestDetected[id], detected <= (place.visitedDate ?? .distantFuture) else {
+                return false
+            }
+            return place.isTransit || fullyDetected.contains(id)
+        }
+
         var result = Result()
         for (id, rows) in mirrors {
             let place = wanted[id]
-            // A detected visit at or before the place's date already explains it.
-            let explained = place.map { place in
-                earliestDetected[id].map { $0 <= (place.visitedDate ?? .distantFuture) } ?? false
-            } ?? true
-            let keep = explained ? [] : Array(rows.prefix(1))
+            let keep = (place.map { !explained($0, id) } ?? false) ? Array(rows.prefix(1)) : []
             for row in rows.dropFirst(keep.count) {
                 context.delete(row)
                 result.removed += 1
@@ -87,9 +91,7 @@ enum VisitLogBackfill {
             }
         }
         for (id, place) in wanted where mirrors[id] == nil {
-            if let detected = earliestDetected[id], detected <= (place.visitedDate ?? .distantFuture) {
-                continue
-            }
+            if explained(place, id) { continue }
             let row = Visit(DetectedVisit(
                 level: id.level, countryCode: id.countryCode, subdivisionCode: id.subdivisionCode,
                 kind: .visited, arrivedAt: .distantPast, departedAt: .distantPast,

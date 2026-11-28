@@ -177,6 +177,34 @@ final class VisitLogBackfillTests: XCTestCase {
         XCTAssertEqual(pipeline.travelStats(now: t0).placesVisited, 1)
     }
 
+    private func detected(_ kind: DetectedVisitKind, at arrival: Date) -> Visit {
+        Visit(DetectedVisit(
+            level: .country, countryCode: "QA", subdivisionCode: nil, kind: kind,
+            arrivedAt: arrival, departedAt: arrival.addingTimeInterval(3600),
+            centroidLatitude: 25.27, centroidLongitude: 51.6, sampleCount: 20, source: .gps
+        ))
+    }
+
+    func testDetectedLayoverExplainsATransitPlace() throws {
+        place(.country, "QA", visitType: .transit, visitedDate: t0)
+        context.insert(detected(.transit, at: t0))
+        try context.save()
+        XCTAssertEqual(VisitLogBackfill.run(in: context), .init())
+        XCTAssertEqual(try visits().count, 1)
+    }
+
+    func testLayoverThenFullVisitCreditsTheFullVisit() throws {
+        // The pipeline keeps the layover date when a later stay upgrades the place.
+        let later = t0.addingTimeInterval(40 * 86400)
+        place(.country, "QA", visitedDate: t0)
+        context.insert(detected(.transit, at: t0))
+        context.insert(detected(.visited, at: later))
+        try context.save()
+        XCTAssertEqual(VisitLogBackfill.run(in: context), .init())
+        let firstVisits = VisitLog.firstVisits(pipeline.logEntries())
+        XCTAssertEqual(firstVisits.map(\.value), [later])
+    }
+
     func testHistoryOlderThanTheEvidenceIsStillMirrored() throws {
         pipeline.record(stay(startingAt: t0), now: t0.addingTimeInterval(3600))
         let country = try XCTUnwrap(try context.fetch(FetchDescriptor<VisitedPlace>()).first { $0.regionType == "country" })
