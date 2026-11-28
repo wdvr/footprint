@@ -58,17 +58,30 @@ private struct CityVisitToggle: ViewModifier {
     @Binding var pending: PendingVisitAction?
     @Environment(\.modelContext) private var modelContext
 
+    /// Revives a removed row like the country list does, so a city keeps one row per code.
+    private func markVisited(_ action: PendingVisitAction, date: Date?) {
+        let code = action.regionCode
+        let descriptor = FetchDescriptor<VisitedPlace>(
+            predicate: #Predicate { $0.regionType == "city" && $0.regionCode == code }
+        )
+        if let existing = (try? modelContext.fetch(descriptor))?.first {
+            existing.isDeleted = false
+            existing.status = VisitedPlace.PlaceStatus.visited.rawValue
+            existing.visitType = VisitedPlace.VisitType.visited.rawValue
+            existing.visitedDate = date
+            existing.lastModifiedAt = Date()
+            existing.isSynced = false
+        } else {
+            modelContext.insert(
+                VisitedPlace(regionType: .city, regionCode: code, regionName: action.regionName, visitedDate: date)
+            )
+        }
+    }
+
     func body(content: Content) -> some View {
         content.sheet(item: $pending) { action in
             VisitDatePickerSheet(placeName: action.regionName) { date in
-                modelContext.insert(
-                    VisitedPlace(
-                        regionType: .city,
-                        regionCode: action.regionCode,
-                        regionName: action.regionName,
-                        visitedDate: date
-                    )
-                )
+                markVisited(action, date: date)
                 pending = nil
             }
             .presentationDetents([.medium])
@@ -107,6 +120,12 @@ private func countryName(_ code: String) -> String {
 
 private func stateName(_ subdivisionCode: String?) -> String? {
     subdivisionCode.flatMap { usStateNames[$0] }
+}
+
+/// Shown in the country-grouped list so same-named cities (e.g. the two Suzhous) are distinguishable.
+private func populationLabel(_ city: GazetteerCity) -> String? {
+    guard city.population > 0 else { return nil }
+    return "Pop. " + city.population.formatted(.number.notation(.compactName))
 }
 
 private struct CountryCitySection: Identifiable {
@@ -166,7 +185,10 @@ struct CitiesView: View {
                     ForEach(section.cities) { city in
                         CityRow(
                             city: city,
-                            subtitle: city.isUSStateCapital ? stateName(city.subdivisionCode) : nil,
+                            subtitle: [
+                                city.isUSStateCapital ? stateName(city.subdivisionCode) : nil,
+                                populationLabel(city),
+                            ].compactMap { $0 }.joined(separator: " · "),
                             status: state.status(of: city),
                             firstVisit: state.firstVisitDates[city.id]
                         ) {
