@@ -96,4 +96,25 @@ final class SubdivisionCodeMigrationTests: XCTestCase {
         XCTAssertEqual(SubdivisionCodeMigration.run(in: context, now: now), 0)
         XCTAssertEqual(try live().map(\.regionCode), ["MAN"])
     }
+
+    // TEMP diagnostic, remove before merge.
+    func testZZDiagnostic() throws {
+        let a = VisitedPlace(regionType: .ukCountry, regionCode: "GB-ABC", regionName: "A", isSynced: true)
+        context.insert(a)
+        let fetched = try context.fetch(FetchDescriptor<VisitedPlace>(predicate: #Predicate { !$0.isDeleted }))
+        print("DIAG1 fetched=\(fetched.count) same=\(fetched.first === a)")
+        a.isDeleted = true
+        a.isSynced = false
+        print("DIAG2 afterSet isDeleted=\(a.isDeleted) ctx=\(a.modelContext != nil)")
+        try context.save()
+        print("DIAG3 afterSave isDeleted=\(a.isDeleted) isSynced=\(a.isSynced) code=\(a.regionCode) ctx=\(a.modelContext != nil)")
+        print("DIAG4 all=\(try context.fetch(FetchDescriptor<VisitedPlace>()).map { "\($0.regionCode):\($0.isDeleted):\($0 === a)" })")
+
+        let b = VisitedPlace(regionType: .ukCountry, regionCode: "GB-MAN", regionName: "Manchester", isSynced: true)
+        context.insert(b)
+        print("DIAG5 beforeRun isDeleted=\(b.isDeleted)")
+        let n = SubdivisionCodeMigration.run(in: context, now: now)
+        print("DIAG6 run=\(n) isDeleted=\(b.isDeleted) isSynced=\(b.isSynced) code=\(b.regionCode) ctx=\(b.modelContext != nil) lm=\(b.lastModifiedAt.timeIntervalSince1970)")
+        print("DIAG7 all=\(try context.fetch(FetchDescriptor<VisitedPlace>()).map { "\($0.regionCode):\($0.isDeleted):\($0.isSynced):\($0 === b)" })")
+    }
 }
